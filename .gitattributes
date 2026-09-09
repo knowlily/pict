@@ -1,0 +1,14 @@
+# 统一换行符：仓库内一律 LF，检出时按平台
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.jar binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.keystore binary
+*.jks binary
+
+# Gradle wrapper 脚本必须保持 LF
+gradlew text eol=lf
+*.bat text eol=crlf

@@ -4,7 +4,7 @@ Android 端**批量图片元数据编辑 + 格式转换**工具。全程本地�
 
 > 仓库路径：`D:\githubs\pict`
 > 文档版本：v1.0（2026-09-09）
-> 当前阶段：**项目文档 / 实施计划阶段**（尚未开始编码）
+> 当前阶段：**P0 工程骨架已完成**（可编译、可安装、可运行；单测 8/8 通过）
 
 ---
 
@@ -59,10 +59,11 @@ Kotlin · Jetpack Compose Material 3 · Navigation Compose · Hilt · Coroutines
 | 项 | 状态 |
 | --- | --- |
 | JDK 17 (Temurin) | ✅ 已安装 |
-| adb / platform-tools 36.0.0 | ✅ `D:\platform-tools\adb` |
-| Android SDK | ❌ **未安装**（需 P0 阶段安装） |
-| Android Studio | ❌ 未安装（可用命令行 + Gradle 构建，可选装） |
-| Gradle / Kotlin CLI | ❌ 未安装（用 wrapper，无需全局安装） |
+| adb / platform-tools 37.0.1 | ✅ `D:\Android\Sdk\platform-tools\adb.exe` |
+| Android SDK | ✅ `D:\Android\Sdk`（platforms;android-36、build-tools;36.0.0） |
+| Android Studio | ❌ 未安装（命令行 + Gradle 构建；本机有 IntelliJ IDEA 2025.3.3 可选） |
+| Gradle | ✅ wrapper 8.14.3（发行包 `D:\Android\gradle-8.14.3`，已预置进 wrapper 缓存） |
+| `GRADLE_USER_HOME` | ⚠️ 必须设为 `D:\gradle-home`（中文用户名会导致测试 worker 找不到主类，见 [docs/10 §1.1](docs/10-构建发布与合规.md)） |
 | D 盘可用空间 | 76 GB（SDK 约需 6–10 GB） |
 
 安装与首次构建步骤见 [docs/10-构建发布与合规.md](docs/10-构建发布与合规.md) 第 2 节。
