@@ -4,7 +4,9 @@ Android 端**批量图片元数据编辑 + 格式转换**工具。全程本地�
 
 > 仓库路径：`D:\githubs\pict`
 > 文档版本：v1.0（2026-09-09）
-> 当前阶段：**P1 元数据读取与展示（进行中）** — P0 骨架已完成（可编译/可安装/可运行）；P1 领域层已落地：字段目录 187 项、值格式化器、GPS 度分秒换算、多来源合并/差集，单测 **46/46 通过**
+> 当前阶段：**P2 元数据编辑引擎（进行中）** — P0 骨架、P1 读取链路已落地；P2 已提交 T2.1–T2.7（操作折叠、写通道、时间偏移）。单测 **274/274 通过**
+>
+> 协作约定与踩坑清单见 [AGENTS.md](AGENTS.md)。
 
 ---
 
@@ -96,6 +98,7 @@ pict/
 
 ## 下一步
 
-1. P1 剩余：`ExifMetadataStore` 读取（T1.4）、MetadataExtractor / CommonsImaging 读取（T1.5–T1.6）、路由合并（T1.7）。
-2. P1 用户可见链路：SAF 导入（T1.8）→ 缩略图网格（T1.9）→ 详情页 Tab 与搜索（T1.10–T1.11）。
-3. 每个任务完成后提交一次 git；Phase 退出标准见 [docs/07](docs/07-实施计划与任务拆解.md)。
+1. P2 剩余：T2.8 GPS 编辑（`domain/plan/GpsEditor.kt`）、T2.9 清空分组（`domain/plan/ClearGroups.kt`）、T2.11 备份与回滚（`data/source/BackupManager.kt`）。
+2. P2 用户可见链路：单文件编辑 UI（T2.10，字段弹层 / 未保存提示 / diff 预览）。
+3. P2 收口：单元测试 + exiftool 金标准脚本（T2.12），跑通后按 [docs/07](docs/07-实施计划与任务拆解.md) 的 Phase 2 退出标准验收。
+4. 每个任务完成后提交一次 git；协作约定与踩坑见 [AGENTS.md](AGENTS.md)。
