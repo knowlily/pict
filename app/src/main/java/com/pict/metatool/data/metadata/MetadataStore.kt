@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.data.source.ImageSource
 import com.pict.metatool.domain.model.MetadataSet
+import com.pict.metatool.domain.model.SourceInfo
 import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.model.TagValue
 
@@ -23,7 +24,8 @@ interface MetadataStore {
     /** 稳定标识，写入日志与报告来源标注（如 `exif`、`extractor`、`imaging`）。 */
     val id: String
 
-    fun supports(source: ImageSource): Boolean
+    /** 该读取器是否能处理这个格式（按 [SourceInfo.format] 判断，纯数据、可单测）。 */
+    fun supports(info: SourceInfo): Boolean
 
     suspend fun read(resolver: ContentResolver, source: ImageSource): PictResult<MetadataSet>
 }

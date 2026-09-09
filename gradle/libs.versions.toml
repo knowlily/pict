@@ -15,7 +15,7 @@ heifwriter = "1.1.0"
 metadataExtractor = "2.19.0"
 commonsImaging = "1.0.0-alpha6"
 xmpcore = "6.1.11"
-coil = "3.6.2"
+coil = "3.5.0"
 junit = "4.13.2"
 androidxTestJunit = "1.3.0"
 espresso = "3.7.0"
@@ -53,7 +53,8 @@ commons-imaging = { module = "org.apache.commons:commons-imaging", version.ref =
 xmpcore = { module = "com.adobe.xmp:xmpcore", version.ref = "xmpcore" }
 
 # 图片加载
-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+# 图片加载：3.6.x 传递依赖 JetBrains Compose 1.12 → 需要 compileSdk 37 + AGP 9.1，锁 3.5.0（Compose 1.11.1）
+coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 
 # 测试
 junit = { module = "junit:junit", version.ref = "junit" }

@@ -89,6 +89,15 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
 
+    // 元数据读取/写入（docs/03 §4）
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.metadata.extractor)
+    implementation(libs.commons.imaging)
+    implementation(libs.xmpcore)
+
+    // 图片加载（缩略图网格 T1.9）
+    implementation(libs.coil)
+
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
 
