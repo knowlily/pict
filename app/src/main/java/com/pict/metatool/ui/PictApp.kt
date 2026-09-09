@@ -16,8 +16,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pict.metatool.ui.detail.DetailScreen
 import com.pict.metatool.ui.jobs.JobsScreen
 import com.pict.metatool.ui.library.LibraryScreen
+import com.pict.metatool.ui.navigation.DetailRoute
 import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.settings.SettingsScreen
 
@@ -33,28 +35,31 @@ fun PictApp(navController: NavHostController = rememberNavController()) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                PictDestination.bottomBarItems.forEach { destination ->
-                    val selected = currentRoute == destination.route
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            if (!selected) {
-                                navController.navigate(destination.route) {
-                                    popUpTo(PictDestination.Library.route) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+            // 详情页是二级页面，进来就收起底部导航（docs/06 §3.2）。
+            if (currentRoute != DetailRoute.PATTERN) {
+                NavigationBar {
+                    PictDestination.bottomBarItems.forEach { destination ->
+                        val selected = currentRoute == destination.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    navController.navigate(destination.route) {
+                                        popUpTo(PictDestination.Library.route) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = destination.icon,
-                                contentDescription = stringResource(destination.labelRes),
-                            )
-                        },
-                        label = { Text(text = stringResource(destination.labelRes)) },
-                    )
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon,
+                                    contentDescription = stringResource(destination.labelRes),
+                                )
+                            },
+                            label = { Text(text = stringResource(destination.labelRes)) },
+                        )
+                    }
                 }
             }
         },
@@ -64,9 +69,17 @@ fun PictApp(navController: NavHostController = rememberNavController()) {
             startDestination = PictDestination.Library.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(PictDestination.Library.route) { LibraryScreen() }
+            composable(PictDestination.Library.route) {
+                LibraryScreen(onOpen = { uri -> navController.navigate(DetailRoute.build(uri)) })
+            }
             composable(PictDestination.Jobs.route) { JobsScreen() }
             composable(PictDestination.Settings.route) { SettingsScreen() }
+            composable(DetailRoute.PATTERN) { entry ->
+                DetailScreen(
+                    uri = entry.arguments?.getString(DetailRoute.ARG_URI).orEmpty(),
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 }

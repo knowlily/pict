@@ -79,6 +79,12 @@ object GpsCoordinate {
         return "$d°$m'$secText\"$ref"
     }
 
+    /** 概览页用：`31.2304°N`（十进制度，取绝对值并附方向）。 */
+    fun decimalLabel(decimal: Double, isLatitude: Boolean, digits: Int = 4): String {
+        val ref = refFor(decimal, isLatitude)
+        return "%.${digits}f°$ref".format(abs(decimal))
+    }
+
     internal fun trimZeros(text: String): String =
         if (!text.contains('.')) text else text.trimEnd('0').trimEnd('.')
 }

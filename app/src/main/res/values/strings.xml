@@ -38,6 +38,30 @@
     <string name="library_message_import_failed">这个位置读不到，可能是授权被撤销了，重新选一次文件夹。</string>
     <string name="library_message_scan_truncated">已到单次上限 %1$d 张，先处理这批，剩下的再导一次。</string>
 
+    <!-- 详情页（T1.10，docs/06 §3.2） -->
+    <string name="detail_fallback_title">图片详情</string>
+    <string name="detail_back">返回</string>
+    <string name="detail_more">更多操作</string>
+    <string name="detail_menu_reload">重新读取</string>
+    <string name="detail_menu_copy_uri">复制文件地址</string>
+    <string name="detail_loading">正在读取元数据…</string>
+    <string name="detail_retry">重试</string>
+    <string name="detail_error_detail">技术细节：%1$s</string>
+    <string name="detail_empty_title">没有读到元数据</string>
+    <string name="detail_empty_body">这张图可能是截图或清理过的文件，EXIF、XMP、GPS 都是空的。</string>
+    <string name="detail_preview_desc">图片预览</string>
+    <string name="detail_gps_decimal">十进制度</string>
+    <string name="detail_gps_dms">度分秒</string>
+    <string name="detail_gps_copy">复制坐标</string>
+    <string name="detail_gps_empty">这张图没有定位信息</string>
+    <string name="detail_file_name">文件名</string>
+    <string name="detail_file_mime">类型</string>
+    <string name="detail_file_size">大小</string>
+    <string name="detail_file_format">格式</string>
+    <string name="detail_file_uri">地址</string>
+    <string name="detail_copied">已复制%1$s</string>
+    <string name="detail_editable_hint">可编辑</string>
+
     <!-- 错误提示（docs/01 §6，文案与错误码表一一对应） -->
     <string name="error_io_open">文件已被移动或删除</string>
     <string name="error_io_read">存储空间不足或文件损坏</string>

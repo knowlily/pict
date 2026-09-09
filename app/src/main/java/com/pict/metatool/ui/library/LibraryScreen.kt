@@ -56,11 +56,13 @@ import androidx.compose.ui.platform.LocalContext
  * - 选择文件夹：`ACTION_OPEN_DOCUMENT_TREE`，持久化授权后扫描；
  * - 从相册选择：Photo Picker（系统无该能力时由 `ActivityResultContracts` 自动退化）。
  *
- * 与文档的差异：docs/06 写「单击进详情、长按进入多选」，但详情页要 T1.10 才落地，
- * 所以现在单击也是切换选中（长按额外给一次触感反馈）。T1.10 接入后把 onClick 改回导航即可。
+ * 与文档一致：单击进详情（T1.10 接入），长按进入多选（额外给一次触感反馈）。
+ *
+ * @param onOpen 点开某张图，由导航层跳到详情页。
  */
 @Composable
 fun LibraryScreen(
+    onOpen: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = viewModel(
         factory = LibraryViewModel.factory(LocalContext.current),
@@ -130,7 +132,7 @@ fun LibraryScreen(
                         ImageGridCell(
                             item = item,
                             selected = item.uri in state.selectedUris,
-                            onClick = { viewModel.toggleSelection(item.uri) },
+                            onClick = { onOpen(item.uri) },
                             onLongClick = { viewModel.toggleSelection(item.uri) },
                         )
                     }
