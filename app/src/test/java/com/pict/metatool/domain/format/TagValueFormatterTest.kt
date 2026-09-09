@@ -97,4 +97,99 @@ class TagValueFormatterTest {
         assertEquals("31.2368", TagValueFormatter.raw(TagValue.DecimalValue(31.2368)))
         assertEquals("", TagValueFormatter.raw(null))
     }
+
+    // ---------- T1.12：分支与边界补全 ----------
+
+    @Test
+    fun `有理数分母为 1 或分子为 0 时退化`() {
+        assertEquals("72", TagValueFormatter.formatRational(Rational(72, 1), null))
+        assertEquals("0", TagValueFormatter.formatRational(Rational(0, 5), null))
+        assertEquals("—", TagValueFormatter.formatRational(Rational(1, 0), null))
+    }
+
+    @Test
+    fun `负有理数保留符号 非倒数写法取小数`() {
+        assertEquals("-0.004", TagValueFormatter.formatRational(Rational(-1, 250), null))
+        assertEquals("0.6667", TagValueFormatter.formatRational(Rational(2, 3), null))
+    }
+
+    @Test
+    fun `非有限小数显示占位符`() {
+        assertEquals("—", TagValueFormatter.plain(Double.NaN))
+        assertEquals("—", TagValueFormatter.plain(Double.POSITIVE_INFINITY))
+        assertEquals("0", TagValueFormatter.plain(0.0))
+        assertEquals("-1.5", TagValueFormatter.plain(-1.5))
+    }
+
+    @Test
+    fun `去尾随零不碰没有小数点的文本`() {
+        assertEquals("72", TagValueFormatter.trimZeros("72"))
+        assertEquals("1.5", TagValueFormatter.trimZeros("1.5000"))
+        assertEquals("2", TagValueFormatter.trimZeros("2.0"))
+    }
+
+    @Test
+    fun `空二进制显示占位符 正好十六位不省略`() {
+        assertEquals("—", TagValueFormatter.format(TagValue.Binary("", 0)))
+        assertEquals("0x0123456789abcdef (8 字节)", TagValueFormatter.format(TagValue.Binary("0123456789abcdef", 8)))
+    }
+
+    @Test
+    fun `曝光时间的三种写法与兜底`() {
+        assertEquals("—", TagValueFormatter.exposureTime(TagValue.RationalValue(Rational(1, 0))))
+        assertEquals("0.6667 秒", TagValueFormatter.exposureTime(TagValue.RationalValue(Rational(2, 3))))
+        assertEquals("5", TagValueFormatter.exposureTime(TagValue.IntValue(5)))
+    }
+
+    @Test
+    fun `光圈与焦距支持小数与整数输入`() {
+        assertEquals("f/1.8", TagValueFormatter.aperture(TagValue.DecimalValue(1.8)))
+        assertEquals("24 mm", TagValueFormatter.focalLength(TagValue.IntValue(24)))
+        assertEquals("4.25 mm", TagValueFormatter.focalLength(TagValue.DecimalValue(4.25)))
+        assertEquals("x", TagValueFormatter.focalLength(TagValue.Text("x")))
+    }
+
+    @Test
+    fun `ISO 缺值与非数值回退`() {
+        assertEquals("—", TagValueFormatter.iso(TagValue.IntList(emptyList())))
+        assertEquals("ISO 400", TagValueFormatter.iso(TagValue.IntValue(400)))
+        assertEquals("abc", TagValueFormatter.iso(TagValue.Text("abc")))
+    }
+
+    @Test
+    fun `空列表统一显示占位符`() {
+        assertEquals("—", TagValueFormatter.format(TagValue.IntList(emptyList())))
+        assertEquals("—", TagValueFormatter.format(TagValue.DecimalList(emptyList())))
+        assertEquals("—", TagValueFormatter.format(TagValue.RationalList(emptyList())))
+        assertEquals("—", TagValueFormatter.format(TagValue.TextList(listOf("", " "))))
+    }
+
+    @Test
+    fun `raw 覆盖全部取值类型`() {
+        assertEquals("1,2", TagValueFormatter.raw(TagValue.IntList(listOf(1, 2))))
+        assertEquals("1.5,2", TagValueFormatter.raw(TagValue.DecimalList(listOf(1.5, 2.0))))
+        assertEquals(
+            "1/250,1/60",
+            TagValueFormatter.raw(TagValue.RationalList(listOf(Rational(1, 250), Rational(1, 60)))),
+        )
+        assertEquals("a,b", TagValueFormatter.raw(TagValue.TextList(listOf("a", "b"))))
+        assertEquals("0a0b", TagValueFormatter.raw(TagValue.Binary("0a0b", 2)))
+        assertEquals("Hello", TagValueFormatter.raw(TagValue.LangAlt(mapOf("x-default" to "Hello"))))
+        assertEquals("", TagValueFormatter.raw(TagValue.LangAlt(emptyMap())))
+        assertEquals(
+            "2026-09-09 17:27:29 +08:00",
+            TagValueFormatter.raw(
+                TagValue.Timestamp(LocalDateTime.of(2026, 9, 9, 17, 27, 29), ZoneOffset.ofHours(8)),
+            ),
+        )
+        assertEquals("2026-09-09", TagValueFormatter.raw(TagValue.DateValue(LocalDate.of(2026, 9, 9))))
+        assertEquals("17:27:29", TagValueFormatter.raw(TagValue.TimeValue(LocalTime.of(17, 27, 29))))
+        assertEquals("xmp:doc", TagValueFormatter.raw(TagValue.UriValue("xmp:doc")))
+    }
+
+    @Test
+    fun `URI 与小数列表的展示`() {
+        assertEquals("xmp:doc", TagValueFormatter.format(TagValue.UriValue("xmp:doc")))
+        assertEquals("1.5, 2", TagValueFormatter.format(TagValue.DecimalList(listOf(1.5, 2.0))))
+    }
 }

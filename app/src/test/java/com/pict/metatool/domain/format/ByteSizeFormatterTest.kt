@@ -42,4 +42,16 @@ class ByteSizeFormatterTest {
         // 1_048_575 / 1024 = 1023.999…，四舍五入后是 1024.0 —— 单位不跳档，避免「0.99 MB」式误导。
         assertEquals("1024 KB", ByteSizeFormatter.format(1_048_575L))
     }
+
+    @Test
+    fun `TB 档与大值不丢精度`() {
+        assertEquals("1023 KB", ByteSizeFormatter.format(1023L * 1024))
+        assertEquals("2 TB", ByteSizeFormatter.format(2L * 1024 * 1024 * 1024 * 1024))
+        assertEquals("1.5 TB", ByteSizeFormatter.format(1024L * 1024 * 1024 * 1536))
+    }
+
+    @Test
+    fun `未知占位符是破折号`() {
+        assertEquals("—", ByteSizeFormatter.UNKNOWN)
+    }
 }

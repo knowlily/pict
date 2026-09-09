@@ -105,4 +105,61 @@ class FieldCatalogTest {
             }
         }
     }
+
+    // ---------- T1.12：目录完整性补全 ----------
+
+    @Test
+    fun `spec 的两个重载结果一致`() {
+        FieldCatalog.all.forEach { spec ->
+            assertEquals(spec, FieldCatalog.spec(spec.key))
+            assertEquals(spec, FieldCatalog.spec(spec.key.full))
+        }
+    }
+
+    @Test
+    fun `group 返回顺序与 all 中的顺序一致`() {
+        FieldGroup.entries.forEach { g ->
+            val fromGroup = FieldCatalog.group(g).map { it.key.full }
+            val fromAll = FieldCatalog.all.filter { it.group == g }.map { it.key.full }
+
+            assertEquals("分组 $g 顺序不一致", fromAll, fromGroup)
+        }
+    }
+
+    @Test
+    fun `writableCount 与目录统计一致`() {
+        assertEquals(
+            FieldCatalog.all.count { it.writability == Writability.WRITABLE },
+            FieldCatalog.writableCount,
+        )
+    }
+
+    @Test
+    fun `枚举字段都是整数类型`() {
+        FieldCatalog.all.filter { it.options.isNotEmpty() }.forEach { spec ->
+            assertEquals("${spec.key.full} 带枚举值却不是 INT", ValueType.INT, spec.type)
+        }
+    }
+
+    @Test
+    fun `搜索能命中备注文字`() {
+        val hits = FieldCatalog.search("结构字段").map { it.key.full }
+
+        assertTrue("应命中图像宽度", "EXIF:ImageWidth" in hits)
+        assertTrue("应命中有效高", "EXIF:PixelYDimension" in hits)
+    }
+
+    @Test
+    fun `通配命名空间的字段不逐条枚举`() {
+        assertNull("XMP:crs:* 不枚举", FieldCatalog.spec("XMP:crs:Temperature"))
+        assertEquals(ValueType.LANG_ALT, FieldCatalog.spec("XMP:dc:title")!!.type)
+    }
+
+    @Test
+    fun `隐私字段都可编辑`() {
+        val privacy = FieldCatalog.all.filter { it.privacySensitive }
+
+        assertTrue("应有隐私字段", privacy.isNotEmpty())
+        privacy.forEach { assertTrue("${it.key.full} 隐私字段应可编辑", it.canEdit) }
+    }
 }

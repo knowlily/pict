@@ -26,8 +26,8 @@ object TagValueFormatter {
         is TagValue.DecimalValue -> trimZeros(plain(value.value))
         is TagValue.RationalValue -> formatRational(value.value, spec)
         is TagValue.IntList -> value.values.joinToString(", ").ifEmpty { "—" }
-        is TagValue.DecimalList -> value.values.joinToString(", ") { trimZeros(plain(it)) }
-        is TagValue.RationalList -> value.values.joinToString(", ") { formatRational(it, spec) }
+        is TagValue.DecimalList -> value.values.joinToString(", ") { trimZeros(plain(it)) }.ifEmpty { "—" }
+        is TagValue.RationalList -> value.values.joinToString(", ") { formatRational(it, spec) }.ifEmpty { "—" }
         is TagValue.Timestamp -> buildString {
             append(value.value.format(DATE_TIME))
             value.offset?.let { append(" ").append(it.id) }
