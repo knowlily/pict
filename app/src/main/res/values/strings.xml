@@ -8,13 +8,35 @@
     <string name="nav_settings">设置</string>
 
     <!-- 占位文案（P0 骨架，后续任务替换） -->
-    <string name="placeholder_library_title">选择图片开始</string>
-    <string name="placeholder_library_body">单张或多张导入，读取元数据后可批量修改、批量转换格式。</string>
     <string name="placeholder_jobs_title">暂无任务</string>
     <string name="placeholder_jobs_body">批量处理会在这里排队执行，随时可以暂停和回退。</string>
     <string name="placeholder_settings_title">设置</string>
     <string name="placeholder_settings_body">预设管理、输出命名规则、默认格式等选项将在这里配置。</string>
     <string name="stage_badge">P0 · 工程骨架</string>
+
+    <!-- 图库（T1.9，docs/06 §3.1） -->
+    <string name="library_title">图片</string>
+    <string name="library_count_total">共 %1$d 张</string>
+    <string name="library_count_selected">已选 %1$d 张 · 共 %2$d 张</string>
+    <string name="library_action_import">导入</string>
+    <string name="library_import_files">选择图片</string>
+    <string name="library_import_folder">选择文件夹</string>
+    <string name="library_import_photos">从相册选择</string>
+    <string name="library_action_select_all">全选</string>
+    <string name="library_action_deselect_all">取消全选</string>
+    <string name="library_action_clear_selection">清除选择</string>
+    <string name="library_action_remove">移出列表</string>
+    <string name="library_scanning">正在扫描目录…已发现 %1$d 张</string>
+    <string name="library_scan_cancel">取消</string>
+    <string name="library_empty_title">还没有图片</string>
+    <string name="library_empty_body">选几张图片，或者整个文件夹一起导入。</string>
+    <string name="library_item_meta">%1$s · %2$s</string>
+    <string name="library_item_meta_readonly">%1$s · %2$s · 只读</string>
+    <string name="library_thumb_desc_selected">%1$s，已选中</string>
+    <string name="library_thumb_failed">缩略图加载失败</string>
+    <string name="library_message_import_empty">没有可用的图片，换一批再试试。</string>
+    <string name="library_message_import_failed">这个位置读不到，可能是授权被撤销了，重新选一次文件夹。</string>
+    <string name="library_message_scan_truncated">已到单次上限 %1$d 张，先处理这批，剩下的再导一次。</string>
 
     <!-- 错误提示（docs/01 §6，文案与错误码表一一对应） -->
     <string name="error_io_open">文件已被移动或删除</string>
