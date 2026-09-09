@@ -146,7 +146,7 @@ enum class ImageFormatHint(val label: String, val extensions: Set<String>) {
     HEIF("HEIF", setOf("heic", "heif", "avif")),
     BMP("BMP", setOf("bmp")),
     TIFF("TIFF", setOf("tif", "tiff", "dng")),
-    RAW("RAW", setOf("cr2", "cr3", "nef", "arw", "orf", "rw2", "raf")),
+    RAW("RAW", setOf("cr2", "cr3", "nef", "arw", "orf", "rw2", "raf", "pef", "srw", "nrw")),
     UNKNOWN("未知", emptySet()),
     ;
 
