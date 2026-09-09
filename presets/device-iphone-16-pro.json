@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "id": "device.iphone-16-pro",
+  "kind": "device",
+  "name": "iPhone 16 Pro",
+  "description": "Apple iPhone 16 Pro 拍摄档案。机型池含 Pro / Pro Max，系统版本池为 iOS 18 系列。",
+  "tags": ["手机", "Apple", "iOS"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Apple" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 16 Pro", "weight": 3, "note": "主力机型" },
+        { "value": "iPhone 16 Pro Max", "weight": 1 }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        { "value": "18.0", "weight": 2 },
+        { "value": "18.1", "weight": 2 },
+        { "value": "18.2", "weight": 1 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Apple" },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 16 Pro back triple camera 6.765mm f/1.78", "weight": 6 },
+        { "value": "iPhone 16 Pro back triple camera 2.22mm f/2.2", "weight": 2, "note": "超广角" },
+        { "value": "iPhone 16 Pro back triple camera 15.66mm f/2.8", "weight": 2, "note": "长焦" },
+        { "value": "iPhone 16 Pro front camera 2.69mm f/1.9", "weight": 1, "note": "前置" }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.78, "weight": 6 },
+        { "value": 2.2, "weight": 2 },
+        { "value": 2.8, "weight": 2 }
+      ]
+    },
+    "EXIF:FocalLength": {
+      "mode": "pool",
+      "pool": [
+        { "value": 6.765, "weight": 6 },
+        { "value": 2.22, "weight": 2 },
+        { "value": 15.66, "weight": 2 }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 24, "weight": 6 },
+        { "value": 13, "weight": 2 },
+        { "value": 77, "weight": 2 }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/120", "weight": 3 },
+        { "value": "1/250", "weight": 3 },
+        { "value": "1/500", "weight": 2 },
+        { "value": "1/1000", "weight": 1 },
+        { "value": "1/60", "weight": 2 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 32, "weight": 4 },
+        { "value": 50, "weight": 3 },
+        { "value": 64, "weight": 3 },
+        { "value": 100, "weight": 2 },
+        { "value": 200, "weight": 1 }
+      ]
+    },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "XMP:xmp:CreatorTool": {
+      "mode": "pool",
+      "pool": [
+        { "value": "18.1", "weight": 3 },
+        { "value": "Adobe Lightroom 13.2 (iOS)", "weight": 1 }
+      ]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Apple" },
+    "XMP:tiff:Model": { "mode": "fixed", "value": "iPhone 16 Pro" }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

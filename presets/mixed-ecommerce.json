@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "mixed.ecommerce",
+  "kind": "mixed",
+  "name": "电商商品拍摄档案",
+  "description": "手机拍摄的电商商品图档案：机型池 + 2026 年时间 + 无 GPS + 作者/版权信息。适合商品主图批量脱敏。",
+  "tags": ["电商", "混合", "脱敏"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "pool", "pool": [{ "value": "Apple", "weight": 4 }, { "value": "Xiaomi", "weight": 2 }, { "value": "HUAWEI", "weight": 2 }, { "value": "OPPO", "weight": 1 }, { "value": "vivo", "weight": 1 }] },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 15 Pro", "weight": 4 },
+        { "value": "iPhone 16", "weight": 3 },
+        { "value": "Xiaomi 14", "weight": 2 },
+        { "value": "Mate 60 Pro", "weight": 2 },
+        { "value": "OPPO Find X7", "weight": 1 },
+        { "value": "vivo X100 Pro", "weight": 1 }
+      ]
+    },
+    "EXIF:Software": { "mode": "pool", "pool": [{ "value": "17.5.1", "weight": 3 }, { "value": "Adobe Photoshop 25.5 (Windows)", "weight": 2 }] },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": { "mode": "range", "min": 1.6, "max": 2.4, "precision": 2 },
+    "EXIF:FocalLength": { "mode": "range", "min": 4.0, "max": 7.0, "precision": 2 },
+    "EXIF:ExposureTime": { "mode": "pool", "pool": [{ "value": "1/60", "weight": 3 }, { "value": "1/125", "weight": 3 }, { "value": "1/200", "weight": 2 }] },
+    "EXIF:ISOSpeedRatings": { "mode": "pool", "pool": [{ "value": 50, "weight": 3 }, { "value": 100, "weight": 3 }, { "value": 200, "weight": 2 }] },
+    "EXIF:DateTimeOriginal": { "mode": "datetime", "start": "2026-01-01T09:00:00", "end": "2026-12-31T18:00:00", "hourWeights": [0, 0, 0, 0, 0, 0, 0, 0, 2, 6, 8, 8, 4, 6, 8, 8, 6, 4, 2, 0, 0, 0, 0, 0] },
+    "EXIF:DateTimeDigitized": { "mode": "datetime", "start": "2026-01-01T09:00:00", "end": "2026-12-31T18:00:00", "hourWeights": [0, 0, 0, 0, 0, 0, 0, 0, 2, 6, 8, 8, 4, 6, 8, 8, 6, 4, 2, 0, 0, 0, 0, 0] },
+    "EXIF:OffsetTimeOriginal": { "mode": "fixed", "value": "+08:00" },
+    "EXIF:Artist": { "mode": "pool", "pool": [{ "value": "Studio A", "weight": 1 }, { "value": "Studio B", "weight": 1 }] },
+    "EXIF:Copyright": { "mode": "fixed", "value": "© 2026 Studio" },
+    "EXIF:ImageDescription": { "mode": "fixed", "value": "Product photo" },
+    "XMP:dc:rights": { "mode": "fixed", "value": "© 2026 Studio" },
+    "XMP:dc:creator": { "mode": "fixed", "value": "Studio A" },
+    "XMP:xmp:CreatorTool": { "mode": "fixed", "value": "Adobe Photoshop 25.5" }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "datetimeOrder", "fields": ["EXIF:DateTimeOriginal", "EXIF:DateTimeDigitized"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pict.local/schema/preset-v1.json",
+  "title": "Pict Preset v1",
+  "description": "Pict 预设元数据文件格式。字段值按 TagKey 命名，详见 docs/附录A-元数据字段全集.md",
+  "type": "object",
+  "required": ["schemaVersion", "id", "kind", "name", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$" },
+    "kind": { "enum": ["device", "location", "time", "mixed"] },
+    "name": { "type": "string", "maxLength": 60 },
+    "description": { "type": "string", "maxLength": 300 },
+    "tags": { "type": "array", "items": { "type": "string", "maxLength": 20 }, "maxItems": 10 },
+    "source": { "enum": ["builtin", "user"], "default": "user" },
+    "author": { "type": "string", "maxLength": 60 },
+    "license": { "type": "string", "maxLength": 60 },
+    "fields": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^(EXIF|GPS|XMP|IPTC):.+$" },
+      "additionalProperties": { "$ref": "#/$defs/field" }
+    },
+    "constraints": { "type": "array", "items": { "$ref": "#/$defs/constraint" } }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["fixed", "pool", "range", "datetime", "gps", "fromSource", "jitter"] },
+        "value": {},
+        "pool": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["value"],
+            "properties": {
+              "value": {},
+              "weight": { "type": "number", "exclusiveMinimum": 0, "default": 1 },
+              "note": { "type": "string", "maxLength": 80 }
+            }
+          }
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 6, "default": 2 },
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "hourWeights": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 },
+          "minItems": 24,
+          "maxItems": 24
+        },
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "radiusMeters": { "type": "number", "minimum": 0, "maximum": 50000 },
+        "sourceKey": { "type": "string" }
+      },
+      "allOf": [
+        { "if": { "properties": { "mode": { "const": "fixed" } } }, "then": { "required": ["value"] } },
+        { "if": { "properties": { "mode": { "const": "pool" } } }, "then": { "required": ["pool"] } },
+        { "if": { "properties": { "mode": { "const": "range" } } }, "then": { "required": ["min", "max"] } },
+        { "if": { "properties": { "mode": { "const": "datetime" } } }, "then": { "required": ["start", "end"] } },
+        { "if": { "properties": { "mode": { "const": "gps" } } }, "then": { "required": ["lat", "lon"] } },
+        { "if": { "properties": { "mode": { "const": "fromSource" } } }, "then": { "required": ["sourceKey"] } }
+      ]
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["datetimeOrder", "mutex", "requires", "clamp"] },
+        "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    }
+  }
+}
