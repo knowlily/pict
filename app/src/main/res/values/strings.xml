@@ -49,6 +49,13 @@
     <string name="detail_error_detail">技术细节：%1$s</string>
     <string name="detail_empty_title">没有读到元数据</string>
     <string name="detail_empty_body">这张图可能是截图或清理过的文件，EXIF、XMP、GPS 都是空的。</string>
+    <string name="detail_search_open">搜索字段</string>
+    <string name="detail_search_close">退出搜索</string>
+    <string name="detail_search_hint">搜索字段名或值…</string>
+    <string name="detail_search_idle_title">搜点什么</string>
+    <string name="detail_search_idle_body">输入字段名（如「光圈」）、标签名（如 FNumber）或值（如 f/1.78）。</string>
+    <string name="detail_search_none_title">没有匹配的字段</string>
+    <string name="detail_search_none_body">「%1$s」在这张图的元数据里没有命中。</string>
     <string name="detail_preview_desc">图片预览</string>
     <string name="detail_gps_decimal">十进制度</string>
     <string name="detail_gps_dms">度分秒</string>

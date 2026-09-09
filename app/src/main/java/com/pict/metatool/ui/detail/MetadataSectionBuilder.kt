@@ -4,6 +4,7 @@ import com.pict.metatool.domain.format.TagValueFormatter
 import com.pict.metatool.domain.model.FieldCatalog
 import com.pict.metatool.domain.model.MetadataSet
 import com.pict.metatool.domain.model.TagKey
+import com.pict.metatool.domain.model.TagValue
 
 /** 详情页的一行字段。[rawValue] 供复制/编辑回填，[canEdit] 决定是否画铅笔图标。 */
 data class MetadataRow(
@@ -38,14 +39,7 @@ object MetadataSectionBuilder {
         val sections = tab.groups.mapNotNull { group ->
             val rows = FieldCatalog.group(group).mapNotNull { spec ->
                 set[spec.key]?.let { value ->
-                    MetadataRow(
-                        key = spec.key,
-                        label = spec.label,
-                        value = TagValueFormatter.format(value, spec),
-                        rawValue = TagValueFormatter.raw(value),
-                        canEdit = spec.canEdit,
-                        origin = origins[spec.key]?.lastOrNull(),
-                    )
+                    metadataRow(spec.key, spec.label, value, spec.canEdit, origins)
                 }
             }
             if (rows.isEmpty()) null else MetadataSection(group.label, rows)
@@ -56,22 +50,11 @@ object MetadataSectionBuilder {
             .sortedBy { it.full }
             .mapNotNull { key ->
                 set[key]?.let { value ->
-                    MetadataRow(
-                        key = key,
-                        label = key.full,
-                        value = TagValueFormatter.format(value, null),
-                        rawValue = TagValueFormatter.raw(value),
-                        canEdit = false,
-                        origin = origins[key]?.lastOrNull(),
-                    )
+                    metadataRow(key, key.full, value, canEdit = false, origins = origins)
                 }
             }
 
-        return if (unknownRows.isEmpty()) {
-            sections
-        } else {
-            sections + MetadataSection(OTHER_TITLE, unknownRows)
-        }
+        return if (unknownRows.isEmpty()) sections else sections + MetadataSection(OTHER_TITLE, unknownRows)
     }
 
     /** 目录外的键按命名空间归页：`GPS:*` → GPS 页，`XMP:*` → XMP 页，其余（EXIF/IPTC/未知）→ EXIF 页。 */
@@ -81,3 +64,23 @@ object MetadataSectionBuilder {
         else -> DetailTab.EXIF
     }
 }
+
+/**
+ * 由「键 + 值」造一行：展示值按字段目录的规格格式化，目录外字段退化为通用格式。
+ *
+ * 分组页与搜索页（T1.11）共用同一套构造，免得两处对展示值 / 复制值的处理跑偏。
+ */
+internal fun metadataRow(
+    key: TagKey,
+    label: String,
+    value: TagValue,
+    canEdit: Boolean,
+    origins: Map<TagKey, List<String>> = emptyMap(),
+): MetadataRow = MetadataRow(
+    key = key,
+    label = label,
+    value = TagValueFormatter.format(value, FieldCatalog.spec(key)),
+    rawValue = TagValueFormatter.raw(value),
+    canEdit = canEdit,
+    origin = origins[key]?.lastOrNull(),
+)

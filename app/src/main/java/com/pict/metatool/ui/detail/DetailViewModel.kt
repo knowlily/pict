@@ -78,6 +78,19 @@ class DetailViewModel(
         _state.update { it.selectTab(tab) }
     }
 
+    /** 打开 / 关闭搜索，以及输入过程中的即时过滤（纯函数在 [DetailUiState] 里）。 */
+    fun openSearch() {
+        _state.update { it.openSearch() }
+    }
+
+    fun closeSearch() {
+        _state.update { it.closeSearch() }
+    }
+
+    fun onQueryChange(query: String) {
+        _state.update { it.withQuery(query) }
+    }
+
     /** 复制成功后的提示（剪贴板已由界面写入）。 */
     fun onCopied(label: String) {
         _state.update { it.withMessage(DetailMessage.Copied(label)) }

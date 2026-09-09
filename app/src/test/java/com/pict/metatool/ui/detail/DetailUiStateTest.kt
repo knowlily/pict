@@ -116,4 +116,50 @@ class DetailUiStateTest {
         assertEquals(DetailMessage.Copied("坐标"), shown.message)
         assertNull(shown.withMessage(null).message)
     }
+
+    @Test
+    fun `打开搜索后按查询给出命中`() {
+        val state = DetailUiState()
+            .withLoaded(source, metadataOf("EXIF:Make" to TagValue.Text("Apple")))
+            .openSearch()
+            .withQuery("apple")
+
+        assertTrue(state.searchActive)
+        assertEquals(listOf("EXIF:Make"), state.searchHits.map { it.row.key.full })
+    }
+
+    @Test
+    fun `没开搜索时不返回命中`() {
+        val state = DetailUiState()
+            .withLoaded(source, metadataOf("EXIF:Make" to TagValue.Text("Apple")))
+            .withQuery("apple")
+
+        assertFalse(state.searchActive)
+        assertTrue(state.searchHits.isEmpty())
+    }
+
+    @Test
+    fun `关闭搜索清空查询与命中`() {
+        val state = DetailUiState()
+            .withLoaded(source, metadataOf("EXIF:Make" to TagValue.Text("Apple")))
+            .openSearch()
+            .withQuery("apple")
+            .closeSearch()
+
+        assertFalse(state.searchActive)
+        assertEquals("", state.searchQuery)
+        assertTrue(state.searchHits.isEmpty())
+    }
+
+    @Test
+    fun `换图加载会退出搜索`() {
+        val state = DetailUiState()
+            .withLoaded(source, metadataOf("EXIF:Make" to TagValue.Text("Apple")))
+            .openSearch()
+            .withQuery("apple")
+            .withLoading("content://media/2")
+
+        assertFalse(state.searchActive)
+        assertEquals("", state.searchQuery)
+    }
 }

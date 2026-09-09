@@ -28,6 +28,10 @@ data class DetailUiState(
     val selectedTab: DetailTab = DetailTab.OVERVIEW,
     /** 一次性提示（复制坐标成功等），消费后由界面清空。 */
     val message: DetailMessage? = null,
+    /** 搜索模式是否打开（顶栏换成输入框，内容区显示命中结果）。 */
+    val searchActive: Boolean = false,
+    /** 搜索框里的原文。 */
+    val searchQuery: String = "",
 ) {
 
     val title: String get() = source?.displayName.orEmpty()
@@ -44,6 +48,21 @@ data class DetailUiState(
     /** 当前 Tab 的分组内容；概览页返回空（概览用 [overviewRows]）。 */
     val sections: List<MetadataSection>
         get() = metadata?.let { MetadataSectionBuilder.build(it, selectedTab, origins) }.orEmpty()
+
+    /** 搜索命中的字段（跨全部 Tab）；没开搜索或查询串为空时为空。 */
+    val searchHits: List<SearchHit>
+        get() = if (!searchActive) {
+            emptyList()
+        } else {
+            metadata?.let { MetadataSearch.query(it, searchQuery, origins) }.orEmpty()
+        }
+
+    /** 打开搜索：每次都从空查询开始，免得残留上一次的关键词。 */
+    fun openSearch(): DetailUiState = copy(searchActive = true, searchQuery = "")
+
+    fun closeSearch(): DetailUiState = copy(searchActive = false, searchQuery = "")
+
+    fun withQuery(query: String): DetailUiState = copy(searchQuery = query)
 
     /** 进入加载态；顺带把上一次的 Tab 与错误清干净，避免换图后停在旧页。 */
     fun withLoading(uri: String): DetailUiState = DetailUiState(uri = uri, isLoading = true)

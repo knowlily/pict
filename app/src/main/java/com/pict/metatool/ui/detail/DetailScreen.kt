@@ -29,8 +29,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -47,6 +49,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +62,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -110,51 +117,65 @@ fun DetailScreen(
     val moreLabel = stringResource(R.string.detail_more)
     val reloadLabel = stringResource(R.string.detail_menu_reload)
     val copyUriLabel = stringResource(R.string.detail_menu_copy_uri)
+    val searchLabel = stringResource(R.string.detail_search_open)
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = state.title.ifBlank { fallbackTitle },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = moreLabel)
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(reloadLabel) },
-                            onClick = {
-                                menuOpen = false
-                                viewModel.retry()
-                            },
+            if (state.searchActive) {
+                SearchTopBar(
+                    query = state.searchQuery,
+                    onQueryChange = viewModel::onQueryChange,
+                    onClose = viewModel::closeSearch,
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = state.title.ifBlank { fallbackTitle },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        DropdownMenuItem(
-                            text = { Text(copyUriLabel) },
-                            onClick = {
-                                menuOpen = false
-                                copyToClipboard(context, copyUriLabel, uri)
-                                viewModel.onCopied(copyUriLabel)
-                            },
-                        )
-                    }
-                },
-            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = viewModel::openSearch) {
+                            Icon(Icons.Filled.Search, contentDescription = searchLabel)
+                        }
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = moreLabel)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(reloadLabel) },
+                                onClick = {
+                                    menuOpen = false
+                                    viewModel.retry()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(copyUriLabel) },
+                                onClick = {
+                                    menuOpen = false
+                                    copyToClipboard(context, copyUriLabel, uri)
+                                    viewModel.onCopied(copyUriLabel)
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            PreviewPane(uri = uri, modifier = Modifier.fillMaxWidth().height(220.dp))
-            DetailTabRow(selected = state.selectedTab, onSelect = viewModel::selectTab)
+            if (!state.searchActive) {
+                PreviewPane(uri = uri, modifier = Modifier.fillMaxWidth().height(220.dp))
+                DetailTabRow(selected = state.selectedTab, onSelect = viewModel::selectTab)
+            }
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     state.isLoading -> LoadingPane()
@@ -166,6 +187,14 @@ fun DetailScreen(
                     state.showEmptyState -> EmptyPane(
                         title = stringResource(R.string.detail_empty_title),
                         body = stringResource(R.string.detail_empty_body),
+                    )
+                    state.searchActive -> SearchPane(
+                        query = state.searchQuery,
+                        hits = state.searchHits,
+                        onCopy = { label, text ->
+                            copyToClipboard(context, label, text)
+                            viewModel.onCopied(label)
+                        },
                     )
                     else -> AnimatedContent(
                         targetState = state.selectedTab,
@@ -244,6 +273,88 @@ private fun PreviewPane(uri: String, modifier: Modifier = Modifier) {
                     translationY = offsetY
                 },
         )
+    }
+}
+
+/** 搜索模式的顶栏：自动聚焦的输入框，返回键退出搜索。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchTopBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val closeLabel = stringResource(R.string.detail_search_close)
+    val hint = stringResource(R.string.detail_search_hint)
+
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = closeLabel)
+            }
+        },
+        title = {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text(hint) },
+                singleLine = true,
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+            )
+        },
+    )
+}
+
+/** 搜索结果：跨全部 Tab 的命中，按字段目录顺序，每行上方标出所属分组。 */
+@Composable
+private fun SearchPane(
+    query: String,
+    hits: List<SearchHit>,
+    onCopy: (String, String) -> Unit,
+) {
+    if (query.isBlank()) {
+        EmptyPane(
+            title = stringResource(R.string.detail_search_idle_title),
+            body = stringResource(R.string.detail_search_idle_body),
+        )
+        return
+    }
+    if (hits.isEmpty()) {
+        EmptyPane(
+            title = stringResource(R.string.detail_search_none_title),
+            body = stringResource(R.string.detail_search_none_body, query),
+        )
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        items(items = hits, key = { it.row.key.full }) { hit ->
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = hit.section,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 2.dp),
+                )
+                MetadataRowItem(row = hit.row, onCopy = onCopy)
+            }
+        }
     }
 }
 
