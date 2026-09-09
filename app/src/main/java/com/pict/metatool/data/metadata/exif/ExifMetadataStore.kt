@@ -94,7 +94,9 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
      * IO 异常向上抛，由 [write] 统一映射成错误码。
      */
     fun writeTo(exif: ExifInterface, target: MetadataSet): WriteResult {
-        val plan = planWrites(readFrom(exif, target.source).entries, target)
+        // 先过段大小预算：超限时按「缩略图 → XMP → 非关键」丢，避免 saveAttributes 直接抛
+        val fit = ExifSegmentBudget.fit(target)
+        val plan = planWrites(readFrom(exif, target.source).entries, fit.kept)
         plan.removals.forEach { key ->
             TAG_BY_KEY[key]?.let { exif.setAttribute(it, null) }
         }
@@ -102,7 +104,10 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
             TAG_BY_KEY[key]?.let { exif.setAttribute(it, raw) }
         }
         exif.saveAttributes()
-        return WriteResult(writtenKeys = plan.assignments.keys, droppedKeys = plan.dropped)
+        return WriteResult(
+            writtenKeys = plan.assignments.keys,
+            droppedKeys = plan.dropped + fit.dropped.keys,
+        )
     }
 
     /**

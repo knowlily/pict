@@ -121,10 +121,29 @@ class ExifMetadataStoreWriteInstrumentedTest {
         assertEquals(model, readAll(file)[MODEL])
     }
 
+    @Test
+    fun 超限字段按策略丢弃后其余字段照常写入() {
+        val file = sampleFile()
+        val before = readAll(file)
+
+        // 7 万字符的注释远超 APP1 段上限；它属于非关键字段，应该被预算挡下来
+        val huge = TagValue.Text("x".repeat(70_000))
+        val target = MetadataSet(
+            infoOf(file),
+            before + (MAKE to TagValue.Text("PictTool")) + (USER_COMMENT to huge),
+        )
+        val result = store.writeTo(ExifInterface(file), target)
+
+        assertTrue("超限字段应被丢弃：${result.writtenKeys.size} 项写入", USER_COMMENT in result.droppedKeys)
+        assertTrue("其余字段照常写入", MAKE in result.writtenKeys)
+        assertEquals(TagValue.Text("PictTool"), readAll(file)[MAKE])
+    }
+
     private companion object {
         val MAKE = TagKey.of("EXIF:Make")
         val MODEL = TagKey.of("EXIF:Model")
         val DATE_TIME = TagKey.of("EXIF:DateTime")
         val MAKER_NOTE = TagKey.of("EXIF:MakerNote")
+        val USER_COMMENT = TagKey.of("EXIF:UserComment")
     }
 }
