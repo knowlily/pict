@@ -16,11 +16,13 @@ import com.pict.metatool.domain.model.TagKey
  *
  * 约定：
  * - 写入失败返回 [PictResult.Failure]，**不抛异常**；
- * - [supports] 必须是纯判断（只看 [SourceInfo]，不读文件内容），保证路由可预测；
+ * - [canWrite] 必须是纯判断（只看 [SourceInfo]，不读文件内容），保证路由可预测。
+ *   刻意不叫 `supports`：读写能力并不重合（HEIF 能读不能原地写），同名会让
+ *   同时实现 [MetadataStore] 与 [MetadataWriter] 的类没法表达两种答案；
  * - [write] 的入参是**目标全量元数据**（由 T2.2 折叠操作序列得到），不是增量补丁：
  *   与源文件的差异由实现方自行计算；
  * - 不支持的格式要提前暴露：HEIF 无法原地写（docs/02 §5），对应实现的
- *   [supports] 应返回 false，由上层提示「需重编码」，而不是写坏了再报错。
+ *   [canWrite] 应返回 false，由上层提示「需重编码」，而不是写坏了再报错。
  */
 interface MetadataWriter {
 
@@ -28,7 +30,7 @@ interface MetadataWriter {
     val id: String
 
     /** 该写入器是否能处理这个来源（按 [SourceInfo.format] 判断，纯数据、可单测）。 */
-    fun supports(info: SourceInfo): Boolean
+    fun canWrite(info: SourceInfo): Boolean
 
     suspend fun write(
         resolver: ContentResolver,

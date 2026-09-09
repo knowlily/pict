@@ -7,6 +7,8 @@ import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.core.result.failureOf
 import com.pict.metatool.core.result.successOf
 import com.pict.metatool.data.metadata.MetadataStore
+import com.pict.metatool.data.metadata.MetadataWriter
+import com.pict.metatool.data.metadata.WriteResult
 import com.pict.metatool.data.metadata.xmp.XmpParser
 import com.pict.metatool.data.source.ImageSource
 import com.pict.metatool.domain.format.GpsCoordinate
@@ -21,7 +23,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 
 /**
- * EXIF / GPS / XMP 读取（docs/07 T1.4，docs/02 §5）。
+ * EXIF / GPS / XMP 读写（docs/07 T1.4 读、T2.3 写；docs/02 §5）。
  *
  * 用 androidx ExifInterface：JPEG/PNG/WebP/HEIF/DNG 都能读，官方维护，且**不需要任何存储权限**
  * （走调用方给的流）。XMP 原文由 `TAG_XMP` 直接给出，交给 [XmpParser] 解析（不需要第二个库）。
@@ -29,13 +31,20 @@ import java.io.IOException
  * 注意：ExifInterface 1.4.x **没有** `getAttributes()`，只能按 `TAG_*` 常量逐个取，
  * 所以下面的 [TAGS] 就是「我们会读哪些标签」的唯一清单——新增字段时同步它和 FieldCatalog。
  *
+ * 写入走 [writeTo]：目标全量元数据与文件现状求差，删掉目标里没有的键、覆盖其余键，
+ * 最后 `saveAttributes()` 一次落盘。能读不代表能写（HEIF/TIFF 只读），所以读写各有一个
+ * 能力判断——[supports] 管读、[canWrite] 管写。
+ *
  * 失败一律走 [PictResult.Failure]，不抛异常。
  */
-class ExifMetadataStore : MetadataStore {
+class ExifMetadataStore : MetadataStore, MetadataWriter {
 
     override val id: String = "exif"
 
     override fun supports(info: SourceInfo): Boolean = info.format in SUPPORTED
+
+    /** 写入能力比读取窄：ExifInterface 能重写 JPEG/PNG/WebP 的元数据块，改不了 HEIF/TIFF。 */
+    override fun canWrite(info: SourceInfo): Boolean = info.format in WRITABLE
 
     override suspend fun read(
         resolver: ContentResolver,
@@ -49,6 +58,90 @@ class ExifMetadataStore : MetadataStore {
             failureOf(PictError.IO_READ, e.message, e)
         } catch (e: SecurityException) {
             failureOf(PictError.IO_OPEN, "URI 授权已失效，请重新选择图片", e)
+        }
+    }
+
+    override suspend fun write(
+        resolver: ContentResolver,
+        source: ImageSource,
+        target: MetadataSet,
+    ): PictResult<WriteResult> = withContext(Dispatchers.IO) {
+        if (!canWrite(source.info)) {
+            return@withContext failureOf(
+                PictError.ENCODE_UNSUPPORTED,
+                "${source.info.format.label} 不支持原地写入，需要重编码（docs/02 §5）",
+            )
+        }
+        try {
+            val fd = resolver.openFileDescriptor(source.uri, "rw")
+                ?: return@withContext failureOf(PictError.IO_OPEN, "无法以读写方式打开：${source.uri}")
+            fd.use { successOf(writeTo(ExifInterface(it.fileDescriptor), target)) }
+        } catch (e: IOException) {
+            failureOf(PictError.META_WRITE, writeFailureDetail(e), e)
+        } catch (e: SecurityException) {
+            failureOf(PictError.STORAGE_READONLY, "URI 没有写权限或授权已失效，请重新选择图片", e)
+        }
+    }
+
+    /**
+     * 把 [target] 落盘到已打开的文件。
+     *
+     * 差异计算交给 [planWrites]（纯数据、JVM 可测），这里只负责把计划喂给 ExifInterface
+     * 再 `saveAttributes()`。**注意**：`ExifInterface.setAttribute` 内部用 `android.util.Pair`
+     * 传值，JVM 单测里那个 Pair 是空实现、字段拿不到值——落盘这一步只能在设备上验证，
+     * 见 androidTest 下的 ExifMetadataStoreWriteInstrumentedTest。
+     *
+     * IO 异常向上抛，由 [write] 统一映射成错误码。
+     */
+    fun writeTo(exif: ExifInterface, target: MetadataSet): WriteResult {
+        val plan = planWrites(readFrom(exif, target.source).entries, target)
+        plan.removals.forEach { key ->
+            TAG_BY_KEY[key]?.let { exif.setAttribute(it, null) }
+        }
+        plan.assignments.forEach { (key, raw) ->
+            TAG_BY_KEY[key]?.let { exif.setAttribute(it, raw) }
+        }
+        exif.saveAttributes()
+        return WriteResult(writtenKeys = plan.assignments.keys, droppedKeys = plan.dropped)
+    }
+
+    /**
+     * 算出「删什么、写什么、什么写不了」，全程不碰文件——JVM 单测直接喂数据。
+     *
+     * 目标里没有的键从 [current] 里挑出来删除；目标里的每个值先查反向标签表再序列化，
+     * 查不到标签或序列化不了（二进制块、多语言文本）就记入 [ExifWritePlan.dropped]，
+     * 保留文件里的原值不动，而不是写一个编造的内容进去。
+     */
+    fun planWrites(current: Map<TagKey, TagValue>, target: MetadataSet): ExifWritePlan {
+        val assignments = LinkedHashMap<TagKey, String>()
+        val dropped = LinkedHashSet<TagKey>()
+
+        target.entries.forEach { (key, value) ->
+            val tag = TAG_BY_KEY[key]
+            val raw = if (tag == null) null else ExifValueWriter.format(value)
+            if (tag == null || raw == null) {
+                dropped += key
+            } else {
+                assignments[key] = raw
+            }
+        }
+
+        return ExifWritePlan(
+            removals = current.keys - target.entries.keys,
+            assignments = assignments,
+            dropped = dropped,
+        )
+    }
+
+    /** JPEG 的 APP1 段上限 64 KB，ExifInterface 超限时抛 IOException——把提示说清楚。 */
+    private fun writeFailureDetail(e: IOException): String {
+        val message = e.message.orEmpty()
+        val tooLarge = message.contains("too large", ignoreCase = true) ||
+            message.contains("too long", ignoreCase = true)
+        return when {
+            tooLarge -> "EXIF 段超过 64 KB 上限，请减少字段（丢弃策略见 T2.5）：$message"
+            message.isNotEmpty() -> message
+            else -> "写入失败"
         }
     }
 
@@ -117,6 +210,18 @@ class ExifMetadataStore : MetadataStore {
             ImageFormatHint.WEBP,
             ImageFormatHint.HEIF,
             ImageFormatHint.TIFF,
+        )
+
+        /**
+         * ExifInterface 能原地重写的容器格式。
+         *
+         * HEIF 的元数据在 ISO-BMFF box 里，TIFF 的 IFD 布局也不受支持——两者只读不写，
+         * 要改就得走 CommonsImaging 重编码路径（docs/02 §5）。
+         */
+        val WRITABLE: Set<ImageFormatHint> = setOf(
+            ImageFormatHint.JPEG,
+            ImageFormatHint.PNG,
+            ImageFormatHint.WEBP,
         )
 
         /**
@@ -264,6 +369,16 @@ class ExifMetadataStore : MetadataStore {
             // XMP 原文（交给 XmpParser）
             ExifInterface.TAG_XMP,
         )
+
+        /**
+         * 领域键 → ExifInterface 标签名，[TAGS] 的反向表（写入时用）。
+         *
+         * 只登记能写回标量的标签：XMP 原文由独立的包处理，缩略图尺寸是派生属性，都不参与写回。
+         * 查不到的键（XMP 字段、目录外字段）由 [writeTo] 记入丢弃集合。
+         */
+        private val TAG_BY_KEY: Map<TagKey, String> = TAGS
+            .filter { it != ExifInterface.TAG_XMP && !ExifValueCodec.isSkipped(it) }
+            .associateBy { ExifValueCodec.keyFor(it) }
 
         private val LATITUDE = TagKey.of("GPS:GPSLatitude")
         private val LATITUDE_REF = TagKey.of("GPS:GPSLatitudeRef")
