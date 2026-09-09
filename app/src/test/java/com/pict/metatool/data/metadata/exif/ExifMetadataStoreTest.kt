@@ -10,6 +10,7 @@ import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.model.TagValue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -27,10 +28,14 @@ class ExifMetadataStoreTest {
 
     private val store = ExifMetadataStore()
 
-    private fun load(name: String): Map<TagKey, TagValue> {
+    private fun load(
+        name: String,
+        mime: String = "image/jpeg",
+        format: ImageFormatHint = ImageFormatHint.JPEG,
+    ): Map<TagKey, TagValue> {
         val file = File("src/test/resources/samples/$name")
         assertTrue("样本缺失：${file.absolutePath}", file.exists())
-        val info = SourceInfo(name, "image/jpeg", file.length(), ImageFormatHint.JPEG)
+        val info = SourceInfo(name, mime, file.length(), format)
         return store.readFrom(ExifInterface(file), info).entries
     }
 
@@ -107,6 +112,20 @@ class ExifMetadataStoreTest {
         // 目录里 xmpMM:DocumentID 的值类型是 URI，所以解析成 UriValue
         assertTrue("应读到 xmpMM:DocumentID，实际 $docId", docId is TagValue.UriValue)
         assertTrue((docId as TagValue.UriValue).value.startsWith("uuid:"))
+    }
+
+    @Test
+    fun `PNG 与 WebP 缺失的尺寸不被写成 0`() {
+        // ExifInterface 对这两种容器把缺失的 IFD0 尺寸读成 "0"；
+        // 原样写入会覆盖容器读取器的真实宽高，界面上就成了 0 × 0
+        val png = load("png-tiny.png", "image/png", ImageFormatHint.PNG)
+        assertNull(png[TagKey.of("EXIF:ImageWidth")])
+        assertNull(png[TagKey.of("EXIF:ImageLength")])
+        assertEquals(TagValue.Text("Pict"), png[TagKey.of("EXIF:Make")])
+
+        val webp = load("webp-tiny.webp", "image/webp", ImageFormatHint.WEBP)
+        assertNull(webp[TagKey.of("EXIF:ImageWidth")])
+        assertNull(webp[TagKey.of("EXIF:ImageLength")])
     }
 
     @Test

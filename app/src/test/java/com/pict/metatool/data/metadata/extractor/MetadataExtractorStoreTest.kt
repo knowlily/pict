@@ -28,10 +28,14 @@ class MetadataExtractorStoreTest {
 
     private val store = MetadataExtractorStore()
 
-    private fun load(name: String): Map<TagKey, TagValue> {
+    private fun load(
+        name: String,
+        mime: String = "image/jpeg",
+        format: ImageFormatHint = ImageFormatHint.JPEG,
+    ): Map<TagKey, TagValue> {
         val file = File("src/test/resources/samples/$name")
         assertTrue("样本缺失：${file.absolutePath}", file.exists())
-        val info = SourceInfo(name, "image/jpeg", file.length(), ImageFormatHint.JPEG)
+        val info = SourceInfo(name, mime, file.length(), format)
         return store.readFrom(ImageMetadataReader.readMetadata(file), info).entries
     }
 
@@ -99,6 +103,18 @@ class MetadataExtractorStoreTest {
         assertEquals(TagValue.IntValue(68), entries[TagKey.of("EXIF:ImageLength")])
         assertEquals(TagValue.IntList(listOf(8L)), entries[TagKey.of("EXIF:BitsPerSample")])
         assertEquals(TagValue.IntValue(3), entries[TagKey.of("EXIF:SamplesPerPixel")])
+    }
+
+    @Test
+    fun `WebP 与 HEIF 的宽高也从容器读取`() {
+        // ExifInterface 在这两种容器上把缺失的尺寸读成 "0"，尺寸只能由容器读取器提供
+        val webp = load("webp-tiny.webp", "image/webp", ImageFormatHint.WEBP)
+        assertEquals(TagValue.IntValue(8), webp[TagKey.of("EXIF:ImageWidth")])
+        assertEquals(TagValue.IntValue(6), webp[TagKey.of("EXIF:ImageLength")])
+
+        val heic = load("heic-tiny.heic", "image/heic", ImageFormatHint.HEIF)
+        assertEquals(TagValue.IntValue(128), heic[TagKey.of("EXIF:ImageWidth")])
+        assertEquals(TagValue.IntValue(96), heic[TagKey.of("EXIF:ImageLength")])
     }
 
     @Test

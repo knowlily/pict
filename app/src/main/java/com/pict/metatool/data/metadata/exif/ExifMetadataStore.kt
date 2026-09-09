@@ -64,6 +64,9 @@ class ExifMetadataStore : MetadataStore {
         TAGS.forEach { tag ->
             if (tag == ExifInterface.TAG_XMP) return@forEach
             val raw = exif.getAttribute(tag) ?: return@forEach
+            // ExifInterface 在 PNG/WebP/HEIF 上会把缺失的 IFD0 尺寸读成 "0"；
+            // 0 尺寸没有意义，丢掉它，容器读取器才能补上真实宽高
+            if (tag in ZERO_SIZE_TAGS && raw.trim() == "0") return@forEach
             val key = ExifValueCodec.keyFor(tag)
             val type = ExifValueCodec.typeFor(key, raw)
             ExifValueCodec.parse(raw, type)?.let { entries[key] = it }
@@ -114,6 +117,17 @@ class ExifMetadataStore : MetadataStore {
             ImageFormatHint.WEBP,
             ImageFormatHint.HEIF,
             ImageFormatHint.TIFF,
+        )
+
+        /**
+         * 缺失时要当作「没有」而不是「0」的标签。
+         *
+         * ExifInterface 对 PNG/WebP/HEIF 的 eXIf 块不写 IFD0 尺寸时返回的是字符串 "0"，
+         * 而不是 null。若照原样写入，就会覆盖容器读取器给出的真实宽高，界面上显示成 0 × 0。
+         */
+        val ZERO_SIZE_TAGS: Set<String> = setOf(
+            ExifInterface.TAG_IMAGE_WIDTH,
+            ExifInterface.TAG_IMAGE_LENGTH,
         )
 
         /**

@@ -5,9 +5,11 @@ import com.drew.imaging.ImageMetadataReader
 import com.drew.imaging.ImageProcessingException
 import com.drew.metadata.Directory
 import com.drew.metadata.Metadata
+import com.drew.metadata.heif.HeifDirectory
 import com.drew.metadata.iptc.IptcDirectory
 import com.drew.metadata.jpeg.JpegDirectory
 import com.drew.metadata.png.PngDirectory
+import com.drew.metadata.webp.WebpDirectory
 import com.pict.metatool.core.error.PictError
 import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.core.result.failureOf
@@ -34,7 +36,7 @@ import java.util.Date
  * 用 metadata-extractor 2.19.0 补 ExifInterface 读不到的东西：
  * - **IPTC IIM**（APP13 / TIFF 里的 8BIM 0x0404）：标题、关键词、作者、版权、城市、说明等，
  *   这些是图库/新闻流程里的核心字段，ExifInterface 完全不碰；
- * - 顺带把 JPEG/PNG 的结构信息（宽高、位深、通道数）当作 EXIF 缺失时的兜底。
+ * - 顺带把 JPEG/PNG/WebP/HEIF 的结构信息（宽高、位深、通道数）当作 EXIF 缺失时的兜底。
  *
  * 为什么不用它的 XMP 目录：XMP 已经由 [com.pict.metatool.data.metadata.xmp.XmpParser]
  * 从 ExifInterface 的 `TAG_XMP` 原文解析，重复解析只会让「谁覆盖谁」变复杂。
@@ -99,6 +101,17 @@ class MetadataExtractorStore : MetadataStore {
             putInt(entries, WIDTH, png, PngDirectory.TAG_IMAGE_WIDTH)
             putInt(entries, HEIGHT, png, PngDirectory.TAG_IMAGE_HEIGHT)
             putIntOrArray(entries, BITS_PER_SAMPLE, png, PngDirectory.TAG_BITS_PER_SAMPLE)
+        }
+        metadata.getFirstDirectoryOfType(WebpDirectory::class.java)?.let { webp ->
+            putInt(entries, WIDTH, webp, WebpDirectory.TAG_IMAGE_WIDTH)
+            putInt(entries, HEIGHT, webp, WebpDirectory.TAG_IMAGE_HEIGHT)
+        }
+        // metadata-extractor 会把 HEIF 拆成多个 HeifDirectory（brand 一个、尺寸一个），
+        // getFirstDirectoryOfType 只拿到前者，所以这里遍历全部，靠 putIfAbsent 去重
+        metadata.getDirectoriesOfType(HeifDirectory::class.java).forEach { heif ->
+            putInt(entries, WIDTH, heif, HeifDirectory.TAG_IMAGE_WIDTH)
+            putInt(entries, HEIGHT, heif, HeifDirectory.TAG_IMAGE_HEIGHT)
+            putIntOrArray(entries, BITS_PER_SAMPLE, heif, HeifDirectory.TAG_BITS_PER_CHANNEL)
         }
     }
 
