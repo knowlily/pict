@@ -154,8 +154,8 @@ class EditPlanExecutorTest {
     @Test
     fun `尚未实现的操作显式失败而不是静默跳过`() {
         val source = set("EXIF:Make" to TagValue.Text("Apple"))
+        // TimeShift 已在 T2.7 落地，这里只剩还没实现的两种。
         val ops = listOf(
-            EditOperation.TimeShift(3_600_000L),
             EditOperation.RandomFill(setOf(makeKey), 1L),
             EditOperation.ApplyPreset("portrait-soft"),
         )

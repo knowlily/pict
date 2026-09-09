@@ -33,8 +33,8 @@ data class EditOutcome(
  * - 空计划不产生 diff；
  * - 纯函数、无副作用，dryRun 与否对折叠结果没有影响（是否落盘由调用方决定）。
  *
- * 范围说明：TimeShift（T2.7）、RandomFill（T3.4）、ApplyPreset（Phase 3）依赖尚未
- * 实现的外部数据，这里显式返回失败而不是静默跳过——静默跳过会让用户以为改了。
+ * 范围说明：RandomFill（T3.4）、ApplyPreset（Phase 3）依赖尚未实现的外部数据，
+ * 这里显式返回失败而不是静默跳过——静默跳过会让用户以为改了。
  * 后续任务落地后把对应分支替换为真正的折叠逻辑。
  */
 object EditPlanExecutor {
@@ -55,8 +55,7 @@ object EditPlanExecutor {
             is EditOperation.SetField -> setField(set, operation)
             is EditOperation.ClearField -> successOf(set.without(operation.key))
             is EditOperation.ClearGroup -> successOf(clearGroup(set, operation.group))
-            is EditOperation.TimeShift ->
-                unsupported(operation, "时间偏移尚未实现（T2.7）")
+            is EditOperation.TimeShift -> TimeShift.apply(set, operation.deltaMillis)
             is EditOperation.RandomFill ->
                 unsupported(operation, "随机填充尚未实现（T3.4）")
             is EditOperation.ApplyPreset ->
