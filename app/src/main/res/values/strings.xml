@@ -69,6 +69,47 @@
     <string name="detail_copied">已复制%1$s</string>
     <string name="detail_editable_hint">可编辑</string>
 
+    <!-- 编辑页（docs/06 §3.3 / docs/07 T2.10） -->
+    <string name="edit_title">编辑元数据</string>
+    <string name="edit_back">返回</string>
+    <string name="edit_apply">应用 %1$d 项</string>
+    <string name="edit_apply_idle">应用</string>
+    <string name="edit_preview_open">预览改动</string>
+    <string name="edit_preview_title">改动预览</string>
+    <string name="edit_preview_count">共 %1$d 项</string>
+    <string name="edit_preview_none">还没有改动。点字段右边的铅笔改一个试试。</string>
+    <string name="edit_preview_added">新增</string>
+    <string name="edit_preview_changed">修改</string>
+    <string name="edit_preview_cleared">清除</string>
+    <string name="edit_preview_empty_value">（空）</string>
+    <string name="edit_preview_arrow">%1$s → %2$s</string>
+    <string name="edit_preview_verify">上次写入校验：%1$s</string>
+    <string name="edit_search_hint">搜索字段名或值…</string>
+    <string name="edit_search_none">「%1$s」没有命中，也没有可添加的字段</string>
+    <string name="edit_search_add">添加这个字段</string>
+    <string name="edit_search_add_more">字段目录里还有 %1$d 个能加的字段</string>
+    <string name="edit_dirty_bar">有 %1$d 项未保存</string>
+    <string name="edit_action_revert_all">全部撤销</string>
+    <string name="edit_row_dirty">已修改</string>
+    <string name="edit_row_edit">编辑 %1$s</string>
+    <string name="edit_row_locked">不能改</string>
+    <string name="edit_sheet_current">原值：%1$s</string>
+    <string name="edit_sheet_empty">（无）</string>
+    <string name="edit_sheet_format">格式：%1$s</string>
+    <string name="edit_sheet_clear_hint">留空表示把这个字段从文件里删掉</string>
+    <string name="edit_sheet_restore">恢复原值</string>
+    <string name="edit_sheet_cancel">取消</string>
+    <string name="edit_sheet_confirm">确定</string>
+    <string name="edit_readonly_format">%1$s 不能原地写元数据，先另存成 JPEG/PNG 再改</string>
+    <string name="edit_no_edit_right">这个位置只读，先另存一份再改</string>
+    <string name="edit_loading">正在读取元数据…</string>
+    <string name="edit_retry">重试</string>
+    <string name="edit_discard_title">有 %1$d 项未保存</string>
+    <string name="edit_discard_body">离开就丢掉了，元数据不会写进文件。</string>
+    <string name="edit_discard_keep">继续编辑</string>
+    <string name="edit_discard_leave">放弃并离开</string>
+    <string name="edit_message_reverted">已撤销全部改动</string>
+
     <!-- 错误提示（docs/01 §6，文案与错误码表一一对应） -->
     <string name="error_io_open">文件已被移动或删除</string>
     <string name="error_io_read">存储空间不足或文件损坏</string>

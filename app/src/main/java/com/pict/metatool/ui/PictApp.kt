@@ -17,9 +17,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pict.metatool.ui.detail.DetailScreen
+import com.pict.metatool.ui.edit.EditScreen
 import com.pict.metatool.ui.jobs.JobsScreen
 import com.pict.metatool.ui.library.LibraryScreen
 import com.pict.metatool.ui.navigation.DetailRoute
+import com.pict.metatool.ui.navigation.EditRoute
 import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.settings.SettingsScreen
 
@@ -35,8 +37,8 @@ fun PictApp(navController: NavHostController = rememberNavController()) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            // 详情页是二级页面，进来就收起底部导航（docs/06 §3.2）。
-            if (currentRoute != DetailRoute.PATTERN) {
+            // 详情页与编辑页都是二级页面，进来就收起底部导航（docs/06 §3.2 / §3.3）。
+            if (currentRoute != DetailRoute.PATTERN && currentRoute != EditRoute.PATTERN) {
                 NavigationBar {
                     PictDestination.bottomBarItems.forEach { destination ->
                         val selected = currentRoute == destination.route
@@ -77,6 +79,13 @@ fun PictApp(navController: NavHostController = rememberNavController()) {
             composable(DetailRoute.PATTERN) { entry ->
                 DetailScreen(
                     uri = entry.arguments?.getString(DetailRoute.ARG_URI).orEmpty(),
+                    onBack = { navController.popBackStack() },
+                    onEdit = { uri -> navController.navigate(EditRoute.build(uri)) },
+                )
+            }
+            composable(EditRoute.PATTERN) { entry ->
+                EditScreen(
+                    uri = entry.arguments?.getString(EditRoute.ARG_URI).orEmpty(),
                     onBack = { navController.popBackStack() },
                 )
             }

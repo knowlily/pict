@@ -87,12 +87,14 @@ import com.pict.metatool.domain.model.MetadataSet
  * 点一行把原始值复制到剪贴板。
  *
  * @param uri 图片地址；由图库网格点击时传进来（导航层已解码）。
+ * @param onEdit 进入单文件编辑页（docs/07 T2.10），只把地址交给导航层。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     uri: String,
     onBack: () -> Unit,
+    onEdit: (String) -> Unit,
     viewModel: DetailViewModel = viewModel(factory = DetailViewModel.factory(LocalContext.current)),
 ) {
     val state by viewModel.state.collectAsState()
@@ -170,6 +172,12 @@ fun DetailScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            // 搜索和空文件时不占地方；能写才给「编辑元数据」（docs/06 §3.2）。
+            if (!state.searchActive && state.hasMetadata) {
+                EditEntryBar(onClick = { onEdit(uri) })
+            }
+        },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!state.searchActive) {
