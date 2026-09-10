@@ -86,4 +86,60 @@ class AppSettingsTest {
         assertNull(AppSettings.parseSeed("一百"))
         assertNull(AppSettings.parseSeed("9".repeat(19)))
     }
+
+    @Test
+    fun `底栏默认悬浮、三个入口全开`() {
+        val defaults = AppSettings()
+        assertEquals(NavBarStyle.FLOATING, defaults.navBarStyle)
+        assertEquals(setOf(NavItem.LIBRARY, NavItem.JOBS, NavItem.SETTINGS), defaults.navItems)
+    }
+
+    @Test
+    fun `底栏样式认不出来的名字回落到悬浮`() {
+        assertEquals(NavBarStyle.DOCKED, NavBarStyle.fromName("DOCKED"))
+        assertEquals(NavBarStyle.FLOATING, NavBarStyle.fromName("NO_SUCH_STYLE"))
+        assertEquals(NavBarStyle.FLOATING, NavBarStyle.fromName(null))
+    }
+
+    @Test
+    fun `底栏入口存盘按枚举顺序、读回忽略没见过的名字`() {
+        // 勾选顺序（JOBS 在前）不影响存盘结果：编码永远按枚举声明序，两边的值才可比
+        assertEquals("LIBRARY,JOBS", NavItem.encode(setOf(NavItem.JOBS, NavItem.LIBRARY)))
+        assertEquals(
+            setOf(NavItem.LIBRARY, NavItem.JOBS),
+            NavItem.decode("LIBRARY,JOBS"),
+        )
+        // 手改 pref 塞进来的名字（或中间多了空格）不能把整份设置搞崩，认不出来就丢
+        assertEquals(setOf(NavItem.SETTINGS), NavItem.decode("SETTINGS,预制, SETTINGS"))
+        assertEquals(emptySet<NavItem>(), NavItem.decode(null))
+        assertEquals(emptySet<NavItem>(), NavItem.decode(""))
+    }
+
+    @Test
+    fun `底栏入口一个不剩时回到默认三栏`() {
+        // 底栏空了就没法导航了：宁可用回默认，也不留一个空条
+        assertEquals(
+            AppSettings.DEFAULT_NAV_ITEMS,
+            AppSettings(navItems = emptySet()).normalized().navItems,
+        )
+        // 关掉一个就只少那一个，剩下的顺序仍按枚举
+        assertEquals(
+            setOf(NavItem.LIBRARY, NavItem.SETTINGS),
+            AppSettings(navItems = setOf(NavItem.SETTINGS, NavItem.LIBRARY)).normalized().navItems,
+        )
+    }
+
+    @Test
+    fun `设置入口关不掉：手改 pref 去掉也会被兜回来`() {
+        // 真机点验踩到过：设置页关掉「设置」之后，设置页就再也进不去了（pref 里记着，重启也回不来）
+        assertEquals(
+            setOf(NavItem.JOBS, NavItem.SETTINGS),
+            AppSettings(navItems = setOf(NavItem.JOBS)).normalized().navItems,
+        )
+        // 反过来：只留必需项也算数，不会被「空集合」那条规则顶掉
+        assertEquals(
+            setOf(NavItem.SETTINGS),
+            AppSettings(navItems = setOf(NavItem.SETTINGS)).normalized().navItems,
+        )
+    }
 }

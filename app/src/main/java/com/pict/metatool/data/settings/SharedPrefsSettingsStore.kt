@@ -3,12 +3,14 @@ package com.pict.metatool.data.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.domain.settings.NavBarStyle
+import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
 
 /**
  * 落盘实现：SharedPreferences 上一薄层（docs/01 FR-35）。
  *
- * 为什么不上 DataStore：设置一共七项、全是标量，DataStore 要带一套协程读写与迁移，
+ * 为什么不上 DataStore：设置一共九项、全是标量，DataStore 要带一套协程读写与迁移，
  * 而这里需要的是「启动第一帧就能同步拿到主题」，同步读 pref 反而更直白。
  * 读出来的值整份交给 [AppSettings.normalized]，所以 pref 被手改坏、或以后收窄了取值范围，
  * 界面拿到的仍然是合法值。
@@ -29,6 +31,8 @@ private const val KEY_PRESET_OVERWRITE = "preset_overwrite_default"
 private const val KEY_RANDOM_SEED = "random_seed_default"
 private const val KEY_THEME_MODE = "theme_mode"
 private const val KEY_GRID_COLUMNS = "grid_columns"
+private const val KEY_NAV_BAR_STYLE = "navbar_style"
+private const val KEY_NAV_ITEMS = "navbar_items"
 
 private fun prefsOf(context: Context): SharedPreferences =
     context.applicationContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
@@ -43,6 +47,9 @@ internal fun loadSettings(prefs: SharedPreferences): AppSettings {
         randomSeedDefault = prefs.getLong(KEY_RANDOM_SEED, defaults.randomSeedDefault),
         themeMode = ThemeMode.fromName(prefs.getString(KEY_THEME_MODE, null)),
         gridColumns = prefs.getInt(KEY_GRID_COLUMNS, defaults.gridColumns),
+        navBarStyle = NavBarStyle.fromName(prefs.getString(KEY_NAV_BAR_STYLE, null)),
+        // 没存过、或存进去的名字一个都不认识：decode 给空集合，normalized 会把它兜回默认三栏
+        navItems = NavItem.decode(prefs.getString(KEY_NAV_ITEMS, null)),
     ).normalized()
 }
 
@@ -55,6 +62,8 @@ internal fun saveSettings(prefs: SharedPreferences, settings: AppSettings) {
         .putLong(KEY_RANDOM_SEED, settings.randomSeedDefault)
         .putString(KEY_THEME_MODE, settings.themeMode.name)
         .putInt(KEY_GRID_COLUMNS, settings.gridColumns)
+        .putString(KEY_NAV_BAR_STYLE, settings.navBarStyle.name)
+        .putString(KEY_NAV_ITEMS, NavItem.encode(settings.navItems))
         .apply()
 }
 

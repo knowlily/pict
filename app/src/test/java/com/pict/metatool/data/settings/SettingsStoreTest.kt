@@ -1,6 +1,8 @@
 package com.pict.metatool.data.settings
 
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.domain.settings.NavBarStyle
+import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -78,5 +80,27 @@ class SettingsStoreTest {
         val store = InMemorySettingsStore()
         store.update { it.copy(gridColumns = 4) }
         assertEquals(4, store.settings.value.gridColumns)
+    }
+
+    @Test
+    fun `改底栏设置会连样式带入口一起落盘`() {
+        val writes = mutableListOf<AppSettings>()
+        val store = InMemorySettingsStore(persist = writes::add)
+        store.update {
+            it.copy(navBarStyle = NavBarStyle.DOCKED, navItems = setOf(NavItem.JOBS))
+        }
+        assertEquals(NavBarStyle.DOCKED, writes.single().navBarStyle)
+        // 「设置」是必需项，勾选里没有它也会被补回来
+        assertEquals(setOf(NavItem.JOBS, NavItem.SETTINGS), writes.single().navItems)
+    }
+
+    @Test
+    fun `把入口全关掉会被规范化挡回来，且不惊动落盘`() {
+        val writes = mutableListOf<AppSettings>()
+        val store = InMemorySettingsStore(persist = writes::add)
+        val after = store.update { it.copy(navItems = emptySet()) }
+        // 空集合规范化之后等于默认三栏，跟改之前一模一样，所以连落盘都不该发生
+        assertEquals(AppSettings.DEFAULT_NAV_ITEMS, after.navItems)
+        assertEquals(emptyList<AppSettings>(), writes)
     }
 }

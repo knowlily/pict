@@ -31,6 +31,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.pict.metatool.BuildConfig
 import com.pict.metatool.R
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.domain.settings.NavBarStyle
+import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
 import com.pict.metatool.ui.edit.ExportNaming
 import com.pict.metatool.ui.theme.PictSpacing
@@ -60,6 +62,9 @@ fun SettingsScreen(
     val resetDone = stringResource(R.string.settings_reset_done)
     // 主题名要先在 composable 上下文里取出来：SettingsChoiceRow 的 label 是普通 lambda
     val themeLabels = ThemeMode.entries.associateWith { themeLabel(it) }
+    val navBarStyleLabels = NavBarStyle.entries.associateWith { navBarStyleLabel(it) }
+    val navItemLabels = NavItem.entries.associateWith { navItemLabel(it) }
+    val keepOneNavItem = stringResource(R.string.settings_navbar_min_note)
 
     var editingSuffix by remember { mutableStateOf(false) }
     var editingSeed by remember { mutableStateOf(false) }
@@ -134,6 +139,43 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsSection(title = stringResource(R.string.settings_section_navbar)) {
+                SettingsChoiceRow(
+                    title = stringResource(R.string.settings_navbar_style),
+                    subtitle = stringResource(R.string.settings_navbar_style_hint),
+                    options = NavBarStyle.entries,
+                    selected = settings.navBarStyle,
+                    label = { style -> navBarStyleLabels.getValue(style) },
+                    onSelect = { style -> onUpdate { it.copy(navBarStyle = style) } },
+                )
+
+                NavItem.entries.forEach { item ->
+                    // 「设置」是必需项：关掉它，设置页本身就没有入口了（真机点验踩到过）
+                    val required = item in AppSettings.REQUIRED_NAV_ITEMS
+                    SettingsSwitchRow(
+                        title = navItemLabels.getValue(item),
+                        subtitle = when {
+                            item == NavItem.entries.first() ->
+                                stringResource(R.string.settings_navbar_items_hint)
+
+                            required -> stringResource(R.string.settings_navbar_item_required)
+                            else -> null
+                        },
+                        checked = item in settings.navItems,
+                        enabled = !required,
+                        onCheckedChange = { on ->
+                            val next = if (on) settings.navItems + item else settings.navItems - item
+                            if (next.isEmpty()) {
+                                // 最后一个入口不给关：底栏空了页面就点不动了（domain 的规范化也会兜一道）
+                                scope.launch { snackbarHostState.showSnackbar(keepOneNavItem) }
+                            } else {
+                                onUpdate { it.copy(navItems = next) }
+                            }
+                        },
+                    )
+                }
+            }
+
             SettingsSection(title = stringResource(R.string.settings_section_about)) {
                 SettingsValueRow(
                     title = stringResource(R.string.settings_version),
@@ -201,6 +243,25 @@ private fun themeLabel(mode: ThemeMode): String = stringResource(
         ThemeMode.SYSTEM -> R.string.settings_theme_system
         ThemeMode.LIGHT -> R.string.settings_theme_light
         ThemeMode.DARK -> R.string.settings_theme_dark
+    },
+)
+
+/** 底栏两种样式的名字。 */
+@Composable
+private fun navBarStyleLabel(style: NavBarStyle): String = stringResource(
+    when (style) {
+        NavBarStyle.FLOATING -> R.string.settings_navbar_style_floating
+        NavBarStyle.DOCKED -> R.string.settings_navbar_style_docked
+    },
+)
+
+/** 底栏入口的显示名：跟底栏自己用同一份文案，不另写一套。 */
+@Composable
+private fun navItemLabel(item: NavItem): String = stringResource(
+    when (item) {
+        NavItem.LIBRARY -> R.string.nav_library
+        NavItem.JOBS -> R.string.nav_jobs
+        NavItem.SETTINGS -> R.string.nav_settings
     },
 )
 
