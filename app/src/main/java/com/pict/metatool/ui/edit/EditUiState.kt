@@ -11,6 +11,9 @@ import com.pict.metatool.domain.model.SourceInfo
 import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.plan.EditOutcome
 import com.pict.metatool.domain.plan.EditPlanExecutor
+import com.pict.metatool.domain.preset.Preset
+import com.pict.metatool.domain.preset.PresetKind
+import com.pict.metatool.domain.preset.PresetResolver
 
 /**
  * 单文件编辑页的状态与状态迁移（docs/07 T2.10、docs/06 §3.3）。
@@ -78,6 +81,22 @@ data class EditUiState(
     val verifySummary: String? = null,
     /** 该格式能否原地写（HEIF 为 false，UI 提示「需重编码」）。 */
     val canWriteInPlace: Boolean = true,
+
+    // ---------- 预设与随机填充（docs/06 §3.3、docs/07 T3.7/T3.9） ----------
+    /** 可用的预设（内置来自 assets，见 `AssetPresetCatalog`）。 */
+    val presets: List<Preset> = emptyList(),
+    /** 预设加载时的问题（坏文件、未登记字段提醒），非空时在弹层里如实展示。 */
+    val presetIssues: List<String> = emptyList(),
+    val showPresets: Boolean = false,
+    val showRandomFill: Boolean = false,
+    val showAddField: Boolean = false,
+    /** 套用预设是否覆盖已有值；false = 只填缺失（默认更安全）。 */
+    val presetOverwrite: Boolean = false,
+    val randomFillPresetId: String? = null,
+    val randomFillKeys: Set<TagKey> = emptySet(),
+    val randomFillSeed: Long = 0L,
+    /** 「添加字段」弹层里的本地搜索词（目录里一百多个字段，不给过滤等于不可用）。 */
+    val addFieldQuery: String = "",
 ) {
 
     val fileName: String? get() = source?.displayName
@@ -151,6 +170,41 @@ data class EditUiState(
                 .take(ADDITION_LIMIT)
         }
 
+    /**
+     * 「添加字段」列表：目录里**可写**、本文件还没有、草稿里也没有的字段。
+     *
+     * 与 [additions] 的区别：那个跟着搜索词走（顺手补一个），这个是无前提的全量浏览——
+     * 「原图没有的元数据」得有个看得见的地方能挑，而不是让用户先猜到名字再搜。
+     */
+    val addableFields: List<FieldSpec>
+        get() {
+            val set = metadata ?: return emptyList()
+            val keyword = addFieldQuery.trim()
+            return FieldCatalog.all
+                .filter { it.canEdit && set.entries[it.key] == null && !draft.contains(it.key) }
+                .filter { keyword.isEmpty() || it.label.contains(keyword) || it.key.full.contains(keyword, ignoreCase = true) }
+        }
+
+    /** 当前选中的随机填充预设。 */
+    val randomFillPreset: Preset? get() = presets.firstOrNull { it.id == randomFillPresetId }
+
+    /** 随机填充可勾选的字段：预设里会浮动的那些（固定值照写，不参与勾选）。 */
+    val randomFillCandidates: List<FieldSpec>
+        get() = randomFillPreset?.let { preset ->
+            preset.randomKeys
+                .sortedWith(compareBy({ orderOf(it) }, { it.namespace }, { it.name }))
+                .mapNotNull { FieldCatalog.spec(it) }
+                .filter { it.canEdit }
+        }.orEmpty()
+
+    val randomFillReady: Boolean get() = randomFillPreset != null && randomFillKeys.isNotEmpty()
+
+    /** 预设按类别分组，弹层分节展示（设备 / 位置 / 时间 / 混合）。 */
+    val presetsByKind: List<Pair<PresetKind, List<Preset>>>
+        get() = PresetKind.entries.mapNotNull { kind ->
+            presets.filter { it.kind == kind }.takeIf { it.isNotEmpty() }?.let { kind to it }
+        }
+
     val editingSpec: FieldSpec? get() = editing?.let { FieldCatalog.spec(it) }
 
     val editingLabel: String? get() = editing?.let { editingSpec?.label ?: it.full }
@@ -205,6 +259,78 @@ data class EditUiState(
     )
 
     fun withQuery(query: String): EditUiState = copy(query = query)
+
+    // ---------- 预设与随机填充的状态迁移（docs/07 T3.7/T3.9） ----------
+
+    fun withPresets(presets: List<Preset>, issues: List<String> = emptyList()): EditUiState =
+        copy(presets = presets, presetIssues = issues)
+
+    fun openPresets(): EditUiState = copy(showPresets = true)
+
+    fun closePresets(): EditUiState = copy(showPresets = false)
+
+    fun setPresetOverwrite(overwrite: Boolean): EditUiState = copy(presetOverwrite = overwrite)
+
+    fun openAddField(): EditUiState = copy(showAddField = true)
+
+    fun closeAddField(): EditUiState = copy(showAddField = false, addFieldQuery = "")
+
+    fun withAddFieldQuery(query: String): EditUiState = copy(addFieldQuery = query)
+
+    /** 打开随机填充弹层：默认选中第一个预设，并勾上它全部会浮动的字段。 */
+    fun openRandomFill(preset: Preset?): EditUiState {
+        val chosen = preset ?: presets.firstOrNull()
+        return copy(
+            showRandomFill = true,
+            randomFillPresetId = chosen?.id,
+            randomFillKeys = chosen?.randomKeys.orEmpty(),
+            randomFillSeed = if (randomFillSeed == 0L) DEFAULT_RANDOM_SEED else randomFillSeed,
+        )
+    }
+
+    fun closeRandomFill(): EditUiState = copy(showRandomFill = false)
+
+    /** 换取值预设：勾选集合跟着换成新预设的字段，避免留下不属于它的键。 */
+    fun withRandomFillPreset(preset: Preset): EditUiState = copy(
+        randomFillPresetId = preset.id,
+        randomFillKeys = preset.randomKeys,
+    )
+
+    fun toggleRandomFillKey(key: TagKey): EditUiState = copy(
+        randomFillKeys = if (key in randomFillKeys) randomFillKeys - key else randomFillKeys + key,
+    )
+
+    fun withRandomFillSeed(seed: Long): EditUiState = copy(randomFillSeed = seed)
+
+    /**
+     * 把一次填充的结果并入草稿（套用预设与随机填充共用）。
+     *
+     * 只并入**真正变化**的键：与源文件相同的值不进草稿，否则「应用 N 项」的 N 会虚高，
+     * 用户也会以为自己改了什么。跳过与保留都如实汇报——静默跳过比报错更坑。
+     */
+    fun withPresetFill(title: String, fill: PresetResolver.Fill): EditUiState {
+        val values = fill.changedKeys.mapNotNull { key -> fill.target[key]?.let { key to it } }.toMap()
+        val notes = buildList {
+            if (fill.keptKeys.isNotEmpty()) add("保留 ${fill.keptKeys.size} 项已有值")
+            if (fill.skipped.isNotEmpty()) {
+                add("跳过 ${fill.skipped.size} 项（${fill.skipped.take(SKIP_REPORT_LIMIT).joinToString("；")}）")
+            }
+        }
+        val detail = if (notes.isEmpty()) "" else "：${notes.joinToString("，")}"
+        return copy(
+            draft = draft.setAll(values),
+            showPresets = false,
+            showRandomFill = false,
+            message = EditMessage(
+                text = if (values.isEmpty()) {
+                    "「$title」没有可填的字段$detail"
+                } else {
+                    "已套用「$title」：${values.size} 项进草稿$detail"
+                },
+                isError = values.isEmpty(),
+            ),
+        )
+    }
 
     /** 打开单字段编辑弹层；预填「当前草稿值，没有则源值」的原始字面量。 */
     fun openEditor(key: TagKey): EditUiState {
@@ -320,5 +446,11 @@ data class EditUiState(
         const val UNREGISTERED_NOTE = "未登记字段，只看不改"
         const val CLEARED_DISPLAY = "（清除）"
         const val ADDITION_LIMIT = 6
+
+        /** 填充汇报里最多列几条跳过原因（再多就刷屏了，完整内容在日志里）。 */
+        const val SKIP_REPORT_LIMIT = 3
+
+        /** 默认种子：固定值，让「第一次随机填充」在同一张图上可复现（T3.6）。 */
+        const val DEFAULT_RANDOM_SEED = 20260101L
     }
 }

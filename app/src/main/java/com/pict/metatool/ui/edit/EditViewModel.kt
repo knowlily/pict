@@ -17,10 +17,15 @@ import com.pict.metatool.data.metadata.MetadataWriter
 import com.pict.metatool.data.metadata.PixelHasher
 import com.pict.metatool.data.metadata.exif.ExifMetadataStore
 import com.pict.metatool.data.metadata.imaging.CommonsImagingStore
+import com.pict.metatool.data.preset.AssetPresetCatalog
 import com.pict.metatool.data.source.ImageSource
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.plan.EditPlanExecutor
+import com.pict.metatool.domain.preset.Preset
+import com.pict.metatool.domain.preset.PresetCatalog
+import com.pict.metatool.domain.preset.PresetResolver
+import java.util.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,6 +52,8 @@ class EditViewModel(
     private val reader: MetadataReader = MetadataReader(),
     private val writers: List<MetadataWriter> = listOf(ExifMetadataStore(), CommonsImagingStore()),
     private val hasher: PixelHasher = BitmapPixelHasher(),
+    private val presets: PresetCatalog = PresetCatalog.EMPTY,
+    private val presetIssues: List<String> = emptyList(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditUiState())
@@ -54,6 +61,16 @@ class EditViewModel(
 
     private var loadJob: Job? = null
     private var loadedUri: String? = null
+    private var presetsJob: Job? = null
+
+    init {
+        // 预设是打包资源：读一次、缓存进程内；空目录（单测 / 未接线）就走一遍得到空列表。
+        // 读盘与解析放 IO，别卡首屏。
+        presetsJob = viewModelScope.launch {
+            val loaded = withContext(Dispatchers.IO) { presets.all() }
+            _state.update { it.withPresets(loaded, presetIssues) }
+        }
+    }
 
     /** 载入一张图；同一张已读成功的不重复读。 */
     fun load(uri: String) {
@@ -113,6 +130,65 @@ class EditViewModel(
     fun closePreview() = update { it.closePreview() }
 
     fun consumeMessage() = update { it.consumeMessage() }
+
+    // ---------- 预设 / 随机填充 / 添加字段（docs/07 T3.7、T3.9） ----------
+
+    fun openPresets() = update { it.openPresets() }
+
+    fun closePresets() = update { it.closePresets() }
+
+    fun setPresetOverwrite(overwrite: Boolean) = update { it.setPresetOverwrite(overwrite) }
+
+    fun openAddField() = update { it.openAddField() }
+
+    fun closeAddField() = update { it.closeAddField() }
+
+    fun onAddFieldQueryChange(query: String) = update { it.withAddFieldQuery(query) }
+
+    fun openRandomFill() = update { state -> state.openRandomFill(state.randomFillPreset) }
+
+    fun closeRandomFill() = update { it.closeRandomFill() }
+
+    fun chooseRandomFillPreset(presetId: String) = update { state ->
+        state.presets.firstOrNull { it.id == presetId }?.let(state::withRandomFillPreset) ?: state
+    }
+
+    fun toggleRandomFillKey(key: TagKey) = update { it.toggleRandomFillKey(key) }
+
+    /** 换一批：只换种子。种子在界面上可见，所以「换过的那一批」照样可复现。 */
+    fun rerollRandomFillSeed() = update { it.withRandomFillSeed(Random().nextLong()) }
+
+    /** 套用预设：只填缺失还是覆盖已有值，由界面上的开关决定。 */
+    fun applyPreset(presetId: String) {
+        val current = _state.value
+        val preset = current.presets.firstOrNull { it.id == presetId } ?: return
+        fill(preset, keys = null, onlyMissing = !current.presetOverwrite)
+    }
+
+    /** 随机填充勾选的字段。 */
+    fun fillRandom() {
+        val current = _state.value
+        val preset = current.randomFillPreset ?: return
+        fill(preset, keys = current.randomFillKeys, onlyMissing = false, seed = current.randomFillSeed)
+    }
+
+    /**
+     * 填充的公共路径：以「源文件 + 已有草稿」为基准算目标，再把**变化项**并进草稿。
+     *
+     * 为什么基准不是源文件：用户可能已经手改过几项，「只填空缺」理应把那些手改当成已有值，
+     * 否则一次套用就把刚改的内容盖掉了。整条路径不落盘——写文件仍然只有「应用」那一处。
+     */
+    private fun fill(preset: Preset, keys: Set<TagKey>?, onlyMissing: Boolean, seed: Long = 0L) {
+        val current = _state.value
+        val base = current.proposed ?: current.metadata ?: return
+        when (val filled = PresetResolver.fill(preset, base, keys = keys, onlyMissing = onlyMissing, seed = seed)) {
+            is PictResult.Failure -> update {
+                it.withMessage("填充失败：${filled.failure.detail ?: filled.code}", isError = true)
+            }
+
+            is PictResult.Success -> update { it.withPresetFill(preset.name, filled.value) }
+        }
+    }
 
     /**
      * 折叠 + 落盘 + 重读校验（docs/07 T2.10 的「应用」）。
@@ -211,7 +287,16 @@ class EditViewModel(
 
         /** 无 DI 框架时的手工装配，与详情页一致（用 applicationContext 的 resolver）。 */
         fun factory(context: Context): ViewModelProvider.Factory = viewModelFactory {
-            initializer { EditViewModel(context.applicationContext.contentResolver) }
+            initializer {
+                // 预设随 APK 打包（app/build.gradle.kts 的 syncPresets 任务），这里是唯一一次读取；
+                // 坏文件的问题逐条带到界面上，而不是悄悄吞掉
+                val catalog = AssetPresetCatalog(context.applicationContext.assets)
+                EditViewModel(
+                    resolver = context.applicationContext.contentResolver,
+                    presets = catalog,
+                    presetIssues = catalog.issues.map { it.toString() },
+                )
+            }
         }
     }
 }

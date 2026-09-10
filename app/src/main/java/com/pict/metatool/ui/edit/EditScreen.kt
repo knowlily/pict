@@ -80,7 +80,8 @@ fun EditScreen(
 
     // 有改动就先问，不直接退（未保存提示）。
     val leave: () -> Unit = { if (state.isDirty) viewModel.requestDiscard() else onBack() }
-    val sheetOpen = state.editing != null || state.showPreview || state.confirmDiscard
+    val sheetOpen = state.editing != null || state.showPreview || state.confirmDiscard ||
+        state.showPresets || state.showRandomFill || state.showAddField
     BackHandler(enabled = !sheetOpen) { leave() }
 
     Scaffold(
@@ -127,6 +128,14 @@ fun EditScreen(
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
+
+            if (state.metadata != null && state.canWriteInPlace) {
+                EditToolsRow(
+                    onPresets = { viewModel.openPresets() },
+                    onRandomFill = { viewModel.openRandomFill() },
+                    onAddField = { viewModel.openAddField() },
+                )
+            }
 
             val formatName = state.source?.format?.name.orEmpty()
             val error = state.error
@@ -188,6 +197,66 @@ fun EditScreen(
                 onBack()
             },
         )
+    }
+
+    if (state.showPresets) {
+        PresetSheet(
+            state = state,
+            onToggleOverwrite = { viewModel.setPresetOverwrite(it) },
+            onApply = { presetId -> viewModel.applyPreset(presetId) },
+            onDismiss = { viewModel.closePresets() },
+        )
+    }
+
+    if (state.showRandomFill) {
+        RandomFillSheet(
+            state = state,
+            onChoosePreset = { presetId -> viewModel.chooseRandomFillPreset(presetId) },
+            onToggleKey = { key -> viewModel.toggleRandomFillKey(key) },
+            onRerollSeed = { viewModel.rerollRandomFillSeed() },
+            onFill = { viewModel.fillRandom() },
+            onDismiss = { viewModel.closeRandomFill() },
+        )
+    }
+
+    if (state.showAddField) {
+        AddFieldSheet(
+            state = state,
+            onQueryChange = { viewModel.onAddFieldQueryChange(it) },
+            onPick = { spec ->
+                viewModel.addField(spec)
+                viewModel.closeAddField()
+            },
+            onDismiss = { viewModel.closeAddField() },
+        )
+    }
+}
+
+/**
+ * 编辑页的工具条：预设 / 随机填充 / 添加字段（docs/06 §3.3「快速填充」）。
+ *
+ * 放在搜索框下面而不是折进溢出菜单：这三件事是「不想一项项手改」时的一等需求，
+ * 藏起来等于没有。
+ */
+@Composable
+private fun EditToolsRow(
+    onPresets: () -> Unit,
+    onRandomFill: () -> Unit,
+    onAddField: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = onPresets, modifier = Modifier.weight(1f)) {
+            Text(text = stringResource(R.string.edit_tools_preset))
+        }
+        OutlinedButton(onClick = onRandomFill, modifier = Modifier.weight(1f)) {
+            Text(text = stringResource(R.string.edit_tools_random))
+        }
+        OutlinedButton(onClick = onAddField, modifier = Modifier.weight(1f)) {
+            Text(text = stringResource(R.string.edit_tools_add_field))
+        }
     }
 }
 
@@ -321,9 +390,9 @@ private fun FieldRow(row: EditFieldRow, onEdit: () -> Unit) {
     }
 }
 
-/** 搜索时列出的、本文件还没有的目录字段（点了就补一个）。 */
+/** 搜索时列出的、本文件还没有的目录字段（点了就补一个）；「添加字段」弹层复用同一行。 */
 @Composable
-private fun AddRow(spec: FieldSpec, onAdd: () -> Unit) {
+internal fun AddRow(spec: FieldSpec, onAdd: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

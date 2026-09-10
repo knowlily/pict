@@ -118,7 +118,10 @@ dependencies {
 }
 
 /**
- * 把仓库根 `presets/*.json` 同步到生成目录，作为 assets 的一部分打进 APK。
+ * 把仓库根 `presets` 目录下的 JSON 同步到生成目录，作为 assets 的一部分打进 APK。
+ *
+ * 注意：Kotlin 块注释可嵌套，注释里别出现「斜杠 + 星号」，否则从那里开始整段被当成注释，
+ * 后面的任务注册会静默消失（本文件踩过一次：任务不存在，但构建仍然是 SUCCESSFUL）。
  *
  * 用 Sync 而不是往 `src/main/assets/` 拷一份：预设只保留一处真相（仓库根，和 docs/03 §7
  * 的登记表、schema 放一起），改完 JSON 直接生效，不会出现「仓库改了、APK 里还是旧的」。

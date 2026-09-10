@@ -134,4 +134,34 @@
     <string name="item_status_verify_failed">校验未通过</string>
     <string name="item_status_skipped">已跳过</string>
     <string name="item_status_unsupported">不支持</string>
+
+    <!-- 编辑页快速填充：预设 / 随机填充 / 添加字段（docs/06 §3.3、docs/07 T3.7 T3.9） -->
+    <string name="edit_tools_preset">预设</string>
+    <string name="edit_tools_random">随机填充</string>
+    <string name="edit_tools_add_field">添加字段</string>
+
+    <string name="edit_preset_title">套用预设</string>
+    <string name="edit_preset_hint">整套档案一次填好：改动先进草稿，点「应用」才写文件。</string>
+    <string name="edit_preset_overwrite">覆盖已有值</string>
+    <string name="edit_preset_overwrite_note">关闭时只填本文件没有的字段，已有值原样保留（更安全）</string>
+    <string name="edit_preset_keys">%1$d 个字段</string>
+    <string name="edit_preset_keys_named">%1$s（%2$d 项）</string>
+    <string name="edit_preset_apply">套用</string>
+    <string name="edit_preset_issue">预设告警：%1$s</string>
+    <string name="edit_preset_empty">没有可用的预设，检查一下安装包里的 presets 资源。</string>
+
+    <string name="edit_random_title">随机填充</string>
+    <string name="edit_random_hint">按预设声明的取值池 / 区间 / 圆心抽样；同一种子给出同一结果。</string>
+    <string name="edit_random_preset">取值预设</string>
+    <string name="edit_random_fields">填充哪些字段</string>
+    <string name="edit_random_fixed_note">固定值字段（如厂商、机型）会照写，不参与抽样。</string>
+    <string name="edit_random_no_candidates">这个预设里没有可勾选的浮动字段。</string>
+    <string name="edit_random_seed_value">种子：%1$d</string>
+    <string name="edit_random_seed_reroll">换一批</string>
+    <string name="edit_random_fill">填入草稿</string>
+
+    <string name="edit_add_title">添加字段</string>
+    <string name="edit_add_hint">这是字段目录里可写、但本文件还没有的字段，点一行加进去。</string>
+    <string name="edit_add_search_hint">搜索字段名或键，如 海拔 / GPS:GPSAltitude</string>
+    <string name="edit_add_empty">没有可补的字段了。</string>
 </resources>

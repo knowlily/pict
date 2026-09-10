@@ -46,6 +46,15 @@ data class EditDraft(val entries: Map<TagKey, DraftValue> = emptyMap()) {
 
     fun clear(key: TagKey): EditDraft = copy(entries = entries + (key to DraftValue.Cleared))
 
+    /**
+     * 批量写入（套用预设 / 随机填充的结果一次性进草稿）。
+     *
+     * 用「并入」而不是「替换」：用户手改过的那几项不该被一次批量填充抹掉——
+     * 批量填充只负责它算出来的键。
+     */
+    fun setAll(values: Map<TagKey, TagValue>): EditDraft =
+        if (values.isEmpty()) this else copy(entries = entries + values.mapValues { DraftValue.Value(it.value) })
+
     /** 撤销单个字段的改动，回到源文件的值。 */
     fun revert(key: TagKey): EditDraft = copy(entries = entries - key)
 
