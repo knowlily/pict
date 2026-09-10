@@ -63,6 +63,15 @@ cd /d/githubs/pict && export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17
 - JVM 单测只有 JUnit + turbine，**没有 Robolectric / MockK**；需要 Android 框架的落盘验证走
   instrumented（MuMu `V2366GA - 15`，`127.0.0.1:7555`，adb 在 `/d/platform-tools/adb`）。
 - Commons Imaging 是纯 JVM 库，写路径单测内端到端即可（含像素逐字节比对），**不加 instrumented 用例**。
+- **JVM 单测里没有 `java.awt`**（`Imaging.getBufferedImage` 编不过）：TIFF 的像素校验走原始 strip
+  字节（`TiffTagConstants.TIFF_TAG_STRIP_OFFSETS` + `STRIP_BYTE_COUNTS` 切一段），JPEG 走 SOS 段起逐字节。
+- **金标准**（exiftool 比对）跑法：`tools/verify-with-exiftool.sh`；exiftool 找 `PICT_EXIFTOOL`，
+  本机便携版在 `D:/tools/exiftool/exiftool.exe`（13.59，自带 perl，无需另装）。需有 exiftool 才有意义，
+  缺失时脚本默认失败、`--allow-missing` 才降级为跳过。
+- **exiftool 输出别用 `-T`**：`-T`（表格）只打印值、不带标签名，解析不出来；统一用长格式
+  `-a -G1 -s -n`（`[组] 标签 : 值`，`-n` 出裸数值），group 名是 family-1（`IFD0` / `ExifIFD` / `GPS` / `IFD1` / `System` / `Composite`）。
+- 金标准已钉住两个写通道缺口：**R-16**（JPEG 无损重写丢 IFD1 缩略图）、**R-17**（GPS IFD 重建丢 `GPSVersionID`）。
+  它们在 `ExiftoolGoldStandardTest.defaultGaps()` 里逐条声明，修好会立刻失败提醒删条目 —— 别把断言改松。
 
 ## 工作流
 

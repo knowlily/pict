@@ -4,7 +4,7 @@ Android 端**批量图片元数据编辑 + 格式转换**工具。全程本地�
 
 > 仓库路径：`D:\githubs\pict`
 > 文档版本：v1.0（2026-09-09）
-> 当前阶段：**P2 元数据编辑引擎（进行中）** — P0 骨架、P1 读取链路已落地；P2 已提交 T2.1–T2.11（操作折叠、写通道、时间偏移、GPS 编辑、清空分组、单文件编辑 UI、备份与回滚）。单测 **406/406 通过**
+> 当前阶段：**P2 元数据编辑引擎（收口）** — P0 骨架、P1 读取链路已落地；P2 已提交 T2.1–T2.12（操作折叠、写通道、时间偏移、GPS 编辑、清空分组、单文件编辑 UI、备份与回滚、exiftool 金标准）。单测 **418/418 通过**，金标准 **12/12 通过**（`tools/verify-with-exiftool.sh`）
 >
 > 协作约定与踩坑清单见 [AGENTS.md](AGENTS.md)。
 
@@ -98,6 +98,17 @@ pict/
 
 ## 下一步
 
-1. P2 收口：单元测试 + exiftool 金标准脚本（T2.12），跑通后按 [docs/07](docs/07-实施计划与任务拆解.md) 的 Phase 2 退出标准验收。
-2. 真机手工验收编辑链路：详情页 →「编辑元数据」→ 改一项 → 应用 → 回详情页看新值与 diff。
+1. 真机手工验收编辑链路：详情页 →「编辑元数据」→ 改一项 → 应用 → 回详情页看新值与 diff。
+2. 决策金标准跑出来的两个写通道缺口（[docs/09](docs/09-风险清单与决策记录.md) R-16 缩略图、R-17 `GPSVersionID`）：修，还是记成 V1 已知限制。
 3. 每个任务完成后提交一次 git；协作约定与踩坑见 [AGENTS.md](AGENTS.md)。
+
+## 金标准怎么跑
+
+```bash
+tools/verify-with-exiftool.sh          # 需要 exiftool（13.x）；找不到会明说并跳过
+tools/verify-with-exiftool.sh --allow-missing   # CI 上没装 exiftool 时：跳过但不报错
+```
+
+脚本干两件事：跑 `ExiftoolGoldStandardTest`（把编辑计划折叠 → 真写通道落盘 → **由 exiftool 独立读回**，
+对目标字段、其余字段、像素三项取证），再用 exiftool 把每个用例的断言逐条复核一遍。
+产物留在 `app/build/goldstandard/out/`：改后的图、`*.exiftool.json` 转储、`*.changed.txt` 改动清单。
