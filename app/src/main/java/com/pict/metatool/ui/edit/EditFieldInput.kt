@@ -1,12 +1,11 @@
 package com.pict.metatool.ui.edit
 
+import com.pict.metatool.domain.format.Rationals
 import com.pict.metatool.domain.format.TagValueFormatter
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.Rational
 import com.pict.metatool.domain.model.TagValue
 import com.pict.metatool.domain.model.ValueType
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -68,8 +67,6 @@ object EditFieldInput {
 
     /** 列表型输入的分隔符：中英文逗号、顿号、分号都能用（用户不会记哪个才对）。 */
     private const val LIST_SEPARATORS = "[,，、;；]"
-
-    private const val MAX_POW10 = 9
 
     /** 输入框该给哪种键盘。 */
     fun kindOf(spec: FieldSpec?): InputKind {
@@ -186,30 +183,16 @@ object EditFieldInput {
     private fun parseDecimal(text: String): Double? =
         text.toDoubleOrNull() ?: parseRational(text)?.asDouble
 
-    /** 分数：`1/250` 原样保留分子分母；`2.8` 转成 `28/10`，EXIF 写回时用得上。 */
-    fun parseRational(text: String): Rational? {
-        val slash = text.indexOf('/')
-        if (slash > 0) {
-            val numerator = text.substring(0, slash).trim().toLongOrNull() ?: return null
-            val denominator = text.substring(slash + 1).trim().toLongOrNull() ?: return null
-            if (denominator == 0L) return null
-            return Rational(numerator, denominator)
-        }
-        val value = text.toDoubleOrNull() ?: return null
-        if (value.isNaN() || value.isInfinite()) return null
-        return fromDecimal(value)
-    }
+    /**
+     * 分数：`1/250` 原样保留分子分母；`2.8` 转成 `28/10`，EXIF 写回时用得上。
+     *
+     * 实现见 [com.pict.metatool.domain.format.Rationals]——预设/随机填充也要把小数落成分数，
+     * 两处各写一份必然在取整规则上分叉，所以这里是委托而不是第二份实现。
+     */
+    fun parseRational(text: String): Rational? = Rationals.parse(text)
 
     /** 小数转分数：按小数位定分母（最多 6 位），`2.8` → `28/10`。 */
-    fun fromDecimal(value: Double, maxScale: Int = 6): Rational {
-        val decimal = BigDecimal.valueOf(value).setScale(maxScale, RoundingMode.HALF_UP).stripTrailingZeros()
-        val scale = decimal.scale()
-        return if (scale <= 0) {
-            Rational(decimal.unscaledValue().toLong() * pow10(-scale), 1L)
-        } else {
-            Rational(decimal.unscaledValue().toLong(), pow10(scale))
-        }
-    }
+    fun fromDecimal(value: Double, maxScale: Int = 6): Rational = Rationals.fromDecimal(value, maxScale)
 
     private fun parseDateTime(text: String): Pair<LocalDateTime, ZoneOffset?>? {
         var body = text
@@ -260,10 +243,4 @@ object EditFieldInput {
     private fun splitList(text: String): List<String> =
         text.split(Regex(LIST_SEPARATORS)).map { it.trim() }.filter { it.isNotEmpty() }
 
-    private fun pow10(exponent: Int): Long {
-        require(exponent in 0..MAX_POW10) { "指数超出范围：$exponent" }
-        var result = 1L
-        repeat(exponent) { result *= 10 }
-        return result
-    }
 }

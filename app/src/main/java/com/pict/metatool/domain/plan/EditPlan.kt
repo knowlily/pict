@@ -66,8 +66,16 @@ sealed interface EditOperation {
      * 随机填充指定字段。
      * [seed] 相同则结果必须逐字段可复现（T3.6 验证跨 JVM 一致性），
      * 因此种子是操作的一部分而非全局配置。
+     *
+     * @param presetId 取值来源预设（T3.1）；为 null 时无法填充——
+     *   「随机」不是凭空编造，而是按预设声明的池/区间/圆心抽样（docs/03 §6），
+     *   没有预设就只能拒绝，不能替用户瞎编 ISO 和光圈。
      */
-    data class RandomFill(val fields: Set<TagKey>, val seed: Long) : EditOperation
+    data class RandomFill(
+        val fields: Set<TagKey>,
+        val seed: Long,
+        val presetId: String? = null,
+    ) : EditOperation
 
     /**
      * 写入 GPS 坐标（T2.8）：十进制度，负值即南纬/西经。
@@ -98,10 +106,12 @@ sealed interface EditOperation {
      *
      * @param presetId 预设标识（T3.1 定义模型，这里只存 id，避免 domain/plan 反向依赖 domain/preset）
      * @param overwriteExisting false = 只填源文件缺失的字段，保留已有值（默认，更安全）
+     * @param seed 随机部分的种子；同一种子给出同一结果（T3.6），默认 0 = 每次都一样
      */
     data class ApplyPreset(
         val presetId: String,
         val overwriteExisting: Boolean = false,
+        val seed: Long = 0L,
     ) : EditOperation
 }
 

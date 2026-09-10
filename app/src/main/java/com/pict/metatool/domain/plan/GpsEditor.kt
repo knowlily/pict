@@ -170,13 +170,32 @@ object GpsEditor {
             )
 
         val random = Random(seed)
+        val moved = sampleNear(origin.latitude, origin.longitude, radiusMeters, random)
+        // 海拔原样带过：set() 只在 altitudeMeters 非空时才动海拔字段
+        return set(set, moved.first, moved.second, origin.altitudeMeters)
+    }
+
+    /**
+     * 在 ([latitude], [longitude]) 周边 [radiusMeters] 内按圆面均匀采样，返回新坐标。
+     *
+     * 采样口径与 [jitter] 完全一致（方位角均匀 + `sqrt` 角距，圆面内均匀而非只落圆周），
+     * 区别只有两点：
+     * - 随机源由调用方传入，便于「同一种子 → 同一坐标」的复现（T3.6，预设的 gps 模式也走这里）；
+     * - **不**施加 [MIN_JITTER_METERS]~[MAX_JITTER_METERS] 限制：抖动是相机端微调，
+     *   而预设的坐标圆面允许街区级（几百米）到城市级（几十公里）的偏移。
+     *
+     * 调用方负责校验半径非负与坐标范围（见 `PresetParser` 的 gps 规则校验）。
+     */
+    fun sampleNear(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double,
+        random: Random,
+    ): Pair<Double, Double> {
         val bearing = random.nextDouble() * 2 * Math.PI
         // sqrt 让点在圆面内均匀分布；乘满半径时距离恰为 radiusMeters
         val angularDistance = radiusMeters / EARTH_RADIUS_METERS * sqrt(random.nextDouble())
-
-        val moved = offset(origin.latitude, origin.longitude, bearing, angularDistance)
-        // 海拔原样带过：set() 只在 altitudeMeters 非空时才动海拔字段
-        return set(set, moved.first, moved.second, origin.altitudeMeters)
+        return offset(latitude, longitude, bearing, angularDistance)
     }
 
     /**

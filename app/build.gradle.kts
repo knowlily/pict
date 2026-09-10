@@ -10,6 +10,10 @@ android {
     namespace = "com.pict.metatool"
     compileSdk = 36
 
+    // 预设 JSON 的唯一副本在仓库根 presets/（docs/03 §7 的登记表 + 校验 schema 也放那儿），
+    // 构建时同步进 assets/presets/，避免「仓库一份、APK 一份」双维护。
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/presetAssets"))
+
     defaultConfig {
         applicationId = "com.pict.metatool"
         minSdk = 26
@@ -95,6 +99,9 @@ dependencies {
     implementation(libs.commons.imaging)
     implementation(libs.xmpcore)
 
+    // 预设 JSON 解析（T3.1，domain/preset）
+    implementation(libs.kotlinx.serialization.json)
+
     // 图片加载（缩略图网格 T1.9）
     implementation(libs.coil)
 
@@ -109,3 +116,21 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+/**
+ * 把仓库根 `presets/*.json` 同步到生成目录，作为 assets 的一部分打进 APK。
+ *
+ * 用 Sync 而不是往 `src/main/assets/` 拷一份：预设只保留一处真相（仓库根，和 docs/03 §7
+ * 的登记表、schema 放一起），改完 JSON 直接生效，不会出现「仓库改了、APK 里还是旧的」。
+ */
+val syncPresets by tasks.registering(Sync::class) {
+    description = "同步仓库根 presets/*.json 到 assets/presets/"
+    group = "build"
+    from(rootProject.file("presets")) {
+        include("*.json")
+        into("presets")
+    }
+    into(layout.buildDirectory.dir("generated/presetAssets"))
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(syncPresets) }
