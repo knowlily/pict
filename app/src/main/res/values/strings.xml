@@ -81,6 +81,8 @@
     <string name="error_meta_write">该格式不支持写入此字段</string>
     <string name="error_meta_verify">输出文件异常，原文件未改动</string>
     <string name="error_field_invalid">输入格式不正确</string>
+    <string name="error_backup_missing">没有可用的备份</string>
+    <string name="error_backup_expired">备份已超过保留期，无法撤销</string>
     <string name="error_oom">图片过大，请降低尺寸上限</string>
     <string name="error_cancel">已取消</string>
     <string name="error_unknown">请导出日志反馈</string>

@@ -26,6 +26,8 @@ enum class PictError(
     META_WRITE("E-META-WRITE", R.string.error_meta_write),
     META_VERIFY("E-META-VERIFY", R.string.error_meta_verify),
     FIELD_INVALID("E-FIELD-INVALID", R.string.error_field_invalid),
+    BACKUP_MISSING("E-BACKUP-MISSING", R.string.error_backup_missing),
+    BACKUP_EXPIRED("E-BACKUP-EXPIRED", R.string.error_backup_expired),
     OOM("E-OOM", R.string.error_oom),
     CANCEL("E-CANCEL", R.string.error_cancel),
     UNKNOWN("E-UNKNOWN", R.string.error_unknown),
