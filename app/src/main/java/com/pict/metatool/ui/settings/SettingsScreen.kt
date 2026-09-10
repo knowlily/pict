@@ -35,6 +35,7 @@ import com.pict.metatool.domain.settings.NavBarStyle
 import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
 import com.pict.metatool.ui.edit.ExportNaming
+import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.theme.PictSpacing
 import kotlinx.coroutines.launch
 
@@ -80,7 +81,9 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = PictSpacing.screenHorizontal, vertical = PictSpacing.sm),
+                .padding(horizontal = PictSpacing.screenHorizontal, vertical = PictSpacing.sm)
+                // 悬浮底栏浮在内容上，页面自己留出被玻璃压住的那段（贴底样式这里是 0）
+                .padding(bottom = LocalBottomBarInset.current + PictSpacing.aboveBottomBar),
             verticalArrangement = Arrangement.spacedBy(PictSpacing.xl),
         ) {
             SettingsSection(title = stringResource(R.string.settings_section_output)) {
@@ -149,20 +152,16 @@ fun SettingsScreen(
                     onSelect = { style -> onUpdate { it.copy(navBarStyle = style) } },
                 )
 
-                NavItem.entries.forEach { item ->
-                    // 「设置」是必需项：关掉它，设置页本身就没有入口了（真机点验踩到过）
-                    val required = item in AppSettings.REQUIRED_NAV_ITEMS
+                // 只列可选入口：必需项不出现——给一个关不掉的开关，比没有这个开关更让人困惑。
+                AppSettings.OPTIONAL_NAV_ITEMS.forEach { item ->
                     SettingsSwitchRow(
                         title = navItemLabels.getValue(item),
-                        subtitle = when {
-                            item == NavItem.entries.first() ->
-                                stringResource(R.string.settings_navbar_items_hint)
-
-                            required -> stringResource(R.string.settings_navbar_item_required)
-                            else -> null
+                        subtitle = if (item == AppSettings.OPTIONAL_NAV_ITEMS.first()) {
+                            stringResource(R.string.settings_navbar_items_hint)
+                        } else {
+                            null
                         },
                         checked = item in settings.navItems,
-                        enabled = !required,
                         onCheckedChange = { on ->
                             val next = if (on) settings.navItems + item else settings.navItems - item
                             if (next.isEmpty()) {

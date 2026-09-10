@@ -183,20 +183,4 @@ private fun JobsRoadmapRow(icon: ImageVector, text: String) {
     }
 }
 
-/** 阶段徽标：把「这是骨架」写在页面上，跟图库空态用同一份文案。 */
-@Composable
-fun StageChip(text: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(percent = 50),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = PictSpacing.md, vertical = PictSpacing.xs),
-        )
-    }
-}
 

@@ -142,4 +142,17 @@ class AppSettingsTest {
             AppSettings(navItems = setOf(NavItem.SETTINGS)).normalized().navItems,
         )
     }
+
+    @Test
+    fun `设置页只列可选入口，必需项不进这一层`() {
+        // 必需项摆上去也只能是个灰掉的开关，干脆不列（真机点验踩到过，见 docs/09 R-21）
+        assertFalse(AppSettings.OPTIONAL_NAV_ITEMS.contains(NavItem.SETTINGS))
+        assertTrue(AppSettings.OPTIONAL_NAV_ITEMS.contains(NavItem.LIBRARY))
+        assertTrue(AppSettings.OPTIONAL_NAV_ITEMS.contains(NavItem.JOBS))
+        // 可选 + 必需 = 全部入口；别漏项，也别重复
+        assertEquals(
+            NavItem.entries.toSet(),
+            (AppSettings.OPTIONAL_NAV_ITEMS + AppSettings.REQUIRED_NAV_ITEMS).toSet(),
+        )
+    }
 }

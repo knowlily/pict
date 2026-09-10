@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.model.ImageItem
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.components.PlaceholderPane
 import com.pict.metatool.ui.theme.PictSpacing
 import com.pict.metatool.ui.theme.PictTheme
@@ -127,7 +128,8 @@ fun LibraryScreen(
                         start = PictSpacing.screenHorizontal,
                         end = PictSpacing.screenHorizontal,
                         top = PictSpacing.sm,
-                        bottom = PictSpacing.aboveBottomBar,
+                        // 悬浮底栏浮在内容上：给够底部留白，最后一排缩略图才不会被玻璃压住
+                        bottom = LocalBottomBarInset.current + PictSpacing.aboveBottomBar,
                     ),
                     horizontalArrangement = Arrangement.spacedBy(PictSpacing.sm),
                     verticalArrangement = Arrangement.spacedBy(PictSpacing.md),

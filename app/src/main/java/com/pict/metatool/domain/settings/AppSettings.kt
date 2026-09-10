@@ -177,6 +177,15 @@ data class AppSettings(
         val REQUIRED_NAV_ITEMS: Set<NavItem> = setOf(NavItem.SETTINGS)
 
         /**
+         * 设置页列出来的入口：必需项不出现在这一层。
+         *
+         * 必需项给了开关也关不掉，摆一个灰掉的开关只会让人以为自己那下没生效；干脆不列。
+         * 底栏照旧按 [AppSettings.navItems] 渲染，必需项由 [normalizeNavItems] 兜住。
+         */
+        val OPTIONAL_NAV_ITEMS: List<NavItem> =
+            NavItem.entries.filterNot { it in REQUIRED_NAV_ITEMS }
+
+        /**
          * 规范化底栏入口：按枚举顺序重排、丢掉不认识的项（防 pref 被手改），
          * [REQUIRED_NAV_ITEMS] 里的项无论传什么都保住。
          *

@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.pict.metatool.R
+import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.theme.PictSpacing
 
 /**
@@ -38,7 +39,8 @@ fun JobsScreen(modifier: Modifier = Modifier) {
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = PictSpacing.screenHorizontal, vertical = PictSpacing.sm)
-                .padding(bottom = PictSpacing.aboveBottomBar),
+                // 悬浮底栏浮在内容上，页面自己留出被玻璃压住的那段（贴底样式这里是 0）
+                .padding(bottom = LocalBottomBarInset.current + PictSpacing.aboveBottomBar),
             verticalArrangement = Arrangement.spacedBy(PictSpacing.xl),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -51,15 +53,12 @@ fun JobsScreen(modifier: Modifier = Modifier) {
                 JobsHistoryEmptyCard()
             }
 
-            Column(modifier = Modifier.fillMaxWidth()) {
-                StageChip(text = stringResource(R.string.stage_badge))
-                Text(
-                    text = stringResource(R.string.jobs_stage_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = PictSpacing.md),
-                )
-            }
+            Text(
+                text = stringResource(R.string.jobs_stage_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

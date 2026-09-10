@@ -1,5 +1,6 @@
 package com.pict.metatool.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -8,11 +9,18 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -28,6 +36,8 @@ import com.pict.metatool.ui.library.LibraryScreen
 import com.pict.metatool.ui.navigation.DetailRoute
 import com.pict.metatool.ui.navigation.EditRoute
 import com.pict.metatool.ui.navigation.FloatingNavBar
+import com.pict.metatool.ui.navigation.FloatingNavBarReservedHeight
+import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.settings.SettingsScreen
 
@@ -41,6 +51,10 @@ import com.pict.metatool.ui.settings.SettingsScreen
  * 底部导航的样式与入口都听设置的（docs/06 §2）：[NavBarStyle.FLOATING] 走自绘的
  * [FloatingNavBar]，[NavBarStyle.DOCKED] 走 Material 的 NavigationBar。
  * 入口怎么筛都至少留一项（`AppSettings.normalizeNavItems` 兜的底），这里不做空判断。
+ *
+ * 两种样式的落位也不同：贴底样式仍然占 Scaffold 的 bottomBar 槽，Scaffold 替页面留位；
+ * 悬浮样式是玻璃的，得浮在内容之上、让内容从底下穿过去才有东西可糊，所以它挪到了
+ * 内容外层的一个 Box 里，页面靠 [LocalBottomBarInset] 自己留出被压住的那段高度。
  */
 @Composable
 fun PictApp(
@@ -54,6 +68,7 @@ fun PictApp(
     // 详情页与编辑页都是二级页面，进来就收起底部导航（docs/06 §3.2 / §3.3）。
     val topLevel = currentRoute != DetailRoute.PATTERN && currentRoute != EditRoute.PATTERN
     val destinations = remember(settings.navItems) { PictDestination.visibleItems(settings.navItems) }
+    val floatingBar = topLevel && settings.navBarStyle == NavBarStyle.FLOATING
 
     // 正待着的这一页被设置里关掉了（比如在设置页把「设置」关了）：立刻换到还留着的第一个入口。
     // 不然用户会停在一个底栏里没有任何高亮、也点不回去的页面上。
@@ -77,64 +92,99 @@ fun PictApp(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
-            if (topLevel) {
-                when (settings.navBarStyle) {
-                    NavBarStyle.FLOATING -> FloatingNavBar(
-                        items = destinations,
-                        currentRoute = currentRoute,
-                        onSelect = onSelect,
-                    )
+    // 玻璃底栏要拿「它底下那层内容」当背板去糊，所以内容得先录进一张离屏图层（见 glassBackdrop）。
+    val backdrop = rememberGraphicsLayer()
 
-                    NavBarStyle.DOCKED -> NavigationBar {
-                        destinations.forEach { destination ->
-                            NavigationBarItem(
-                                selected = currentRoute == destination.route,
-                                onClick = { onSelect(destination) },
-                                icon = {
-                                    Icon(
-                                        imageVector = destination.icon,
-                                        contentDescription = stringResource(destination.labelRes),
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassBackdrop(enabled = floatingBar, layer = backdrop),
+        ) {
+            CompositionLocalProvider(
+                LocalBottomBarInset provides if (floatingBar) FloatingNavBarReservedHeight else 0.dp,
+            ) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        // 悬浮样式自己浮在内容上，这里只给贴底样式留位。
+                        if (topLevel && !floatingBar) {
+                            NavigationBar {
+                                destinations.forEach { destination ->
+                                    NavigationBarItem(
+                                        selected = currentRoute == destination.route,
+                                        onClick = { onSelect(destination) },
+                                        icon = {
+                                            Icon(
+                                                imageVector = destination.icon,
+                                                contentDescription = stringResource(destination.labelRes),
+                                            )
+                                        },
+                                        label = { Text(text = stringResource(destination.labelRes)) },
                                     )
-                                },
-                                label = { Text(text = stringResource(destination.labelRes)) },
+                                }
+                            }
+                        }
+                    },
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = PictDestination.Library.route,
+                        modifier = Modifier.padding(innerPadding),
+                    ) {
+                        composable(PictDestination.Library.route) {
+                            LibraryScreen(
+                                columns = settings.gridColumns,
+                                onOpen = { uri -> navController.navigate(DetailRoute.build(uri)) },
+                            )
+                        }
+                        composable(PictDestination.Jobs.route) { JobsScreen() }
+                        composable(PictDestination.Settings.route) {
+                            SettingsScreen(settings = settings, onUpdate = onUpdateSettings)
+                        }
+                        composable(DetailRoute.PATTERN) { entry ->
+                            DetailScreen(
+                                uri = entry.arguments?.getString(DetailRoute.ARG_URI).orEmpty(),
+                                onBack = { navController.popBackStack() },
+                                onEdit = { uri -> navController.navigate(EditRoute.build(uri)) },
+                            )
+                        }
+                        composable(EditRoute.PATTERN) { entry ->
+                            EditScreen(
+                                uri = entry.arguments?.getString(EditRoute.ARG_URI).orEmpty(),
+                                onBack = { navController.popBackStack() },
+                                settings = settings,
                             )
                         }
                     }
                 }
             }
-        },
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = PictDestination.Library.route,
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            composable(PictDestination.Library.route) {
-                LibraryScreen(
-                    columns = settings.gridColumns,
-                    onOpen = { uri -> navController.navigate(DetailRoute.build(uri)) },
-                )
-            }
-            composable(PictDestination.Jobs.route) { JobsScreen() }
-            composable(PictDestination.Settings.route) {
-                SettingsScreen(settings = settings, onUpdate = onUpdateSettings)
-            }
-            composable(DetailRoute.PATTERN) { entry ->
-                DetailScreen(
-                    uri = entry.arguments?.getString(DetailRoute.ARG_URI).orEmpty(),
-                    onBack = { navController.popBackStack() },
-                    onEdit = { uri -> navController.navigate(EditRoute.build(uri)) },
-                )
-            }
-            composable(EditRoute.PATTERN) { entry ->
-                EditScreen(
-                    uri = entry.arguments?.getString(EditRoute.ARG_URI).orEmpty(),
-                    onBack = { navController.popBackStack() },
-                )
-            }
+        }
+
+        if (floatingBar) {
+            FloatingNavBar(
+                items = destinations,
+                currentRoute = currentRoute,
+                onSelect = onSelect,
+                backdrop = backdrop,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
+
+/**
+ * 把这一层内容录进离屏图层，再原样画出来。
+ *
+ * Compose 没法「取某块区域背后的像素」，玻璃底栏想拿底下的内容当背板，只能自己先录一份。
+ * 关掉时（贴底样式、二级页面）完全不录，别白白多一次离屏绘制。
+ */
+private fun Modifier.glassBackdrop(enabled: Boolean, layer: GraphicsLayer): Modifier =
+    if (!enabled) {
+        this
+    } else {
+        drawWithContent {
+            layer.record { this@drawWithContent.drawContent() }
+            drawLayer(layer)
+        }
+    }
