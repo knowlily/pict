@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "id": "location.beijing",
+  "kind": "location",
+  "name": "北京 · 国贸周边 5 km",
+  "description": "以北京国贸（CBD）为圆心、半径 5 km 的圆内均匀随机定位。海拔 25–60 m。",
+  "tags": [
+    "位置",
+    "中国",
+    "北京"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "GPS:GPSVersionID": {
+      "mode": "fixed",
+      "value": "2.3.0.0"
+    },
+    "GPS:GPSLatitudeRef": {
+      "mode": "fixed",
+      "value": "N"
+    },
+    "GPS:GPSLongitudeRef": {
+      "mode": "fixed",
+      "value": "E"
+    },
+    "GPS:GPSLatitude": {
+      "mode": "gps",
+      "lat": 39.909,
+      "lon": 116.457,
+      "radiusMeters": 5000
+    },
+    "GPS:GPSLongitude": {
+      "mode": "gps",
+      "lat": 39.909,
+      "lon": 116.457,
+      "radiusMeters": 5000
+    },
+    "GPS:GPSAltitudeRef": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "GPS:GPSAltitude": {
+      "mode": "range",
+      "min": 25,
+      "max": 60,
+      "precision": 1
+    },
+    "GPS:GPSMapDatum": {
+      "mode": "fixed",
+      "value": "WGS-84"
+    },
+    "GPS:GPSProcessingMethod": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "GPS",
+          "weight": 3
+        },
+        {
+          "value": "NETWORK",
+          "weight": 1
+        }
+      ]
+    },
+    "GPS:GPSHPositioningError": {
+      "mode": "range",
+      "min": 4,
+      "max": 35,
+      "precision": 1
+    },
+    "XMP:photoshop:City": {
+      "mode": "fixed",
+      "value": "Beijing"
+    },
+    "XMP:photoshop:Country": {
+      "mode": "fixed",
+      "value": "China"
+    },
+    "XMP:exif:GPSLatitude": {
+      "mode": "gps",
+      "lat": 39.909,
+      "lon": 116.457,
+      "radiusMeters": 5000
+    },
+    "XMP:exif:GPSLongitude": {
+      "mode": "gps",
+      "lat": 39.909,
+      "lon": 116.457,
+      "radiusMeters": 5000
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "GPS:GPSLatitudeRef",
+        "GPS:GPSLatitude"
+      ]
+    },
+    {
+      "type": "requires",
+      "fields": [
+        "GPS:GPSLongitudeRef",
+        "GPS:GPSLongitude"
+      ]
+    }
+  ]
+}

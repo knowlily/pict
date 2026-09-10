@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "id": "device.gopro-hero12",
+  "kind": "device",
+  "name": "GoPro HERO12 Black",
+  "description": "GoPro HERO12 Black：光圈固定 f/2.5，Software 是固件号（H23.01 系列）。镜头焦距各来源记法不一，这里不写 FocalLength / 等效焦距。",
+  "tags": [
+    "运动相机",
+    "GoPro"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": {
+      "mode": "fixed",
+      "value": "GoPro"
+    },
+    "EXIF:Model": {
+      "mode": "fixed",
+      "value": "HERO12 Black"
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "H23.01.02.32.00",
+          "weight": 2,
+          "note": "固件 02.32.00"
+        },
+        {
+          "value": "H23.01.02.30.00",
+          "weight": 1,
+          "note": "固件 02.30.00"
+        },
+        {
+          "value": "H23.01.02.20.00",
+          "weight": 1,
+          "note": "固件 02.20.00"
+        }
+      ]
+    },
+    "EXIF:FNumber": {
+      "mode": "fixed",
+      "value": 2.5
+    },
+    "EXIF:ExposureProgram": {
+      "mode": "fixed",
+      "value": 2
+    },
+    "EXIF:MeteringMode": {
+      "mode": "fixed",
+      "value": 5
+    },
+    "EXIF:WhiteBalance": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ExposureMode": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:SceneCaptureType": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ColorSpace": {
+      "mode": "fixed",
+      "value": 1
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "1/60",
+          "weight": 2
+        },
+        {
+          "value": "1/120",
+          "weight": 2
+        },
+        {
+          "value": "1/240",
+          "weight": 3
+        },
+        {
+          "value": "1/480",
+          "weight": 2
+        },
+        {
+          "value": "1/960",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 100,
+          "weight": 3
+        },
+        {
+          "value": 200,
+          "weight": 3
+        },
+        {
+          "value": 400,
+          "weight": 2
+        },
+        {
+          "value": 800,
+          "weight": 1
+        },
+        {
+          "value": 1600,
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "0/1",
+          "weight": 3
+        },
+        {
+          "value": "-1/3",
+          "weight": 1
+        },
+        {
+          "value": "-2/3",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:Flash": {
+      "mode": "fixed",
+      "value": 16
+    },
+    "XMP:tiff:Make": {
+      "mode": "fixed",
+      "value": "GoPro"
+    },
+    "XMP:tiff:Model": {
+      "mode": "fixed",
+      "value": "HERO12 Black"
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "EXIF:Make",
+        "EXIF:Model"
+      ]
+    },
+    {
+      "type": "clamp",
+      "fields": [
+        "EXIF:FNumber",
+        "EXIF:FocalLength",
+        "EXIF:ISOSpeedRatings"
+      ]
+    }
+  ]
+}

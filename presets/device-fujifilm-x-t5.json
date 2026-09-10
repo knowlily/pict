@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "id": "device.fujifilm-x-t5",
+  "kind": "device",
+  "name": "Fujifilm X-T5",
+  "description": "富士 X-T5：APS-C 画幅，等效焦距按 1.5 倍换算（XF16-55 对应 24-84 mm）；ISO 池从机身基准 125 起。固件串按 Fujifilm 的「Digital Camera X-T5 Verx.xx」记法。",
+  "tags": [
+    "相机",
+    "Fujifilm",
+    "APS-C"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": {
+      "mode": "fixed",
+      "value": "FUJIFILM"
+    },
+    "EXIF:Model": {
+      "mode": "fixed",
+      "value": "X-T5"
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "Adobe Lightroom Classic 13.3 (Windows)",
+          "weight": 2
+        },
+        {
+          "value": "Digital Camera X-T5 Ver1.03",
+          "weight": 2,
+          "note": "机身固件"
+        }
+      ]
+    },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "XF23mmF1.4 R LM WR",
+          "weight": 3
+        },
+        {
+          "value": "XF16-55mmF2.8 R LM WR",
+          "weight": 3
+        },
+        {
+          "value": "XF33mmF1.4 R LM WR",
+          "weight": 2
+        },
+        {
+          "value": "XF56mmF1.2 R",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ExposureProgram": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 3,
+          "weight": 3,
+          "note": "光圈优先"
+        },
+        {
+          "value": 1,
+          "weight": 2,
+          "note": "手动"
+        }
+      ]
+    },
+    "EXIF:MeteringMode": {
+      "mode": "fixed",
+      "value": 5
+    },
+    "EXIF:WhiteBalance": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ExposureMode": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 0,
+          "weight": 2
+        },
+        {
+          "value": 1,
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:SceneCaptureType": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ColorSpace": {
+      "mode": "fixed",
+      "value": 1
+    },
+    "EXIF:Contrast": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:Saturation": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:Sharpness": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:FNumber": {
+      "mode": "range",
+      "min": 1.2,
+      "max": 8.0,
+      "precision": 1
+    },
+    "EXIF:FocalLength": {
+      "mode": "range",
+      "min": 16,
+      "max": 56,
+      "precision": 0
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "range",
+      "min": 24,
+      "max": 84,
+      "precision": 0
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "1/60",
+          "weight": 2
+        },
+        {
+          "value": "1/120",
+          "weight": 3
+        },
+        {
+          "value": "1/250",
+          "weight": 3
+        },
+        {
+          "value": "1/500",
+          "weight": 2
+        },
+        {
+          "value": "1/1000",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 125,
+          "weight": 3
+        },
+        {
+          "value": 200,
+          "weight": 3
+        },
+        {
+          "value": 400,
+          "weight": 2
+        },
+        {
+          "value": 800,
+          "weight": 2
+        },
+        {
+          "value": 1600,
+          "weight": 1
+        },
+        {
+          "value": 3200,
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "0/1",
+          "weight": 4
+        },
+        {
+          "value": "-1/3",
+          "weight": 2
+        },
+        {
+          "value": "1/3",
+          "weight": 2
+        }
+      ]
+    },
+    "EXIF:Flash": {
+      "mode": "fixed",
+      "value": 16
+    },
+    "XMP:tiff:Make": {
+      "mode": "fixed",
+      "value": "FUJIFILM"
+    },
+    "XMP:tiff:Model": {
+      "mode": "fixed",
+      "value": "X-T5"
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "EXIF:Make",
+        "EXIF:Model"
+      ]
+    },
+    {
+      "type": "clamp",
+      "fields": [
+        "EXIF:FNumber",
+        "EXIF:FocalLength",
+        "EXIF:ISOSpeedRatings"
+      ]
+    }
+  ]
+}

@@ -74,6 +74,8 @@
     <string name="edit_back">返回</string>
     <string name="edit_apply">应用 %1$d 项</string>
     <string name="edit_apply_idle">应用</string>
+    <string name="edit_export">导出</string>
+    <string name="edit_export_running">导出中…</string>
     <string name="edit_preview_open">预览改动</string>
     <string name="edit_preview_title">改动预览</string>
     <string name="edit_preview_count">共 %1$d 项</string>

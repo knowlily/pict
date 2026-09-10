@@ -69,6 +69,8 @@ data class EditUiState(
     val draft: EditDraft = EditDraft.EMPTY,
     val isLoading: Boolean = false,
     val isApplying: Boolean = false,
+    /** 正在导出副本（写入目标文件期间禁用重复触发）。 */
+    val isExporting: Boolean = false,
     val error: PictError? = null,
     val errorDetail: String? = null,
     val query: String = "",
@@ -111,6 +113,14 @@ data class EditUiState(
     val isDirty: Boolean get() = dirtyCount > 0
 
     val canApply: Boolean get() = isDirty && !isApplying && !isLoading && canWriteInPlace
+
+    /**
+     * 能不能导出副本。
+     *
+     * 刻意不看 [canWriteInPlace]：导出写的是**副本**，源文件一个字都不动，
+     * 所以 HEIF 这类不能原地写的格式照样能导（只是那份副本不带改动，写入器拦下时会如实说）。
+     */
+    val canExport: Boolean get() = metadata != null && !isLoading && !isApplying && !isExporting
 
     /** 草稿折叠结果；预览与落盘共用同一份折叠。 */
     val planned: PictResult<EditOutcome>?
@@ -227,6 +237,7 @@ data class EditUiState(
     fun withLoading(uri: String): EditUiState = copy(
         uri = uri,
         isLoading = true,
+        isExporting = false,
         error = null,
         errorDetail = null,
         metadata = null,
@@ -254,6 +265,7 @@ data class EditUiState(
     fun withError(error: PictError, detail: String? = null): EditUiState = copy(
         isLoading = false,
         isApplying = false,
+        isExporting = false,
         error = error,
         errorDetail = detail,
     )
@@ -404,6 +416,16 @@ data class EditUiState(
         showPreview = false,
         verifySummary = verifySummary,
     )
+
+    /**
+     * 导出开始 / 结束。
+     *
+     * 与「应用」的一处关键差别：导出结束**不清草稿**。导出的那份副本不是当前编辑对象，
+     * 源文件还没保存，草稿得留着让用户接着决定「应用」还是「放弃」。
+     */
+    fun withExporting(): EditUiState = copy(isExporting = true, message = null)
+
+    fun withExportFinished(): EditUiState = copy(isExporting = false)
 
     fun withMessage(text: String, isError: Boolean = false): EditUiState =
         copy(message = EditMessage(text, isError))

@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "id": "device.huawei-mate-60",
+  "kind": "device",
+  "name": "Mate 60 Pro",
+  "description": "华为 Mate 60 Pro：机型串为 ALN-AL00 / ALN-AL80（不是营销名）。光圈按三摄文档值；华为 EXIF 一般不写镜头型号与等效焦距，这里也不写。",
+  "tags": [
+    "手机",
+    "华为",
+    "HarmonyOS"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": {
+      "mode": "fixed",
+      "value": "HUAWEI"
+    },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "ALN-AL00",
+          "weight": 4,
+          "note": "国行"
+        },
+        {
+          "value": "ALN-AL80",
+          "weight": 2
+        }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "4.0.0.126",
+          "weight": 1,
+          "note": "HarmonyOS 版本号"
+        }
+      ]
+    },
+    "EXIF:ExposureProgram": {
+      "mode": "fixed",
+      "value": 2
+    },
+    "EXIF:MeteringMode": {
+      "mode": "fixed",
+      "value": 5
+    },
+    "EXIF:WhiteBalance": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ExposureMode": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:SceneCaptureType": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ColorSpace": {
+      "mode": "fixed",
+      "value": 1
+    },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 1.4,
+          "weight": 5,
+          "note": "主摄，可变光圈"
+        },
+        {
+          "value": 2.2,
+          "weight": 2,
+          "note": "超广角"
+        },
+        {
+          "value": 3.4,
+          "weight": 2,
+          "note": "长焦"
+        }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "1/60",
+          "weight": 2
+        },
+        {
+          "value": "1/120",
+          "weight": 3
+        },
+        {
+          "value": "1/250",
+          "weight": 3
+        },
+        {
+          "value": "1/500",
+          "weight": 2
+        },
+        {
+          "value": "1/1000",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 50,
+          "weight": 3
+        },
+        {
+          "value": 100,
+          "weight": 3
+        },
+        {
+          "value": 200,
+          "weight": 2
+        },
+        {
+          "value": 400,
+          "weight": 1
+        },
+        {
+          "value": 800,
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "0/1",
+          "weight": 4
+        },
+        {
+          "value": "-1/3",
+          "weight": 1
+        },
+        {
+          "value": "1/3",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:Flash": {
+      "mode": "fixed",
+      "value": 16
+    },
+    "XMP:tiff:Make": {
+      "mode": "fixed",
+      "value": "HUAWEI"
+    },
+    "XMP:tiff:Model": {
+      "mode": "fixed",
+      "value": "ALN-AL00"
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "EXIF:Make",
+        "EXIF:Model"
+      ]
+    },
+    {
+      "type": "clamp",
+      "fields": [
+        "EXIF:FNumber",
+        "EXIF:FocalLength",
+        "EXIF:ISOSpeedRatings"
+      ]
+    }
+  ]
+}

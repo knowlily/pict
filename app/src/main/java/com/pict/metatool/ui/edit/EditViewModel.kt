@@ -18,6 +18,7 @@ import com.pict.metatool.data.metadata.PixelHasher
 import com.pict.metatool.data.metadata.exif.ExifMetadataStore
 import com.pict.metatool.data.metadata.imaging.CommonsImagingStore
 import com.pict.metatool.data.preset.AssetPresetCatalog
+import com.pict.metatool.data.source.ImageCopy
 import com.pict.metatool.data.source.ImageSource
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
@@ -278,6 +279,125 @@ class EditViewModel(
                 text = if (failed) "$verifyText（输出文件可能有问题）" else "${written.summary()}；$verifyText",
                 isError = failed,
             )
+        }
+    }
+
+    /**
+     * 导出：把「源文件 + 当前草稿」写成 [destination] 这份新文件（docs/06 §3.3「导出」）。
+     *
+     * 与 [apply] 的关系：折叠用的是同一份草稿、同一个执行器，差别只有写谁、写完留什么——
+     * - 写的是**副本**：源文件全程只读，导出要先复制字节（[ImageCopy]），再在副本上写元数据；
+     * - 副本落在用户选的目录/Provider 上，所以折叠基准与写入器都按**副本自己的读数**重新算一遍；
+     * - 写完**不清草稿**：副本不是当前编辑对象，源文件还没保存。
+     *
+     * 副本这种格式吃不下元数据（HEIF 之类）时不算失败：复制已经完成，
+     * 如实说「副本内容与源一致」比先复制一半再报错好。
+     */
+    fun exportTo(destination: Uri) {
+        val current = _state.value
+        if (!current.canExport) return
+        val info = current.source ?: return
+        val before = current.metadata ?: return
+        val uri = current.uri?.let(Uri::parse) ?: return
+        val source = ImageSource(uri = uri, info = info)
+
+        // 先干跑：草稿本身不合法就别去建文件，省得在用户目录里留个半成品
+        current.planned?.failureOrNull()?.let { failure ->
+            _state.update {
+                it.withMessage("改动没通过校验：${failure.detail ?: failure.code}", isError = true)
+            }
+            return
+        }
+
+        _state.update { it.withExporting() }
+        viewModelScope.launch {
+            try {
+                val copied = withContext(Dispatchers.IO) {
+                    ImageCopy.copy(resolver, source.uri, destination)
+                }
+                if (copied is PictResult.Failure) {
+                    _state.update {
+                        it.withExportFinished()
+                            .withError(copied.error, copied.failure.detail)
+                            .withMessage("导出失败：${copied.failure.detail ?: copied.error.code}", isError = true)
+                    }
+                    return@launch
+                }
+
+                val copy = withContext(Dispatchers.IO) { ImageSource.from(resolver, destination) }
+                val writer = writers.firstOrNull { it.canWrite(copy.info) }
+                if (writer == null) {
+                    _state.update {
+                        it.withExportFinished().withMessage(
+                            "已导出副本「${copy.displayName}」：${copy.info.format.label} 不支持写元数据，副本与源一致",
+                        )
+                    }
+                    return@launch
+                }
+
+                val copyBefore = withContext(Dispatchers.IO) { reader.read(resolver, copy) }
+                    .getOrNull()?.set ?: before
+                val target = when (
+                    val folded = EditPlanExecutor.execute(current.draft.toPlan(dryRun = true), copyBefore)
+                ) {
+                    is PictResult.Success -> folded.value.target
+                    is PictResult.Failure -> {
+                        _state.update {
+                            it.withExportFinished().withMessage(
+                                "副本已导出，但改动没写进去：${folded.failure.detail ?: folded.code}",
+                                isError = true,
+                            )
+                        }
+                        return@launch
+                    }
+                }
+
+                val fingerprintBefore = withContext(Dispatchers.IO) { hasher.hashOf(resolver, copy.uri) }
+                    .getOrNull()
+                val written = withContext(Dispatchers.IO) { writer.write(resolver, copy, target) }
+                when (written) {
+                    is PictResult.Failure -> _state.update {
+                        it.withExportFinished()
+                            .withError(written.error, written.failure.detail)
+                            .withMessage(
+                                "副本已导出，但写入失败：${written.failure.detail ?: written.error.code}",
+                                isError = true,
+                            )
+                    }
+
+                    is PictResult.Success -> {
+                        val after = withContext(Dispatchers.IO) { reader.read(resolver, copy) }.getOrNull()
+                        val fingerprintAfter = withContext(Dispatchers.IO) { hasher.hashOf(resolver, copy.uri) }
+                            .getOrNull()
+                        val report = after?.let {
+                            MetadataVerifier.compare(
+                                before = copyBefore,
+                                target = target,
+                                after = it.set,
+                                fingerprintBefore = fingerprintBefore,
+                                fingerprintAfter = fingerprintAfter,
+                            )
+                        }
+                        val verifyText = report?.summary() ?: "读回失败，无法校验"
+                        val failed = report?.isLossless == false
+                        _state.update {
+                            it.withExportFinished().withMessage(
+                                text = "已导出「${copy.displayName}」：${written.value.summary()}；$verifyText" +
+                                    if (failed) "（输出文件可能有问题）" else "",
+                                isError = failed,
+                            )
+                        }
+                    }
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (t: Throwable) {
+                _state.update {
+                    it.withExportFinished()
+                        .withError(PictError.UNKNOWN, t.message)
+                        .withMessage("导出中断：${t.message}", isError = true)
+                }
+            }
         }
     }
 

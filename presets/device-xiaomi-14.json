@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "id": "device.xiaomi-14",
+  "kind": "device",
+  "name": "Xiaomi 14",
+  "description": "小米 14：机型串为 23127PN0CC（国行）/ 23127PN0CG（全球），三摄等效焦距 14 / 23 / 75 mm。HyperOS 版本串各区域不同，这里不写 Software。",
+  "tags": [
+    "手机",
+    "小米",
+    "Android"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": {
+      "mode": "fixed",
+      "value": "Xiaomi"
+    },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "23127PN0CC",
+          "weight": 4,
+          "note": "国行"
+        },
+        {
+          "value": "23127PN0CG",
+          "weight": 2,
+          "note": "全球版"
+        }
+      ]
+    },
+    "EXIF:ExposureProgram": {
+      "mode": "fixed",
+      "value": 2
+    },
+    "EXIF:MeteringMode": {
+      "mode": "fixed",
+      "value": 5
+    },
+    "EXIF:WhiteBalance": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ExposureMode": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:SceneCaptureType": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "EXIF:ColorSpace": {
+      "mode": "fixed",
+      "value": 1
+    },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 1.6,
+          "weight": 5,
+          "note": "主摄"
+        },
+        {
+          "value": 2.0,
+          "weight": 2,
+          "note": "长焦"
+        },
+        {
+          "value": 2.2,
+          "weight": 2,
+          "note": "超广角"
+        }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 23,
+          "weight": 5,
+          "note": "主摄"
+        },
+        {
+          "value": 75,
+          "weight": 2,
+          "note": "长焦"
+        },
+        {
+          "value": 14,
+          "weight": 2,
+          "note": "超广角"
+        }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "1/60",
+          "weight": 2
+        },
+        {
+          "value": "1/120",
+          "weight": 3
+        },
+        {
+          "value": "1/250",
+          "weight": 3
+        },
+        {
+          "value": "1/500",
+          "weight": 2
+        },
+        {
+          "value": "1/1000",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": 50,
+          "weight": 3
+        },
+        {
+          "value": 100,
+          "weight": 3
+        },
+        {
+          "value": 200,
+          "weight": 2
+        },
+        {
+          "value": 400,
+          "weight": 1
+        },
+        {
+          "value": 800,
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "0/1",
+          "weight": 4
+        },
+        {
+          "value": "-1/3",
+          "weight": 1
+        },
+        {
+          "value": "1/3",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:Flash": {
+      "mode": "fixed",
+      "value": 16
+    },
+    "XMP:tiff:Make": {
+      "mode": "fixed",
+      "value": "Xiaomi"
+    },
+    "XMP:tiff:Model": {
+      "mode": "fixed",
+      "value": "23127PN0CC"
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "EXIF:Make",
+        "EXIF:Model"
+      ]
+    },
+    {
+      "type": "clamp",
+      "fields": [
+        "EXIF:FNumber",
+        "EXIF:FocalLength",
+        "EXIF:ISOSpeedRatings"
+      ]
+    }
+  ]
+}

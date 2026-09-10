@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "id": "location.tokyo",
+  "kind": "location",
+  "name": "东京 · 涩谷周边 3 km",
+  "description": "以东京涩谷站为圆心、半径 3 km 的圆内均匀随机定位。海拔 10–45 m。",
+  "tags": [
+    "位置",
+    "日本",
+    "东京"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "GPS:GPSVersionID": {
+      "mode": "fixed",
+      "value": "2.3.0.0"
+    },
+    "GPS:GPSLatitudeRef": {
+      "mode": "fixed",
+      "value": "N"
+    },
+    "GPS:GPSLongitudeRef": {
+      "mode": "fixed",
+      "value": "E"
+    },
+    "GPS:GPSLatitude": {
+      "mode": "gps",
+      "lat": 35.658,
+      "lon": 139.7016,
+      "radiusMeters": 3000
+    },
+    "GPS:GPSLongitude": {
+      "mode": "gps",
+      "lat": 35.658,
+      "lon": 139.7016,
+      "radiusMeters": 3000
+    },
+    "GPS:GPSAltitudeRef": {
+      "mode": "fixed",
+      "value": 0
+    },
+    "GPS:GPSAltitude": {
+      "mode": "range",
+      "min": 10,
+      "max": 45,
+      "precision": 1
+    },
+    "GPS:GPSMapDatum": {
+      "mode": "fixed",
+      "value": "WGS-84"
+    },
+    "GPS:GPSProcessingMethod": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "GPS",
+          "weight": 3
+        },
+        {
+          "value": "NETWORK",
+          "weight": 1
+        }
+      ]
+    },
+    "GPS:GPSHPositioningError": {
+      "mode": "range",
+      "min": 4,
+      "max": 35,
+      "precision": 1
+    },
+    "XMP:photoshop:City": {
+      "mode": "fixed",
+      "value": "Tokyo"
+    },
+    "XMP:photoshop:Country": {
+      "mode": "fixed",
+      "value": "Japan"
+    },
+    "XMP:exif:GPSLatitude": {
+      "mode": "gps",
+      "lat": 35.658,
+      "lon": 139.7016,
+      "radiusMeters": 3000
+    },
+    "XMP:exif:GPSLongitude": {
+      "mode": "gps",
+      "lat": 35.658,
+      "lon": 139.7016,
+      "radiusMeters": 3000
+    }
+  },
+  "constraints": [
+    {
+      "type": "requires",
+      "fields": [
+        "GPS:GPSLatitudeRef",
+        "GPS:GPSLatitude"
+      ]
+    },
+    {
+      "type": "requires",
+      "fields": [
+        "GPS:GPSLongitudeRef",
+        "GPS:GPSLongitude"
+      ]
+    }
+  ]
+}

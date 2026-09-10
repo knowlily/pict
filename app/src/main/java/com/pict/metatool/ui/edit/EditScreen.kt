@@ -1,6 +1,8 @@
 package com.pict.metatool.ui.edit
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -84,6 +86,13 @@ fun EditScreen(
         state.showPresets || state.showRandomFill || state.showAddField
     BackHandler(enabled = !sheetOpen) { leave() }
 
+    // 导出走 SAF 的「新建文档」：MIME 跟源文件走，默认文件名 = 原名 + -edited（ExportNaming）。
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(
+            state.source?.mimeType?.takeIf { it.isNotBlank() } ?: "image/*",
+        ),
+    ) { target -> target?.let(viewModel::exportTo) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -101,6 +110,16 @@ fun EditScreen(
                         Icon(
                             imageVector = Icons.Filled.Edit,
                             contentDescription = stringResource(R.string.edit_preview_open),
+                        )
+                    }
+                    TextButton(
+                        onClick = { exportLauncher.launch(ExportNaming.suggest(state.fileName)) },
+                        enabled = state.canExport,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (state.isExporting) R.string.edit_export_running else R.string.edit_export,
+                            ),
                         )
                     }
                     Button(

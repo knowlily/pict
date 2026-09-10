@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "id": "time.2024",
+  "kind": "time",
+  "name": "2024 全年",
+  "description": "2024-01-01 至 2024-12-31 之间随机拍摄时间，带白天偏好的小时权重。",
+  "tags": [
+    "时间"
+  ],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:DateTimeOriginal": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2024-12-31T23:59:59",
+      "hourWeights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        9,
+        9,
+        8,
+        8,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+        0,
+        0
+      ]
+    },
+    "EXIF:DateTimeDigitized": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2024-12-31T23:59:59",
+      "hourWeights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        9,
+        9,
+        8,
+        8,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+        0,
+        0
+      ]
+    },
+    "XMP:xmp:CreateDate": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2024-12-31T23:59:59",
+      "hourWeights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        9,
+        9,
+        8,
+        8,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+        0,
+        0
+      ]
+    },
+    "XMP:xmp:ModifyDate": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2024-12-31T23:59:59",
+      "hourWeights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        9,
+        9,
+        8,
+        8,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+        0,
+        0
+      ]
+    },
+    "EXIF:OffsetTimeOriginal": {
+      "mode": "fixed",
+      "value": "+08:00"
+    },
+    "EXIF:OffsetTimeDigitized": {
+      "mode": "fixed",
+      "value": "+08:00"
+    },
+    "EXIF:SubSecTimeOriginal": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "123",
+          "weight": 2
+        },
+        {
+          "value": "456",
+          "weight": 2
+        },
+        {
+          "value": "789",
+          "weight": 1
+        }
+      ]
+    },
+    "EXIF:SubSecTimeDigitized": {
+      "mode": "pool",
+      "pool": [
+        {
+          "value": "123",
+          "weight": 2
+        },
+        {
+          "value": "456",
+          "weight": 2
+        },
+        {
+          "value": "789",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "type": "datetimeOrder",
+      "fields": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:DateTimeDigitized",
+        "XMP:xmp:ModifyDate"
+      ]
+    }
+  ]
+}
