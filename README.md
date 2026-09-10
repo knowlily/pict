@@ -98,9 +98,14 @@ pict/
 
 ## 下一步
 
-1. 真机手工验收编辑链路：详情页 →「编辑元数据」→ 改一项 → 应用 → 回详情页看新值与 diff。
-2. 写通道缺口：[docs/09](docs/09-风险清单与决策记录.md) R-16（缩略图）已修并加了常驻断言；R-17（`GPSVersionID`）
-   是上游 commons-imaging 读不到 tag 0，V1 记作已知限制（要补得自己解析原始 GPS IFD 字节）。
+1. 编辑链路的真机验收已在 MuMu（Android 15）跑通一轮：导入 → 详情 →「编辑元数据」→ 改一项 → 应用 →
+   原文件落地，缩略图逐字节不变（过程与证据见 [docs/08](docs/08-测试与验收计划.md) §10）。
+2. 写通道缺口（[docs/09](docs/09-风险清单与决策记录.md)）：R-16（缩略图）已修并加了常驻断言；R-17（`GPSVersionID`）
+   是上游 commons-imaging 读不到 tag 0，只在 TIFF 通道触发，V1 记作已知限制；R-18 更要紧——金标准只跑了
+   `CommonsImagingStore`，**生产 JPEG 走的 `ExifMetadataStore`（androidx ExifInterface）零覆盖**，真机实测
+   会把 `ComponentsConfiguration` 写成 `63 63 63 0`、丢 `InteropVersion`、多出 13 个标签，得先把金标准的写
+   通道改成与生产一致、把偏差钉住，再谈 P2 收口。R-19 是校验器的盲区：读侧给了源文件没有的默认值，
+   写进文件后前后一比对还算「匹配」。
 3. 每个任务完成后提交一次 git；协作约定与踩坑见 [AGENTS.md](AGENTS.md)。
 
 ## 金标准怎么跑
