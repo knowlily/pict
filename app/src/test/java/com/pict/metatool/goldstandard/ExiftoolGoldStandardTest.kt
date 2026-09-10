@@ -151,7 +151,8 @@ class ExiftoolGoldStandardTest {
             plan = EditPlan(listOf(EditOperation.ClearTargets(setOf(ClearTarget.GPS)))),
             expectation = { source ->
                 // GPSVersionID 是号令字段，不在 ClearGroups 的清除口径里；
-                // 它现在会因为「GPS IFD 重建」而丢 —— 那是 defaultGaps 里的缺口②，不是这里要清的
+                // 它会因为上游库解析不到 GPS 目录的 tag 0 而丢 —— 那是 defaultGaps 里的缺口，
+                // 不是这里要清的（见 docs/09 R-17）
                 goneWhere(source, source.keys.filter { it.startsWith("GPS:") }.toSet() - "GPS:GPSVersionID")
             },
         ),
@@ -232,6 +233,16 @@ class ExiftoolGoldStandardTest {
             )
         }
 
+        // 1b) 缩略图字节不动：R-16 修的正是这里 —— IFD1 的**图**不在 directoryEntries 里
+        // （那里只有 ThumbnailOffset/Length 两个指针），得显式交给输出目录才留得住。
+        thumbnailOf(original, case.format)?.let { want ->
+            assertArrayEquals(
+                "IFD1 缩略图必须逐字节不变（R-16：只改文本字段也不能把缩略图弄丢/重编码）",
+                want,
+                thumbnailOf(edited, case.format),
+            )
+        }
+
         // 2) 由 exiftool 独立读回
         val source = exiftoolDump(srcFile)
         val actual = exiftoolDump(outFile)
@@ -291,13 +302,12 @@ class ExiftoolGoldStandardTest {
      * 每条都必须说清机制；修好之后这里会立刻失败，逼着删条目并更新 `docs/08` 的记录。
      */
     private fun defaultGaps(format: ImageFormatHint, source: Map<String, String>): Set<String> = buildSet {
-        // 缺口①：JPEG 无损重写按我们的映射表重建 IFD1，缩略图整块（字节 + 目录项）被丢掉。
-        // 证据：改文本字段也会触发，文件小 ~1.4–1.7 KB，`exiftool -b -ThumbnailImage` 读出 0 字节。
-        if (format == ImageFormatHint.JPEG) {
-            add("IFD1:ThumbnailImage")
-            add("IFD1:ThumbnailLength")
-        }
-        // 缺口②：GPS IFD 重建时只写映射表里的标签，GPSVersionID 不在其中（JPEG/TIFF 都丢）。
+        // 缺口：commons-imaging 的 GPS 目录解析**不暴露 tag 0（GPSVersionID）**，
+        // 写回时输出集里压根没有这个字段，于是重写后就没了（JPEG/TIFF 都丢）。
+        // 读不到就写不回 —— 属于上游库的限制，不是我们的映射表漏了：GPS 目录里其它
+        // 字段（LatRef/Lat/LonRef/Lon…）都能原样 round-trip，只有 tag 0 例外。
+        // 另有极端情况：canon-40d.jpg 的整张 GPS IFD（只有 VersionID 一个字段）
+        // 被解析成 0 条目，那份 GPS 块只能整体丢。见 docs/09 R-17。
         add("GPS:GPSVersionID")
     }.filterTo(linkedSetOf()) { source.containsKey(it) }
 
@@ -382,6 +392,16 @@ class ExiftoolGoldStandardTest {
             ImageFormatHint.TIFF -> store.rewriteTiff(bytes, target, out)
             else -> throw AssertionError("$format 不走本通道")
         }
+    }
+
+    /** 取 IFD1（缩略图 IFD）里内嵌的缩略图字节；样本没缩略图就返回 null。 */
+    private fun thumbnailOf(bytes: ByteArray, format: ImageFormatHint): ByteArray? {
+        val metadata = when (format) {
+            ImageFormatHint.JPEG -> store.exifMetadataOf(bytes)
+            else -> Imaging.getMetadata(bytes) as? TiffImageMetadata
+        } ?: return null
+        val ifd1 = metadata.contents.directories.firstOrNull { it.type == THUMBNAIL_IFD } ?: return null
+        return ifd1.jpegImageData?.data ?: ifd1.tiffImageData?.imageData?.firstOrNull()?.data
     }
 
     // ---- exiftool ----------------------------------------------------------
@@ -489,17 +509,20 @@ class ExiftoolGoldStandardTest {
             },
             Charsets.UTF_8,
         )
-        if (gaps.isNotEmpty()) {
-            File(outDir, "${case.id}.gaps.txt").writeText(
-                buildString {
+        File(outDir, "${case.id}.gaps.txt").writeText(
+            buildString {
+                if (gaps.isEmpty()) {
+                    // 一律写盘：只写非空的话，上一轮遗留的 gaps.txt 会假装现在还缺字段
+                    appendLine("# ${case.id}：写通道没有留不住的字段（本条用例无缺口）")
+                } else {
                     appendLine("# ${case.id}：写通道目前留不住的字段（不是测试将就，是产品缺口）")
                     gaps.sorted().forEach { key ->
                         appendLine("$key\t${source[key]} -> (无)")
                     }
-                },
-                Charsets.UTF_8,
-            )
-        }
+                }
+            },
+            Charsets.UTF_8,
+        )
         File(outDir, "${case.id}.changed.txt").writeText(
             buildString {
                 appendLine("# ${case.id}  样本 ${case.sample}  意图 ${intent.size} 项")
@@ -595,6 +618,9 @@ class ExiftoolGoldStandardTest {
     }
 
     private companion object {
+        /** IFD1（缩略图 IFD）的 directoryType。 */
+        const val THUMBNAIL_IFD = 1
+
         const val MARKER_SOI = 0xD8
         const val MARKER_SOS = 0xDA
         const val MARKER_TEM = 0x01

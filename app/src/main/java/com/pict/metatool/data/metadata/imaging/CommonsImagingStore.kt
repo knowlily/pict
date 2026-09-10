@@ -176,6 +176,11 @@ class CommonsImagingStore : MetadataStore, MetadataWriter {
      * 原 APP1 里已有的字段先整份读进 `TiffOutputSet` 再改，所以没在 [target] 里的字段
      * 不会因为「EXIF 块重新编码」而丢失——这是 `updateExifMetadataLossless` 的语义要求：
      * 它按传入的 set 生成新 APP1，段内没提到的字段就是没有。
+     *
+     * 但「字段」不等于「字节」：IFD1 缩略图的图**不在** `directoryEntries` 里（那里只有
+     * `ThumbnailOffset/Length` 两个指针），必须把 `getJpegImageData()/getTiffImageData()`
+     * 显式交给输出目录，否则写入器无图可写，会把两个指针一并删掉——用户只改一个文本字段，
+     * 缩略图就没了（金标准 R-16）。
      */
     fun rewriteJpeg(original: ByteArray, target: MetadataSet, output: OutputStream): WriteResult {
         val metadata = exifMetadataOf(original)
@@ -209,6 +214,15 @@ class CommonsImagingStore : MetadataStore, MetadataWriter {
             set.addDirectory(dir)
             raw.directoryEntries.forEach { field ->
                 dir.add(TiffOutputField(field.tagInfo, field.fieldType, field.count.toInt(), field.byteArrayValue))
+            }
+            // IFD1 的缩略图**数据**不在 directoryEntries 里（那里只有 ThumbnailOffset/Length 两个指针），
+            // 必须单独交给输出目录：不交，写入器就没有缩略图可写，会把这两个指针一并删掉 ——
+            // 用户哪怕只改一个文本字段，缩略图也会整块消失（金标准 R-16 抓到的就是它）。
+            // 只处理 IFD1：IFD0 的主图像 strip 走无损路径原样搬运（由像素逐字节断言兜住），
+            // 这里再插一手反而会多写一份。
+            if (raw.type == IFD1) {
+                raw.jpegImageData?.let { dir.setJpegImageData(it) }
+                raw.tiffImageData?.let { dir.setTiffImageData(it) }
             }
         }
         return set
