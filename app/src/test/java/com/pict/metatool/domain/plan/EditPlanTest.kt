@@ -113,11 +113,13 @@ class EditPlanTest {
 
     /** 穷举测试：新增操作变体时这个 when 会编译失败，提醒同步测试与执行器。 */
     @Test
-    fun `八种操作都能被穷举`() {
+    fun `十种操作都能被穷举`() {
         val ops = listOf(
             EditOperation.SetField(makeKey, TagValue.Text("Pict")),
             EditOperation.ClearField(makeKey),
             EditOperation.ClearGroup(FieldGroup.XMP),
+            EditOperation.ClearTargets(setOf(ClearTarget.GPS, ClearTarget.THUMBNAIL)),
+            EditOperation.ClearAll(),
             EditOperation.TimeShift(1L),
             EditOperation.SetGps(31.2304, 121.4737),
             EditOperation.JitterGps(500.0, 1L),
@@ -127,7 +129,7 @@ class EditPlanTest {
 
         assertEquals(
             listOf(
-                "setField", "clearField", "clearGroup", "timeShift",
+                "setField", "clearField", "clearGroup", "clearTargets", "clearAll", "timeShift",
                 "setGps", "jitterGps", "randomFill", "applyPreset",
             ),
             ops.map(::label),
@@ -138,6 +140,8 @@ class EditPlanTest {
         is EditOperation.SetField -> "setField"
         is EditOperation.ClearField -> "clearField"
         is EditOperation.ClearGroup -> "clearGroup"
+        is EditOperation.ClearTargets -> "clearTargets"
+        is EditOperation.ClearAll -> "clearAll"
         is EditOperation.TimeShift -> "timeShift"
         is EditOperation.SetGps -> "setGps"
         is EditOperation.JitterGps -> "jitterGps"

@@ -14,14 +14,19 @@ import com.pict.metatool.domain.model.TagKey
  *
  * @param target 折叠后的目标元数据（全量，可直接交给 MetadataWriter）
  * @param changedKeys 与源相比真正变化的键（新增、删除、值不同）；空计划时为 empty
+ * @param segmentClears 字段级折叠表达不了的**段级清除意图**（缩略图 / ICC，T2.9）。
+ *   写通道只按 [target] 重写字段、丢不了段，所以这里显式带出来给写通道消费；
+ *   非空即表示「还有事情要做」，因此计入 [isEmpty]
  */
 data class EditOutcome(
     val target: MetadataSet,
     val changedKeys: Set<TagKey>,
+    val segmentClears: Set<ClearSegment> = emptySet(),
 ) {
 
-    val isEmpty: Boolean get() = changedKeys.isEmpty()
+    val isEmpty: Boolean get() = changedKeys.isEmpty() && segmentClears.isEmpty()
 
+    /** 变化的字段数；段级意图不含在内（它们不是字段）。 */
     val size: Int get() = changedKeys.size
 }
 
@@ -33,6 +38,10 @@ data class EditOutcome(
  * - 空计划不产生 diff；
  * - 纯函数、无副作用，dryRun 与否对折叠结果没有影响（是否落盘由调用方决定）。
  *
+ * 段级清除（缩略图 / ICC，T2.9）在字段 diff 里看不见，单独累计进
+ * [EditOutcome.segmentClears]；写通道尚未消费它，所以它既不会被丢掉也不会被冒充成
+ * 「已经清干净」。
+ *
  * 范围说明：RandomFill（T3.4）、ApplyPreset（Phase 3）依赖尚未实现的外部数据，
  * 这里显式返回失败而不是静默跳过——静默跳过会让用户以为改了。
  * 后续任务落地后把对应分支替换为真正的折叠逻辑。
@@ -41,13 +50,21 @@ object EditPlanExecutor {
 
     fun execute(plan: EditPlan, source: MetadataSet): PictResult<EditOutcome> {
         var current = source
+        val segments = linkedSetOf<ClearSegment>()
         for (operation in plan.operations) {
+            segments += segmentsOf(operation)
             when (val applied = applyOne(current, operation)) {
                 is PictResult.Failure -> return applied
                 is PictResult.Success -> current = applied.value
             }
         }
-        return successOf(EditOutcome(target = current, changedKeys = source.changedKeys(current)))
+        return successOf(
+            EditOutcome(
+                target = current,
+                changedKeys = source.changedKeys(current),
+                segmentClears = segments,
+            ),
+        )
     }
 
     private fun applyOne(set: MetadataSet, operation: EditOperation): PictResult<MetadataSet> =
@@ -55,6 +72,8 @@ object EditPlanExecutor {
             is EditOperation.SetField -> setField(set, operation)
             is EditOperation.ClearField -> successOf(set.without(operation.key))
             is EditOperation.ClearGroup -> successOf(clearGroup(set, operation.group))
+            is EditOperation.ClearTargets -> successOf(ClearGroups.clear(set, operation.targets))
+            is EditOperation.ClearAll -> successOf(ClearGroups.clearAll(set, operation.protectStructural))
             is EditOperation.TimeShift -> TimeShift.apply(set, operation.deltaMillis)
             is EditOperation.SetGps ->
                 GpsEditor.set(set, operation.latitude, operation.longitude, operation.altitudeMeters)
@@ -65,6 +84,14 @@ object EditPlanExecutor {
             is EditOperation.ApplyPreset ->
                 unsupported(operation, "预设应用尚未实现（Phase 3）")
         }
+
+    /** 这一步操作带出的段级清除意图；字段级操作一律为空。 */
+    private fun segmentsOf(operation: EditOperation): Set<ClearSegment> = when (operation) {
+        is EditOperation.ClearTargets -> ClearGroups.segmentsOf(operation.targets)
+        // 整表清空按 FR-16 连缩略图与 ICC 一起丢
+        is EditOperation.ClearAll -> ClearGroups.ALL_SEGMENTS
+        else -> emptySet()
+    }
 
     /**
      * 设置字段：只读字段（如 FILE 组的尺寸、颜色空间）直接拒绝，
@@ -82,8 +109,8 @@ object EditPlanExecutor {
     }
 
     /**
-     * 清空分组：只清 [FieldCatalog] 里登记为该组的键（未登记的厂商自定义键不在此列，
-     * 保护范围与结构字段策略见 T2.9）。
+     * 清空分组：只清 [FieldCatalog] 里登记为该组的键（未登记的厂商自定义键不在此列）。
+     * 按类别清空（含未登记键推断与段级意图）请用 [EditOperation.ClearTargets] / `ClearGroups`。
      */
     private fun clearGroup(set: MetadataSet, group: FieldGroup): MetadataSet {
         val keys: Set<TagKey> = set.inGroup(group).keys

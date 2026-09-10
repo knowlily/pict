@@ -18,7 +18,8 @@ import com.pict.metatool.domain.model.TagValue
  * 记作 `PresetApply`；此处统一采用前者，语义与文档 §4 一致。
  *
  * GPS 编辑操作（[SetGps] / [JitterGps]）由 T2.8 定义，具体语义在 `GpsEditor`；
- * 整表清空（ClearAll）、格式转换（Convert）分别在 T2.9、Phase 4 引入，本任务不定义。
+ * 清空分组与整表清空（[ClearTargets] / [ClearAll]）由 T2.9 定义，语义在 `ClearGroups`；
+ * 格式转换（Convert）属 Phase 4，本任务不定义。
  */
 sealed interface EditOperation {
 
@@ -33,10 +34,26 @@ sealed interface EditOperation {
 
     /**
      * 清除整个分组。
-     * 具体清哪些字段、哪些结构字段必须保护（如 FILE 组）由 T2.9 决定，
-     * 这里只表达「用户想清空这一类」。
+     * 字面语义：清掉 [FieldCatalog] 里登记为该组的键（未登记的厂商自定义键不在此列）。
+     * 「按类别清空」——含未登记键推断与缩略图/ICC 的段级意图——用 [ClearTargets]。
      */
     data class ClearGroup(val group: FieldGroup) : EditOperation
+
+    /**
+     * 按类别清空（FR-17、T2.9）：位置 / 设备信息 / 时间 / MakerNote / 缩略图 / XMP / IPTC / ICC。
+     *
+     * 与 [ClearGroup] 的区别在「一类」的口径：设备信息 = CAMERA 组去掉 MakerNote；
+     * 缩略图与 ICC 没有字段键，只能作为段级意图出现在 `EditOutcome.segmentClears` 里等
+     * 写通道丢段。具体清哪些键见 `ClearGroups`。
+     */
+    data class ClearTargets(val targets: Set<ClearTarget>) : EditOperation
+
+    /**
+     * 整表清空（FR-16、T2.9）：除结构字段与方向/色彩空间外全删，并带上缩略图与 ICC 的段级意图。
+     *
+     * @param protectStructural false = 连结构字段一起删，用于「导出时彻底剥掉元数据」
+     */
+    data class ClearAll(val protectStructural: Boolean = true) : EditOperation
 
     /**
      * 时间整体平移。
