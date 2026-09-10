@@ -17,8 +17,8 @@ import com.pict.metatool.domain.model.TagValue
  * 命名说明：docs/02 §4 把「应用预设」写作 `ApplyPreset`，docs/07 T2.1 的任务表
  * 记作 `PresetApply`；此处统一采用前者，语义与文档 §4 一致。
  *
- * GPS 写入（SetGps/JitterGps）、整表清空（ClearAll）、格式转换（Convert）分别在
- * T2.8、T2.9、Phase 4 引入，本任务不定义。
+ * GPS 编辑操作（[SetGps] / [JitterGps]）由 T2.8 定义，具体语义在 `GpsEditor`；
+ * 整表清空（ClearAll）、格式转换（Convert）分别在 T2.9、Phase 4 引入，本任务不定义。
  */
 sealed interface EditOperation {
 
@@ -51,6 +51,30 @@ sealed interface EditOperation {
      * 因此种子是操作的一部分而非全局配置。
      */
     data class RandomFill(val fields: Set<TagKey>, val seed: Long) : EditOperation
+
+    /**
+     * 写入 GPS 坐标（T2.8）：十进制度，负值即南纬/西经。
+     *
+     * `GPSLatitude/Longitude` 与其 `*Ref` 由 `GpsEditor` 一并写 —— 只改坐标不改 Ref
+     * 会把南纬读成北纬，所以这里不提供「只写 Ref」或「只写坐标」的口子。
+     *
+     * @param altitudeMeters 为 null 表示不改海拔（保留源值）
+     */
+    data class SetGps(
+        val latitude: Double,
+        val longitude: Double,
+        val altitudeMeters: Double? = null,
+    ) : EditOperation
+
+    /**
+     * GPS 就近抖动（T2.8）：在源坐标 [radiusMeters] 米内随机取一点（球面等距近似）。
+     *
+     * [seed] 相同则结果必须逐字段可复现（同 T3.6 口径），因此种子是操作的一部分。
+     */
+    data class JitterGps(
+        val radiusMeters: Double = GpsEditor.DEFAULT_JITTER_METERS,
+        val seed: Long,
+    ) : EditOperation
 
     /**
      * 应用预设。

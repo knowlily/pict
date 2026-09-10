@@ -56,6 +56,10 @@ object EditPlanExecutor {
             is EditOperation.ClearField -> successOf(set.without(operation.key))
             is EditOperation.ClearGroup -> successOf(clearGroup(set, operation.group))
             is EditOperation.TimeShift -> TimeShift.apply(set, operation.deltaMillis)
+            is EditOperation.SetGps ->
+                GpsEditor.set(set, operation.latitude, operation.longitude, operation.altitudeMeters)
+            is EditOperation.JitterGps ->
+                GpsEditor.jitter(set, operation.radiusMeters, operation.seed)
             is EditOperation.RandomFill ->
                 unsupported(operation, "随机填充尚未实现（T3.4）")
             is EditOperation.ApplyPreset ->
