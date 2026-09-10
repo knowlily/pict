@@ -1,6 +1,8 @@
 package com.pict.metatool.goldstandard
 
+import androidx.exifinterface.media.ExifInterface
 import com.pict.metatool.core.result.PictResult
+import com.pict.metatool.data.metadata.exif.ExifMetadataStore
 import com.pict.metatool.data.metadata.imaging.CommonsImagingStore
 import com.pict.metatool.domain.model.ImageFormatHint
 import com.pict.metatool.domain.model.MetadataSet
@@ -17,6 +19,7 @@ import org.apache.commons.imaging.formats.tiff.TiffImageMetadata
 import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -49,6 +52,16 @@ import kotlin.math.abs
  *   「该消失哪些键」直接由源文件里真实存在的键推出来）。
  * 后者是为了让断言不可能空转：清除用例会先要求该键在源文件里存在，再去要求它消失。
  *
+ * 本类跑**两条写通道**（见 [Channel]）：
+ * - [Channel.COMMONS]——commons-imaging 的 TIFF/JPEG 无损重写；
+ * - [Channel.PROD]——生产真用的 [ExifMetadataStore]（JPEG/PNG/WebP 都走它）。
+ *   `ExifInterface.setAttribute` 内部用 `android.util.Pair` 传值，而 mockable android.jar 里那个
+ *   Pair 的构造器是空壳（字段恒为 null），所以本通道先要靠 `src/test/java/android/util/Pair.java`
+ *   这个测试替身才能在 JVM 里跑起来——替身只补「构造器真的赋值」，语义与真机一致。
+ *
+ * 两条通道各跑各的产物，互不覆盖（PROD 的产物带 `.prod.` 中缀）；期望值口径完全相同，
+ * 通道自己的已知偏差由 [prodDeviations] 逐条钉住，不许用白名单糊过去。
+ *
  * 产物落在 `app/build/goldstandard/out/`：改好的图、exiftool 的 JSON 转储、
  * 期望清单 `*.checks.tsv`、实际改动清单 `*.changed.txt`。`tools/verify-with-exiftool.sh`
  * 会再拿 exiftool 把 `*.checks.tsv` 逐条对一遍（脚本侧的独立复核），并打印这些文件。
@@ -57,6 +70,22 @@ class ExiftoolGoldStandardTest {
 
     private val store = CommonsImagingStore()
 
+    /** 生产真用的写通道：JPEG/PNG/WebP 都走它（docs/02 §5 的路由表）。 */
+    private val prodStore = ExifMetadataStore()
+
+    /**
+     * 写通道。同一个用例两条通道各跑一遍，产物用中缀区分，互不覆盖。
+     *
+     * [PROD] 能跑在 JVM 上不是理所当然：`ExifInterface.setAttribute` 依赖 `android.util.Pair`，
+     * 而 AGP 的 mockable android.jar 里那个 Pair 是空壳（构造器不写字段），落了盘就会 NPE。
+     * 测试源集里的 `app/src/test/java/android/util/Pair.java` 就是补这一刀的。
+     */
+    private enum class Channel(val label: String, val infix: String) {
+        COMMONS("commons-imaging", ""),
+        PROD("ExifInterface（生产通道）", "prod."),
+    }
+
+    /** 打开单测的 goldstandard 产物目录。 */
     private val outDir: File = File("build/goldstandard/out").apply { mkdirs() }
 
     @Before
@@ -200,10 +229,21 @@ class ExiftoolGoldStandardTest {
 
     // ---- 用例执行 -----------------------------------------------------------
 
-    private fun runCase(case: GoldCase) {
+    private fun runCase(
+        case: GoldCase,
+        channel: Channel = Channel.COMMONS,
+        /** 通道已知偏差必须一条不少地出现：写通道行为一变就报错，而不是悄悄放宽。 */
+        strictDeviations: Boolean = false,
+    ) {
         val original = sample(case.sample)
         val info = SourceInfo(case.sample, case.mime, original.size.toLong(), case.format)
-        val current = read(original, info)
+        if (channel == Channel.PROD) {
+            assertTrue(
+                "生产通道应当认领 ${case.format.label}，否则这条用例根本没跑到它（docs/02 §5）",
+                prodStore.canWrite(info),
+            )
+        }
+        val current = readFor(channel, original, info)
 
         val outcome = when (val folded = EditPlanExecutor.execute(case.plan, current)) {
             is PictResult.Success -> folded.value
@@ -214,9 +254,17 @@ class ExiftoolGoldStandardTest {
             outcome.changedKeys.isNotEmpty() || outcome.segmentClears.isNotEmpty(),
         )
 
-        val edited = ByteArrayOutputStream().also { write(original, outcome.target, it, case.format) }.toByteArray()
-        val srcFile = File(outDir, "${case.id}.src.${case.format.extensions.first()}").apply { writeBytes(original) }
-        val outFile = File(outDir, "${case.id}.${case.format.extensions.first()}").apply { writeBytes(edited) }
+        val ext = case.format.extensions.first()
+        val edited = when (channel) {
+            Channel.COMMONS -> ByteArrayOutputStream()
+                .also { write(original, outcome.target, it, case.format) }
+                .toByteArray()
+
+            // 生产通道：写进临时文件再读回来。文件留在产物目录里，崩了能直接验尸
+            Channel.PROD -> writeProd(case, original, outcome.target)
+        }
+        val srcFile = artifact(case, channel, "src.$ext").apply { writeBytes(original) }
+        val outFile = artifact(case, channel, ext).apply { writeBytes(edited) }
 
         // 1) 像素不动：无损通道必须把图像数据原样搬运
         when (case.format) {
@@ -276,25 +324,192 @@ class ExiftoolGoldStandardTest {
         }
 
         // 3) 已确认的缺口：写通道目前留不住这些字段，逐个钉住（详见 KNOWN_GAPS）
-        val gaps = defaultGaps(case.format, source)
+        val gaps = gapsFor(channel, case.format, source)
         gaps.forEach { key ->
             assertNull("$key 本该被保留，现在却丢了；缺口清单要跟着改（见 KNOWN_GAPS）", actual[key])
             assertNotNull("$key 在源文件里就不存在，缺口清单对它没意义", source[key])
         }
 
-        // 4) 改到的字段只能落在意图内（意图 = 新值 + 该消失的键 + 已确认缺口）
+        // 4) 改到的字段只能落在意图内（意图 = 新值 + 该消失的键 + 已确认缺口 + 通道已知偏差）
+        val deviations = deviationsOf(channel, case, source)
         val intent = expect.values.keys + expect.gone + gaps
         val changed = changedKeys(source, actual)
-        val allowed = allowlist(changed)
+        val allowed = allowlist(changed) + deviations.flatMap { it.keys }
         val unexpected = (changed - intent - allowed).sorted()
-        report(case, srcFile, outFile, source, actual, changed, intent, gaps, allowed, expect)
+        report(case, channel, srcFile, outFile, source, actual, changed, intent, gaps, allowed, deviations, expect)
 
         assertTrue(
             "除目标字段外还有 ${unexpected.size} 个字段被改动：" +
                 unexpected.joinToString { "$it(${source[it]}→${actual[it]})" },
             unexpected.isEmpty(),
         )
+
+        // 5) 通道已知偏差逐条钉住：不是「允许它变」，而是「必须变成说好的那个值」
+        deviations.forEach { deviation -> deviation.check(actual) }
+        if (strictDeviations) {
+            val missed = prodDeviations.filter { it.sample == case.sample && !it.applies(case, source) }
+            assertTrue(
+                "本样本该命中的通道偏差有 ${missed.size} 条没命中（${missed.joinToString { it.keys.first() }}）：" +
+                    "写通道行为变了，逐条复核 [prodDeviations] 与 docs/09 R-18",
+                missed.isEmpty(),
+            )
+        }
     }
+
+    /**
+     * 缺口匹配器：写通道留不住的东西。
+     *
+     * [why] 是给人看的账：这些字段不是测试让掉的，是产品在丢数据。
+     */
+    private class GapRule(val why: String, val matches: (String) -> Boolean)
+
+    /**
+     * 一条通道偏差规则。
+     *
+     * [sample] 必填：样本是仓库里的固定文件，偏差是拿 exiftool 逐份量出来的，
+     * 换个样本得重新量，不许把 A 样本的数字套到 B 样本上。
+     * [keys] 是这条规则管住的键，用于「意外改动」判定；[check] 负责逐条钉住——
+     * 不是「允许它变」，而是「必须变成说好的那样」。
+     */
+    private class Deviation(
+        val sample: String,
+        val keys: Set<String>,
+        val why: String,
+        val check: (Map<String, String>) -> Unit,
+        val appliesNow: (Map<String, String>) -> Boolean = { true },
+    ) {
+        fun applies(case: GoldCase, source: Map<String, String>): Boolean =
+            case.sample == sample && appliesNow(source)
+    }
+
+    /**
+     * 生产通道的**已知写偏差**（docs/09 R-18）。只列确实会变的键，且必须写清机制。
+     *
+     * 与 [allowlist] 的区别：白名单是「本来就不算用户数据」（文件名、偏移量、派生值），
+     * 这里是「本该保留却变了」——属于写通道的缺陷，钉住是为了修好之后立刻炸出来。
+     */
+    private val prodDeviations: List<Deviation> = listOf(
+        // ---- 值被改写 --------------------------------------------------------
+        rewritten(
+            sample = CANON_40D,
+            key = "ExifIFD:ComponentsConfiguration",
+            expected = "63 63 63 0",
+            why = RAW_BYTES_AS_STRING,
+        ),
+        rewritten(
+            sample = GPS_NIKON,
+            key = "ExifIFD:ComponentsConfiguration",
+            expected = "63 63 63 0",
+            why = RAW_BYTES_AS_STRING,
+        ),
+        rewritten(
+            sample = GPS_NIKON,
+            key = "ExifIFD:FileSource",
+            expected = "?",
+            why = RAW_BYTES_AS_STRING,
+        ),
+        rewritten(
+            sample = GPS_NIKON,
+            key = "ExifIFD:SceneType",
+            expected = "?",
+            why = RAW_BYTES_AS_STRING,
+        ),
+        // ---- 读侧补的默认值被写回（R-19 的写侧后果）--------------------------
+        rewritten(
+            sample = CANON_40D,
+            key = "ExifIFD:LightSource",
+            expected = "0",
+            why = "源文件没有这个标签，读侧补了默认值 0（R-19），写侧又整表回写，于是凭空落盘",
+        ),
+        // ---- IFD0 被补上尺寸/压缩 -------------------------------------------
+        mirrored(
+            sample = CANON_40D,
+            key = "IFD0:ImageWidth",
+            masterKey = "File:ImageWidth",
+            why = "源文件只在 File 组（SOF 段）里记着宽高，重写后 IFD0 被补上一份",
+        ),
+        mirrored(
+            sample = CANON_40D,
+            key = "IFD0:ImageHeight",
+            masterKey = "File:ImageHeight",
+            why = "同上，IFD0 被补上高度",
+        ),
+        mirrored(
+            sample = CANON_40D,
+            key = "IFD0:Compression",
+            masterKey = "IFD1:Compression",
+            why = "IFD0 被补上缩略图那份 Compression",
+        ),
+        mirrored(
+            sample = GPS_NIKON,
+            key = "IFD0:ImageWidth",
+            masterKey = "File:ImageWidth",
+            why = "同 canon-40d.jpg：IFD0 被补上 SOF 里的宽",
+        ),
+        mirrored(
+            sample = GPS_NIKON,
+            key = "IFD0:ImageHeight",
+            masterKey = "File:ImageHeight",
+            why = "同上，IFD0 被补上高",
+        ),
+        mirrored(
+            sample = GPS_NIKON,
+            key = "IFD0:Compression",
+            masterKey = "IFD1:Compression",
+            why = "同上，IFD0 被补上缩略图那份 Compression",
+        ),
+        // ---- IFD1 被 IFD0 抹平 ----------------------------------------------
+        // saveAttributes 把两个 IFD 汇成一张表再回写，于是两份不同的值被写成同一个。
+        mirrored(sample = CANON_40D, key = "IFD1:Make", masterKey = "IFD0:Make", why = IFD1_MIRROR),
+        mirrored(sample = CANON_40D, key = "IFD1:Model", masterKey = "IFD0:Model", why = IFD1_MIRROR),
+        mirrored(sample = CANON_40D, key = "IFD1:Software", masterKey = "IFD0:Software", why = IFD1_MIRROR),
+        mirrored(sample = CANON_40D, key = "IFD1:ModifyDate", masterKey = "IFD0:ModifyDate", why = IFD1_MIRROR),
+        mirrored(
+            sample = CANON_40D,
+            key = "IFD1:YCbCrPositioning",
+            masterKey = "IFD0:YCbCrPositioning",
+            why = IFD1_MIRROR,
+        ),
+        mirrored(sample = GPS_NIKON, key = "IFD1:Make", masterKey = "IFD0:Make", why = IFD1_MIRROR),
+        mirrored(sample = GPS_NIKON, key = "IFD1:Model", masterKey = "IFD0:Model", why = IFD1_MIRROR),
+        mirrored(sample = GPS_NIKON, key = "IFD1:Software", masterKey = "IFD0:Software", why = IFD1_MIRROR),
+        mirrored(sample = GPS_NIKON, key = "IFD1:ModifyDate", masterKey = "IFD0:ModifyDate", why = IFD1_MIRROR),
+        mirrored(
+            sample = GPS_NIKON,
+            key = "IFD1:YCbCrPositioning",
+            masterKey = "IFD0:YCbCrPositioning",
+            why = IFD1_MIRROR,
+        ),
+        mirrored(sample = GPS_NIKON, key = "IFD1:XResolution", masterKey = "IFD0:XResolution", why = IFD1_MIRROR),
+        mirrored(sample = GPS_NIKON, key = "IFD1:YResolution", masterKey = "IFD0:YResolution", why = IFD1_MIRROR),
+    )
+
+    /** 值被改写成说好的那个常量。 */
+    private fun rewritten(sample: String, key: String, expected: String?, why: String): Deviation = Deviation(
+        sample = sample,
+        keys = setOf(key),
+        why = why,
+        check = { actual -> assertEquals("通道偏差 $key（$why）", expected, actual[key]) },
+        appliesNow = { source -> source[key] != expected },
+    )
+
+    /**
+     * 该键被「抹成」[masterKey] 的值（通常是 IFD1 被 IFD0 覆盖）。
+     *
+     * 只在两份**本来就不一致**时才要求被抹平：本来一致的话，抹没抹看不出来，
+     * 硬要求就会变成「用一个恒等式假装在钉住什么东西」。
+     */
+    private fun mirrored(sample: String, key: String, masterKey: String, why: String): Deviation = Deviation(
+        sample = sample,
+        keys = setOf(key),
+        why = why,
+        check = { actual -> assertEquals("$key 该被 $masterKey 抹成同一个值（$why）", actual[masterKey], actual[key]) },
+        appliesNow = { source -> source[masterKey] != source[key] },
+    )
+
+    /** 只留「本用例确实该管」的规则；[runCase] 的 `strictDeviations` 会核对有没有漏的。 */
+    private fun deviationsOf(channel: Channel, case: GoldCase, source: Map<String, String>): List<Deviation> =
+        if (channel == Channel.COMMONS) emptyList() else prodDeviations.filter { it.applies(case, source) }
 
     /**
      * 写通道**目前**留不住的字段（金标准跑出来的缺口，不是测试将就）。
@@ -311,8 +526,61 @@ class ExiftoolGoldStandardTest {
         add("GPS:GPSVersionID")
     }.filterTo(linkedSetOf()) { source.containsKey(it) }
 
+    /**
+     * 生产通道（[ExifMetadataStore]）留不住的字段。
+     *
+     * 与 [defaultGaps] 分表：缺口成因不同（一个是 commons-imaging 解不出 GPS tag 0，
+     * 另一个是 ExifInterface 的标签表里压根没有），混成一张表就分不清是谁的锅了。
+     *
+     * 用匹配器而不是逐个键名：厂商私有 MakerNote 一动就是几十个标签，
+     * 逐个列出来反而盖住了「整块写坏」这个事实。
+     */
+    private val prodGaps: List<GapRule> = listOf(
+        GapRule("ExifInterface 的标签表里没有 InteropVersion，重写 APP1 时整条丢") { key ->
+            key == "InteropIFD:InteropVersion"
+        },
+        GapRule("厂商私有 MakerNote 被整块写坏（exiftool 报 Bad MakerNotes directory），块里的标签全灭") { key ->
+            key.startsWith("Nikon:")
+        },
+    )
+
+    private fun gapsFor(channel: Channel, format: ImageFormatHint, source: Map<String, String>): Set<String> =
+        when (channel) {
+            Channel.COMMONS -> defaultGaps(format, source)
+            Channel.PROD -> source.keys.filterTo(linkedSetOf()) { key -> prodGaps.any { it.matches(key) } }
+        }
+
     @Test
     fun `JPEG 改文本字段`() = runCase(caseOf("jpeg-set-make-model"))
+
+    // ---- 生产通道（ExifMetadataStore）------------------------------------------
+    // 同一批样本再跑一遍。真机走的就是这条通道，commons-imaging 只是 TIFF 兜底
+    // （docs/09 R-18：金标准以前只跑了兜底那条，等于没测到生产路径）。
+
+    @Test
+    fun `生产通道 JPEG 改文本字段`() =
+        runCase(caseOf("jpeg-set-make-model"), Channel.PROD, strictDeviations = true)
+
+    @Test
+    fun `生产通道 JPEG 写北纬东经坐标`() =
+        runCase(caseOf("jpeg-gps-north-east"), Channel.PROD, strictDeviations = true)
+
+    @Test
+    fun `生产通道 JPEG 按类别清空时间字段`() = runCase(caseOf("jpeg-clear-time"), Channel.PROD)
+
+    @Test
+    fun `生产通道 JPEG 删单个字段`() = runCase(caseOf("jpeg-clear-field"), Channel.PROD)
+
+    @Test
+    fun `生产通道认领 JPEG PNG WebP 而不认领 TIFF 与 HEIF`() {
+        fun info(name: String, mime: String, format: ImageFormatHint) = SourceInfo(name, mime, 1L, format)
+
+        assertTrue("JPEG 该归生产通道", prodStore.canWrite(info("a.jpg", "image/jpeg", ImageFormatHint.JPEG)))
+        assertTrue("PNG 该归生产通道", prodStore.canWrite(info("a.png", "image/png", ImageFormatHint.PNG)))
+        assertTrue("WebP 该归生产通道", prodStore.canWrite(info("a.webp", "image/webp", ImageFormatHint.WEBP)))
+        assertFalse("TIFF 是 commons-imaging 的地盘", prodStore.canWrite(info("a.tif", "image/tiff", ImageFormatHint.TIFF)))
+        assertFalse("HEIF 元数据在 ISO-BMFF box 里，写不了", prodStore.canWrite(info("a.heic", "image/heic", ImageFormatHint.HEIF)))
+    }
 
     @Test
     fun `JPEG 时间整体平移一小时`() = runCase(caseOf("jpeg-time-shift-plus-1h"))
@@ -392,6 +660,32 @@ class ExiftoolGoldStandardTest {
             ImageFormatHint.TIFF -> store.rewriteTiff(bytes, target, out)
             else -> throw AssertionError("$format 不走本通道")
         }
+    }
+
+    private fun readFor(channel: Channel, bytes: ByteArray, info: SourceInfo): MetadataSet = when (channel) {
+        Channel.COMMONS -> read(bytes, info)
+        Channel.PROD -> prodStore.readFrom(ExifInterface(bytes.inputStream()), info)
+    }
+
+    /**
+     * 生产通道的写：字节落到工作文件 → 在文件上写 → 读回字节。
+     *
+     * 真机上是 `ContentResolver.openFileDescriptor` 之后 `ExifInterface(FileDescriptor)` + 落盘，
+     * 这里换成 `ExifInterface(File)`——同一个 `writeTo`，同一份 `saveAttributes` 代码路径。
+     * 工作文件留在产物目录里（`.prod.working.jpg`），写入/丢弃清单另存 `.prod.write.tsv`。
+     */
+    private fun writeProd(case: GoldCase, original: ByteArray, target: MetadataSet): ByteArray {
+        val file = artifact(case, Channel.PROD, "working.${case.format.extensions.first()}")
+        file.writeBytes(original)
+        val result = prodStore.writeTo(ExifInterface(file), target)
+        artifact(case, Channel.PROD, "write.tsv").writeText(
+            buildString {
+                appendLine("写入\t${result.writtenKeys.size}\t${result.writtenKeys.joinToString()}")
+                appendLine("丢弃\t${result.droppedKeys.size}\t${result.droppedKeys.joinToString()}")
+            },
+            Charsets.UTF_8,
+        )
+        return file.readBytes()
     }
 
     /** 取 IFD1（缩略图 IFD）里内嵌的缩略图字节；样本没缩略图就返回 null。 */
@@ -489,6 +783,7 @@ class ExiftoolGoldStandardTest {
 
     private fun report(
         case: GoldCase,
+        channel: Channel,
         srcFile: File,
         outFile: File,
         source: Map<String, String>,
@@ -497,9 +792,10 @@ class ExiftoolGoldStandardTest {
         intent: Set<String>,
         gaps: Set<String>,
         allowed: Set<String>,
+        deviations: List<Deviation>,
         expect: Expectation,
     ) {
-        File(outDir, "${case.id}.checks.tsv").writeText(
+        artifact(case, channel, "checks.tsv").writeText(
             buildString {
                 expect.values.forEach { (key, value) -> appendLine("value\t$key\t$value") }
                 expect.gone.sorted().forEach { appendLine("gone\t$it\t") }
@@ -509,13 +805,13 @@ class ExiftoolGoldStandardTest {
             },
             Charsets.UTF_8,
         )
-        File(outDir, "${case.id}.gaps.txt").writeText(
+        artifact(case, channel, "gaps.txt").writeText(
             buildString {
                 if (gaps.isEmpty()) {
                     // 一律写盘：只写非空的话，上一轮遗留的 gaps.txt 会假装现在还缺字段
-                    appendLine("# ${case.id}：写通道没有留不住的字段（本条用例无缺口）")
+                    appendLine("# ${case.id}（${channel.label}）：写通道没有留不住的字段（本条用例无缺口）")
                 } else {
-                    appendLine("# ${case.id}：写通道目前留不住的字段（不是测试将就，是产品缺口）")
+                    appendLine("# ${case.id}（${channel.label}）：写通道目前留不住的字段（不是测试将就，是产品缺口）")
                     gaps.sorted().forEach { key ->
                         appendLine("$key\t${source[key]} -> (无)")
                     }
@@ -523,13 +819,19 @@ class ExiftoolGoldStandardTest {
             },
             Charsets.UTF_8,
         )
-        File(outDir, "${case.id}.changed.txt").writeText(
+        artifact(case, channel, "changed.txt").writeText(
             buildString {
-                appendLine("# ${case.id}  样本 ${case.sample}  意图 ${intent.size} 项")
+                appendLine(
+                    "# ${case.id}  通道 ${channel.label}  样本 ${case.sample}  " +
+                        "意图 ${intent.size - gaps.size} 项  缺口 ${gaps.size} 项  偏差 ${deviations.size} 条",
+                )
                 appendLine("# 源 ${srcFile.name}  改后 ${outFile.name}")
                 changed.sorted().forEach { key ->
+                    // 缺口排在意图前面：缺口是产品在丢数据，写成「意图」就成了「我们故意的」
                     val mark = when (key) {
+                        in gaps -> "缺口"
                         in intent -> "意图"
+                        in deviations.flatMap { it.keys } -> "偏差"
                         in allowed -> "白名单"
                         else -> "其它"
                     }
@@ -538,8 +840,15 @@ class ExiftoolGoldStandardTest {
             },
             Charsets.UTF_8,
         )
-        File(outDir, "${case.id}.exiftool.json").writeText(exiftoolJson(outFile), Charsets.UTF_8)
+        artifact(case, channel, "exiftool.json").writeText(exiftoolJson(outFile), Charsets.UTF_8)
     }
+
+    /**
+     * 产物文件名：PROD 通道带 `.prod.` 中缀，两条通道跑同一个用例时互不覆盖
+     * （`jpeg-set-make-model.jpg` 与 `jpeg-set-make-model.prod.jpg`）。
+     */
+    private fun artifact(case: GoldCase, channel: Channel, suffix: String): File =
+        File(outDir, "${case.id}.${channel.infix}$suffix")
 
     /**
      * 白名单：不是「用户数据」的键，改元数据时本来就该跟着动。
@@ -556,6 +865,8 @@ class ExiftoolGoldStandardTest {
         // 结构偏移量：元数据变长就跟着挪，图像数据本身由 scanData/tiffStrip 逐字节校验
         add("IFD1:ThumbnailOffset")
         add("IFD0:StripOffsets")
+        // exiftool 现算的 MakerNote 字节序标记：MakerNote 被重写后按新布局重新解读，不是用户数据
+        add("File:MakerNoteByteOrder")
     }
 
     private fun changedKeys(source: Map<String, String>, actual: Map<String, String>): Set<String> =
@@ -618,6 +929,18 @@ class ExiftoolGoldStandardTest {
     }
 
     private companion object {
+        /** 生产通道偏差表里的样本名：偏差是一份样本一份量出来的，不许跨样本套用。 */
+        const val CANON_40D = "canon-40d.jpg"
+        const val GPS_NIKON = "gps-dscn0010.jpg"
+
+        /** IFD1 被 IFD0 抹平的统一说法——机制一样，理由写一处就够。 */
+        const val IFD1_MIRROR: String =
+            "saveAttributes 把 IFD0/IFD1 汇成一张表再回写，IFD1 里跟 IFD0 不一样的取值被抹成了 IFD0 那份"
+
+        /** 原始字节型标签被当字符串写的统一说法：每个非零字节都变成 0x3F（也就是 '?'）。 */
+        const val RAW_BYTES_AS_STRING: String =
+            "ExifInterface 把这类标签当字符串处理，原始字节被写成 0x3F（也就是 '?'）"
+
         /** IFD1（缩略图 IFD）的 directoryType。 */
         const val THUMBNAIL_IFD = 1
 

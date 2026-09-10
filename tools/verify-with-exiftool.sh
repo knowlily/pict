@@ -6,7 +6,8 @@
 # 退出标准（docs/00 §1、docs/07 T2.12）说的是「改完元数据，用 exiftool 读回来对得上」。
 # 这件事分两层做，互相独立：
 #
-#   1. ExiftoolGoldStandardTest —— 走真实写通道（commons-imaging 无损重写）改图，
+#   1. ExiftoolGoldStandardTest —— 走真实写通道改图（同一批样本跑两遍：commons-imaging 的无损重写，
+#      与生产真身 ExifMetadataStore／androidx ExifInterface），
 #      再调 exiftool 读回，断言目标字段的值、断言其余字段一个没动、断言像素不变；
 #   2. 本脚本 —— 同一个 exiftool、另一条通路：把上一步留下的 checks.tsv 逐条
 #      再对一遍，并把改动清单 / JSON 转储的路径打出来给人看。
