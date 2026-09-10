@@ -204,6 +204,41 @@ class GpsEditorTest {
         }
     }
 
+    /** docs/08 验收点：圆内采样分布（1 万次采样均值接近圆心、无越界）。 */
+    @Test
+    fun `一万次采样均值接近圆心且无越界`() {
+        val source = withGps(shanghaiLat, shanghaiLon)
+        val radius = 500.0
+        val samples = 10_000
+        val metersPerDegree = 111_320.0
+        var sumEast = 0.0
+        var sumNorth = 0.0
+        var worst = 0.0
+
+        // 种子必须互相独立：给 Random 喂 0..9999 这种连续小种子，首值几乎一样
+        // （实测 seed=0/1/2 的方位角是 4.5928/4.5922/4.5939），质心被推向同一边 ——
+        // 连续种子跑出 145.05 m，远大于理论噪声 3.5 m；改成派生种子后回到 1.66 m。
+        val seedSource = java.util.Random(2026L)
+        repeat(samples) {
+            val position = positionOf(GpsEditor.jitter(source, radius, seedSource.nextLong()).getOrThrow())
+            val distance = GpsEditor.sphericalDistanceMeters(
+                shanghaiLat, shanghaiLon, position.latitude, position.longitude,
+            )
+            worst = maxOf(worst, distance)
+            sumNorth += (position.latitude - shanghaiLat) * metersPerDegree
+            sumEast += (position.longitude - shanghaiLon) * metersPerDegree *
+                Math.cos(Math.toRadians(shanghaiLat))
+        }
+
+        val centroid = Math.hypot(sumEast / samples, sumNorth / samples)
+
+        // 球面近似 + 浮点换算，容差留 1 cm（否则偶发 seed 会因末尾一位抖动误报）
+        assertTrue("最大偏移 $worst m 超出 $radius m", worst <= radius + 0.01)
+        // 圆面均匀采样（半径按 sqrt 采样）的质心应逼近圆心：万次采样理论标准差 3.5 m，
+        // 派生种子实测 1.66 m，阈值放到 25 m（≈7σ）仍能拦住「点全挤在地图某个方向」这类真错误
+        assertTrue("质心偏移 $centroid m，未接近圆心", centroid < radius * 0.05)
+    }
+
     @Test
     fun `抖动确实移动了坐标`() {
         val jittered = GpsEditor.jitter(withGps(shanghaiLat, shanghaiLon), 500.0, 12345L).getOrThrow()
