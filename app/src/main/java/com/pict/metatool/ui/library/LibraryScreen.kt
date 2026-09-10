@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.model.ImageItem
+import com.pict.metatool.domain.settings.AppSettings
 import com.pict.metatool.ui.components.PlaceholderPane
 import com.pict.metatool.ui.theme.PictSpacing
 import com.pict.metatool.ui.theme.PictTheme
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
  */
 @Composable
 fun LibraryScreen(
+    columns: Int = AppSettings.DEFAULT_GRID_COLUMNS,
     onOpen: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = viewModel(
@@ -117,7 +119,9 @@ fun LibraryScreen(
                 )
 
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                    columns = GridCells.Fixed(
+                        columns.coerceIn(AppSettings.MIN_GRID_COLUMNS, AppSettings.MAX_GRID_COLUMNS),
+                    ),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = PictSpacing.screenHorizontal,

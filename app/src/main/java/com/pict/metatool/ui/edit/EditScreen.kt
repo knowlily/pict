@@ -54,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
+import com.pict.metatool.domain.settings.AppSettings
 
 /**
  * 单文件编辑页（docs/06 §3.3 / docs/07 T2.10）。
@@ -67,7 +68,8 @@ import com.pict.metatool.domain.model.TagKey
 fun EditScreen(
     uri: String,
     onBack: () -> Unit,
-    viewModel: EditViewModel = viewModel(factory = EditViewModel.factory(LocalContext.current)),
+    settings: AppSettings = AppSettings(),
+    viewModel: EditViewModel = viewModel(factory = EditViewModel.factory(LocalContext.current, settings)),
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -113,7 +115,7 @@ fun EditScreen(
                         )
                     }
                     TextButton(
-                        onClick = { exportLauncher.launch(ExportNaming.suggest(state.fileName)) },
+                        onClick = { exportLauncher.launch(ExportNaming.suggest(state.fileName, settings.exportSuffix)) },
                         enabled = state.canExport,
                     ) {
                         Text(

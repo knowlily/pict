@@ -14,6 +14,7 @@ import com.pict.metatool.domain.plan.EditPlanExecutor
 import com.pict.metatool.domain.preset.Preset
 import com.pict.metatool.domain.preset.PresetKind
 import com.pict.metatool.domain.preset.PresetResolver
+import com.pict.metatool.domain.settings.AppSettings
 
 /**
  * 单文件编辑页的状态与状态迁移（docs/07 T2.10、docs/06 §3.3）。
@@ -473,6 +474,6 @@ data class EditUiState(
         const val SKIP_REPORT_LIMIT = 3
 
         /** 默认种子：固定值，让「第一次随机填充」在同一张图上可复现（T3.6）。 */
-        const val DEFAULT_RANDOM_SEED = 20260101L
+        const val DEFAULT_RANDOM_SEED = AppSettings.DEFAULT_RANDOM_SEED
     }
 }

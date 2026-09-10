@@ -166,4 +166,46 @@
     <string name="edit_add_hint">这是字段目录里可写、但本文件还没有的字段，点一行加进去。</string>
     <string name="edit_add_search_hint">搜索字段名或键，如 海拔 / GPS:GPSAltitude</string>
     <string name="edit_add_empty">没有可补的字段了。</string>
+
+    <!-- 设置页（docs/06 §3.7） -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_output">输出</string>
+    <string name="settings_export_suffix">导出文件名后缀</string>
+    <string name="settings_export_suffix_none">不加后缀</string>
+    <string name="settings_export_suffix_hint">加在原文件名后面，扩展名不动</string>
+    <string name="settings_export_suffix_sample">示例：%1$s</string>
+    <string name="settings_export_suffix_empty_note">留空 = 不加后缀。目标目录里已有同名文件时，由系统自己补「 (1)」。</string>
+    <string name="settings_verify_export">导出后自动校验</string>
+    <string name="settings_verify_export_hint">把写入结果读回来逐项比对字段与像素；关掉可以少读一次文件</string>
+
+    <string name="settings_section_preset">预设与随机填充</string>
+    <string name="settings_preset_overwrite">套用预设时覆盖已有值</string>
+    <string name="settings_preset_overwrite_hint">关：只填原图缺的字段（更安全）；开：连已有的值一起改写</string>
+    <string name="settings_random_seed">随机填充默认种子</string>
+    <string name="settings_random_seed_hint">固定种子，让同一张图的「随机」结果可复现</string>
+    <string name="settings_random_seed_dialog_title">随机填充默认种子</string>
+    <string name="settings_random_seed_invalid">种子得是整数，可以是负数。</string>
+
+    <string name="settings_section_ui">界面</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_grid_columns">图库列数</string>
+    <string name="settings_grid_columns_hint">图库每行显示几张缩略图</string>
+
+    <string name="settings_section_about">隐私与关于</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_version_value">%1$s（构建 %2$d）</string>
+    <string name="settings_offline_title">离线处理</string>
+    <string name="settings_offline_body">安装包不申请网络权限，图片与元数据全在本机处理：不上传、不统计，也不留日志。</string>
+    <string name="settings_reset">恢复默认设置</string>
+    <string name="settings_reset_hint">只重置这一页的选项，不动任何图片</string>
+    <string name="settings_reset_title">恢复默认设置？</string>
+    <string name="settings_reset_body">导出后缀、导出校验、预设套用方式、默认种子、主题、图库列数都会回到初始值。</string>
+    <string name="settings_reset_done">已恢复默认设置</string>
+
+    <string name="settings_edit_title">修改%1$s</string>
+    <string name="settings_confirm">确定</string>
+    <string name="settings_cancel">取消</string>
 </resources>

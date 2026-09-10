@@ -39,6 +39,33 @@ class ExportNamingTest {
     }
 
     @Test
+    fun `后缀可以在设置里改成别的`() {
+        assertEquals("IMG_1234-副本.JPG", ExportNaming.suggest("IMG_1234.JPG", "-副本"))
+        assertEquals("photo_edited.jpg", ExportNaming.suggest("photo.jpg", "_edited"))
+    }
+
+    @Test
+    fun `后缀留空就是原名照搬`() {
+        assertEquals("IMG_1234.JPG", ExportNaming.suggest("IMG_1234.JPG", ""))
+        assertEquals("image.jpg", ExportNaming.suggest(null, ""))
+    }
+
+    @Test
+    fun `后缀里的非法字符在最后一道口子被清掉`() {
+        assertEquals("photo-副本.jpg", ExportNaming.suggest("photo.jpg", "-副/本"))
+        assertEquals("photo.jpg", ExportNaming.suggest("photo.jpg", "///"))
+    }
+
+    @Test
+    fun `换后缀后长度上限跟着后缀走`() {
+        val long = "x".repeat(200) + ".jpeg"
+        val result = ExportNaming.suggest(long, "-一个很长的后缀")
+
+        assertEquals(ExportNaming.MAX_LENGTH, result.length)
+        assertTrue(result.endsWith("-一个很长的后缀.jpeg"))
+    }
+
+    @Test
     fun `已经带过后缀的不再叠一层`() {
         assertEquals("photo-edited.jpg", ExportNaming.suggest("photo-edited.jpg"))
         assertEquals("photo-edited", ExportNaming.suggest("photo-edited"))

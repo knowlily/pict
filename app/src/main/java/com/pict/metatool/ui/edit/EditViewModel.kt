@@ -26,6 +26,7 @@ import com.pict.metatool.domain.plan.EditPlanExecutor
 import com.pict.metatool.domain.preset.Preset
 import com.pict.metatool.domain.preset.PresetCatalog
 import com.pict.metatool.domain.preset.PresetResolver
+import com.pict.metatool.domain.settings.AppSettings
 import java.util.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -55,9 +56,17 @@ class EditViewModel(
     private val hasher: PixelHasher = BitmapPixelHasher(),
     private val presets: PresetCatalog = PresetCatalog.EMPTY,
     private val presetIssues: List<String> = emptyList(),
+    /** 启动时生效的设置（docs/06 §3.7）：默认套用方式、默认种子、导出后缀与校验开关都从这一份取。 */
+    private val settings: AppSettings = AppSettings(),
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(EditUiState())
+    private val _state = MutableStateFlow(
+        EditUiState(
+            // 默认套用方式与随机种子来自设置（docs/06 §3.7）：用户改过就按用户的来
+            presetOverwrite = settings.presetOverwriteDefault,
+            randomFillSeed = settings.randomSeedDefault,
+        ),
+    )
     val state: StateFlow<EditUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
@@ -366,6 +375,15 @@ class EditViewModel(
                     }
 
                     is PictResult.Success -> {
+                        if (!settings.verifyAfterExport) {
+                            // 设置里关了校验：如实说「没读回来」，不拿一个像通过的字样糊过去
+                            _state.update {
+                                it.withExportFinished().withMessage(
+                                    "已导出「${copy.displayName}」：${written.value.summary()}；按设置跳过了读回校验",
+                                )
+                            }
+                            return@launch
+                        }
                         val after = withContext(Dispatchers.IO) { reader.read(resolver, copy) }.getOrNull()
                         val fingerprintAfter = withContext(Dispatchers.IO) { hasher.hashOf(resolver, copy.uri) }
                             .getOrNull()
@@ -406,7 +424,10 @@ class EditViewModel(
     companion object {
 
         /** 无 DI 框架时的手工装配，与详情页一致（用 applicationContext 的 resolver）。 */
-        fun factory(context: Context): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(
+            context: Context,
+            settings: AppSettings = AppSettings(),
+        ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 // 预设随 APK 打包（app/build.gradle.kts 的 syncPresets 任务），这里是唯一一次读取；
                 // 坏文件的问题逐条带到界面上，而不是悄悄吞掉
@@ -415,6 +436,7 @@ class EditViewModel(
                     resolver = context.applicationContext.contentResolver,
                     presets = catalog,
                     presetIssues = catalog.issues.map { it.toString() },
+                    settings = settings,
                 )
             }
         }

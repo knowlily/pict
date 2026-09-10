@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Pict" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- 冷启动首帧的窗口底色与状态栏图标：这里只能按「系统夜间模式」兜底；
+             进入 Compose 后由 PictTheme 按应用选定的主题接管（ui/theme/PictTheme.kt）。 -->
         <item name="android:windowBackground">@color/pict_window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
