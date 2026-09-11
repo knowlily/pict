@@ -23,6 +23,14 @@ import com.pict.metatool.domain.preset.MetadataRandomizer
 data class BatchTarget(
     val uri: String,
     val info: SourceInfo,
+    /**
+     * 来源本身是否允许原地写（SAF `FLAG_SUPPORTS_WRITE` 的快照，与 `ImageItem.writable` 同源）。
+     *
+     * 和「格式能不能写」是两件事：PNG 的格式没问题，但用相册选择器拿到的 URI 只有读权限。
+     * 两者都要拦，但给用户的原因不一样——只读 ≠ 格式不支持，别把前者说成后者。
+     * 默认 `true` 是给「来源未知、读完再说」的场景留的路，不是能力承诺。
+     */
+    val writable: Boolean = true,
 ) {
 
     val displayName: String get() = info.displayName
@@ -31,8 +39,12 @@ data class BatchTarget(
 
     companion object {
         /** 只有 URI 与文件名时的最小构造（来源信息未知，读的时候才知道）。 */
-        fun of(uri: String, displayName: String, format: ImageFormatHint = ImageFormatHint.UNKNOWN): BatchTarget =
-            BatchTarget(uri, SourceInfo(displayName, null, null, format))
+        fun of(
+            uri: String,
+            displayName: String,
+            format: ImageFormatHint = ImageFormatHint.UNKNOWN,
+            writable: Boolean = true,
+        ): BatchTarget = BatchTarget(uri, SourceInfo(displayName, null, null, format), writable)
     }
 }
 

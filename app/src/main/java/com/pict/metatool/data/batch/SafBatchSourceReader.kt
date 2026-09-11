@@ -23,9 +23,9 @@ import com.pict.metatool.domain.model.MetadataSet
  * 预览要是用了别的读法，用户就会在两处看到不同的「现值」。
  *
  * ### FR-32：这个类没有写路径
- * 不 `openOutputStream`、不建临时文件、不碰备份。可写性只是
- * [MetadataWriter.canWrite] 的纯判断（只看 [BatchTarget.info]），用来把 HEIF
- * 这类「读得到、原地写不了」的文件提前标成不支持，省掉一次没必要的完整读取。
+ * 不 `openOutputStream`、不建临时文件、不碰备份。可写性只是纯判断——
+ * [BatchTarget.writable]（SAF 授权位）+ [MetadataWriter.canWrite]（格式支不支持），
+ * 两者都只看已经查好的来源快照，不读文件内容。
  */
 class SafBatchSourceReader(
     private val resolver: ContentResolver,
@@ -36,8 +36,14 @@ class SafBatchSourceReader(
     /** 同一个目标在一次预览里只算一次可写性：路由判断是纯函数，但没必要问两遍。 */
     private val writableCache = mutableMapOf<String, Boolean>()
 
+    /**
+     * 授权位与格式支持都得点头：
+     * - `writable == false`：SAF 只给了读权限（相册选择器常见），写了会抛 SecurityException；
+     * - 格式没有写入器：HEIF / DNG 这类「读得到、原地写不了」。
+     * 前者的原因由 `BatchPreviewer` 单独报（只读 ≠ 格式不支持），这里只负责返回 false。
+     */
     override fun canWriteTo(target: BatchTarget): Boolean = writableCache.getOrPut(target.uri) {
-        writers.any { it.canWrite(target.info) }
+        target.writable && writers.any { it.canWrite(target.info) }
     }
 
     override suspend fun read(target: BatchTarget): PictResult<MetadataSet> {

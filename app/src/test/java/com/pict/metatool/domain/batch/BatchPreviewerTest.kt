@@ -38,11 +38,24 @@ class BatchPreviewerTest {
     private val jpeg = BatchTarget.of("content://pict/a.jpg", "a.jpg", ImageFormatHint.JPEG)
     private val heic = BatchTarget.of("content://pict/b.heic", "b.heic", ImageFormatHint.HEIF)
 
-    private fun sourceOf(name: String, vararg entries: Pair<TagKey, TagValue>): MetadataSet =
+    private fun sourceOf(
+        name: String,
+        vararg entries: Pair<TagKey, TagValue>,
+        format: ImageFormatHint = ImageFormatHint.JPEG,
+    ): MetadataSet =
         MetadataSet(
-            source = SourceInfo(name, "image/jpeg", 2_048L, ImageFormatHint.JPEG),
+            source = SourceInfo(name, mimeOf(format), 2_048L, format),
             entries = entries.toMap(),
         )
+
+    /** 测试里 MIME 跟着格式走，免得「格式 HEIF、MIME image/jpeg」这种自相矛盾的来源。 */
+    private fun mimeOf(format: ImageFormatHint): String? = when (format) {
+        ImageFormatHint.JPEG -> "image/jpeg"
+        ImageFormatHint.PNG -> "image/png"
+        ImageFormatHint.HEIF -> "image/heif"
+        ImageFormatHint.TIFF -> "image/tiff"
+        else -> null
+    }
 
     private fun reader(
         vararg sources: Pair<BatchTarget, MetadataSet>,
@@ -254,5 +267,59 @@ class BatchPreviewerTest {
 
         assertEquals("a.jpg", item.target.displayName)
         assertEquals(ImageFormatHint.JPEG, item.target.format)
+    }
+
+    // ---------- 可写性：只读 ≠ 格式不支持，格式未知也不许瞎猜（真机走查踩出来的）----------
+
+    @Test
+    fun `来源只读就报只读，不报格式不支持，且一次文件都不读`() = runBlocking {
+        // 相册选择器给的 URI 常常是只读的：格式（PNG）本身完全能写
+        val readOnly = BatchTarget.of("content://pict/ro.png", "ro.png", ImageFormatHint.PNG, writable = false)
+        val reader = reader(readOnly to sourceOf("ro.png"), writable = setOf(readOnly.uri))
+        val previewer = BatchPreviewer(reader, catalog)
+
+        val item = previewer.previewOne(presetPlan(), readOnly)
+
+        assertEquals(PictError.STORAGE_READONLY, item.blocked)
+        assertTrue("只读来源读了也没用，不该读", reader.readCounts.isEmpty())
+        assertTrue("读得到、只是写不回去，所以还算「能读」", item.readable)
+        assertTrue("理由里要说清是只读", item.blockedDetail.orEmpty().contains("只读"))
+    }
+
+    @Test
+    fun `格式未知时先读一遍，拿真实格式再判能不能写`() = runBlocking {
+        // 从图库多选跳过来时目标就是这种「只有地址」的壳，声明格式是未知的
+        val shell = BatchTarget.of("content://pict/b.heic", "b.heic")
+        assertEquals(ImageFormatHint.UNKNOWN, shell.format)
+        val reader = reader(shell to sourceOf("b.heic", format = ImageFormatHint.HEIF), writable = emptySet())
+        val previewer = BatchPreviewer(reader, catalog)
+
+        val item = previewer.previewOne(presetPlan(), shell)
+
+        assertEquals("读完发现是 HEIF 才拦，不能凭占位格式就下结论", PictError.ENCODE_UNSUPPORTED, item.blocked)
+        assertTrue("理由里要带真实格式名", item.blockedDetail.orEmpty().contains("HEIF"))
+        assertEquals("这次必须真读一遍", 1, reader.readCounts[shell.uri] ?: 0)
+        assertEquals("显示名换成正读到的那个", "b.heic", item.target.displayName)
+    }
+
+    @Test
+    fun `格式未知但真能写时，读出来的变更照常给出`() = runBlocking {
+        val shell = BatchTarget.of("content://pict/a.jpg", "a.jpg")
+        val previewer = BatchPreviewer(reader(shell to sourceOf("a.jpg"), writable = setOf(shell.uri)), catalog)
+
+        val item = previewer.previewOne(presetPlan(), shell)
+
+        assertFalse("占位格式未知不等于写不进去", item.isBlocked)
+        assertTrue(item.changes.any { it.key == make })
+    }
+
+    @Test
+    fun `格式已知且写不进去时提前收工，不做多余的读取`() = runBlocking {
+        val reader = reader(heic to sourceOf("b.heic"), writable = emptySet())
+
+        val item = BatchPreviewer(reader, catalog).previewOne(presetPlan(), heic)
+
+        assertEquals(PictError.ENCODE_UNSUPPORTED, item.blocked)
+        assertTrue("格式已确认写不了，没必要再读一遍", reader.readCounts.isEmpty())
     }
 }

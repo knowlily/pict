@@ -5,6 +5,7 @@ import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.core.result.failureOf
 import com.pict.metatool.core.result.successOf
 import com.pict.metatool.domain.model.FieldCatalog
+import com.pict.metatool.domain.model.ImageFormatHint
 import com.pict.metatool.domain.model.MetadataSet
 import com.pict.metatool.domain.plan.EditPlan
 import com.pict.metatool.domain.preset.PresetCatalog
@@ -57,12 +58,24 @@ class BatchPreviewer(
 
     /** 预览单个目标；被拦下时也返回结果（[ItemPreview.blocked] 非空），不抛异常。 */
     suspend fun previewOne(plan: EditPlan, target: BatchTarget): ItemPreview {
-        // 先问通道能不能原地写：不能就不必读文件了，省一次 I/O 也省得结论含糊
-        if (!reader.canWriteTo(target)) {
+        // 来源本身只读（相册选择器给的 URI 常常如此）：格式再合适也写不回去。
+        // 得跟「格式不支持」分开报，不然用户拿着一个好好写得了的 PNG 被劝去重编码。
+        if (!target.writable) {
+            return blocked(
+                target,
+                PictError.STORAGE_READONLY,
+                detail = "这个来源只读：只能另存副本，不能原地改",
+                readable = true,
+            )
+        }
+
+        // 格式**已知**且写不进去（HEIF / TIFF 这类）才提前收工，省一次完整读取；
+        // 格式未知时下面这个判断只是「问不出来」，不能当成结论用。
+        if (target.format != ImageFormatHint.UNKNOWN && !reader.canWriteTo(target)) {
             return blocked(
                 target,
                 PictError.ENCODE_UNSUPPORTED,
-                detail = "${target.format.label} 不支持原地写元数据（需重编码或导出副本）",
+                detail = unsupportedReason(target),
                 readable = true,
             )
         }
@@ -81,6 +94,18 @@ class BatchPreviewer(
         // 来源信息以真实读到的为准（选择器给的 MIME/大小可能缺失或不准）
         val resolved = target.copy(info = source.source)
 
+        // 读到了真实格式，再问一次通道。**宁可多读一遍也不编结论**：
+        // 真机实测踩过的坑——批量页从图库跳过来时目标只有地址、格式是「未知」，
+        // 若拿这个占位去判可写性，四个好好的 JPEG 会全被标成「不支持」。
+        if (!reader.canWriteTo(resolved)) {
+            return blocked(
+                resolved,
+                PictError.ENCODE_UNSUPPORTED,
+                detail = unsupportedReason(resolved),
+                readable = true,
+            )
+        }
+
         return when (val applied = PresetResolver.applyPlanDetailed(plan, source, catalog)) {
             is PictResult.Failure -> blocked(
                 resolved,
@@ -92,6 +117,10 @@ class BatchPreviewer(
             is PictResult.Success -> fromApplied(resolved, source, applied.value)
         }
     }
+
+    /** 「写不了」的统一说法：带格式名，界面上的「不支持」那一列要能看出是哪种格式不答应。 */
+    private fun unsupportedReason(target: BatchTarget): String =
+        "${target.format.label} 不支持原地写元数据（需重编码或导出副本）"
 
     private fun fromApplied(target: BatchTarget, source: MetadataSet, applied: Applied): ItemPreview =
         ItemPreview(
@@ -137,8 +166,12 @@ interface BatchSourceReader {
     suspend fun read(target: BatchTarget): PictResult<MetadataSet>
 
     /**
-     * 是否存在能原地写这个来源的通道（纯判断，只看 [BatchTarget.info.format]）。
-     * 返回 false 的项在预览里会被标成「不支持」而不是「会改坏」。
+     * 是否存在能原地写这个来源的通道（纯判断，只看 [BatchTarget.writable] 与
+     * [BatchTarget.info] 的格式，不读文件）。
+     *
+     * **它只会说「已确认写不了」，不会说「一定能写」**：格式未知时它照例返回 false，
+     * 但那不等于写不了——调用方把文件读出来、拿到真实来源信息后必须再问一次
+     * （`BatchPreviewer` 就是这么用的）。拿占位信息换来的「不支持」是假结论。
      */
     fun canWriteTo(target: BatchTarget): Boolean
 }
