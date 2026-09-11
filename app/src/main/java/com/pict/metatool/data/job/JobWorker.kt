@@ -7,6 +7,8 @@ import androidx.work.workDataOf
 import com.pict.metatool.core.result.getOrElse
 import com.pict.metatool.data.preset.AssetPresetCatalog
 import com.pict.metatool.domain.job.JobCancellation
+import com.pict.metatool.domain.job.JobReport
+import com.pict.metatool.domain.job.JobReportParams
 import com.pict.metatool.domain.job.JobRunner
 import com.pict.metatool.domain.job.JobStatus
 import kotlinx.coroutines.coroutineScope
@@ -57,6 +59,9 @@ class JobWorker(
         val job = spec.toJob()
         val notifier = JobNotifier(applicationContext)
         val snapshots = JobSnapshotStore(applicationContext)
+        val reports = JobReportStore(applicationContext)
+        // 报告里的参数与种子来自定义本身（排队那一刻写下的那份），不在这里重算
+        val reportParams = spec.toReportParams()
         notifier.ensureChannel()
 
         val cancellation = JobCancellation()
@@ -93,7 +98,18 @@ class JobWorker(
                         last = snapshotJob
                         val moment = now()
                         val snapshot = JobSnapshot.of(snapshotJob, moment)
-                        // 快照落盘不节流（进度页读的是盘），通知更新才节流（系统限频）
+                        // 进度页要看逐项明细，快照里没有它（快照只有计数与当前项）。
+                        // 这里是进程内广播、不落盘，所以不受 JobProgressThrottle 的节流限制；
+                        // 进程被杀之后广播就没了，界面回退到盘上的快照 + 报告（见 JobProgressHub）
+                        JobProgressHub.publish(
+                            JobLiveState(
+                                snapshot = snapshot,
+                                report = JobReport.of(snapshotJob, reportParams),
+                                remainingMillis = snapshotJob.progress(moment).remainingMillis,
+                                isLive = true,
+                            ),
+                        )
+                        // 快照落盘不节流（进度页读的是盘），通知更新才节流（系统限频）。
                         if (JobProgressThrottle.shouldPost(previous, snapshot, lastPostedAtMillis, moment)) {
                             snapshots.save(snapshot)
                             postForeground(notifier, spec.label, snapshot)
@@ -111,6 +127,18 @@ class JobWorker(
             val ended = JobSnapshot.endOf(last, stopped = isStopped, nowMillis = now())
             // 阻塞 IO：协程被取消也写得进去，别让「被掐断」这件事连记录都没有
             snapshots.save(ended)
+            // 逐项明细也落一次：跑完要有，被取消也要有——报告是「这一轮到底做了什么」的凭据，
+            // 而这一步是整条链路上最后一次能拿到逐项状态的机会（worker 之后就被回收了）
+            val finalReport = JobReport.of(last, reportParams, finishedAtMillis = ended.finishedAtMillis)
+            reports.save(finalReport)
+            JobProgressHub.publish(
+                JobLiveState(
+                    snapshot = ended,
+                    report = finalReport,
+                    remainingMillis = null,
+                    isLive = false,
+                ),
+            )
             // 取消后就别再碰前台服务了（挂起的调用在取消状态下会立刻抛）
             if (currentCoroutineContext().isActive) postForeground(notifier, spec.label, ended)
         }

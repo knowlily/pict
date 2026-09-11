@@ -37,15 +37,19 @@ import com.pict.metatool.domain.settings.NavBarStyle
 import com.pict.metatool.ui.batch.BatchScreen
 import com.pict.metatool.ui.detail.DetailScreen
 import com.pict.metatool.ui.edit.EditScreen
+import com.pict.metatool.ui.job.JobProgressScreen
 import com.pict.metatool.ui.jobs.JobsScreen
 import com.pict.metatool.ui.library.LibraryScreen
 import com.pict.metatool.ui.navigation.BatchRoute
 import com.pict.metatool.ui.navigation.DetailRoute
 import com.pict.metatool.ui.navigation.EditRoute
+import com.pict.metatool.ui.navigation.JobRoute
 import com.pict.metatool.ui.navigation.FloatingNavBar
 import com.pict.metatool.ui.navigation.FloatingNavBarReservedHeight
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.navigation.PictDestination
+import com.pict.metatool.ui.navigation.ReportRoute
+import com.pict.metatool.ui.report.ReportScreen
 import com.pict.metatool.ui.settings.SettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,10 +78,13 @@ fun PictApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // 详情页、编辑页、批量页都是二级页面，进来就收起底部导航（docs/06 §3.2 / §3.3 / §3.8）。
+    // 详情页、编辑页、批量页、任务进度页、报告页都是二级页面，进来就收起底部导航
+    // （docs/06 §3.2 / §3.3 / §3.8）。
     val topLevel = currentRoute != DetailRoute.PATTERN &&
         currentRoute != EditRoute.PATTERN &&
-        currentRoute != BatchRoute.PATTERN
+        currentRoute != BatchRoute.PATTERN &&
+        currentRoute != JobRoute.PATTERN &&
+        currentRoute != ReportRoute.PATTERN
     val destinations = remember(settings.navItems) { PictDestination.visibleItems(settings.navItems) }
     val floatingBar = topLevel && settings.navBarStyle == NavBarStyle.FLOATING
 
@@ -190,8 +197,24 @@ fun PictApp(
                                 BatchScreen(
                                     targets = resolved,
                                     onBack = { navController.popBackStack() },
+                                    // 排上队就去看进度：用户按的「开始执行」，下一个问题
+                                    // 必然是「跑到哪了」，让他自己再找一次不如直接送过去
+                                    onOpenJob = { jobId -> navController.navigate(JobRoute.build(jobId)) },
                                 )
                             }
+                        }
+                        composable(JobRoute.PATTERN) { entry ->
+                            JobProgressScreen(
+                                jobId = JobRoute.parse(entry.arguments?.getString(JobRoute.ARG_JOB_ID)).orEmpty(),
+                                onBack = { navController.popBackStack() },
+                                onOpenReport = { jobId -> navController.navigate(ReportRoute.build(jobId)) },
+                            )
+                        }
+                        composable(ReportRoute.PATTERN) { entry ->
+                            ReportScreen(
+                                jobId = ReportRoute.parse(entry.arguments?.getString(ReportRoute.ARG_JOB_ID)).orEmpty(),
+                                onBack = { navController.popBackStack() },
+                            )
                         }
                     }
                 }

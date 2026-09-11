@@ -61,7 +61,11 @@ class JobSpecStore(private val dir: File) {
      */
     fun ids(): List<String> = runCatching {
         dir.listFiles { file ->
-            file.isFile && file.name.endsWith(SUFFIX) && !file.name.endsWith(JobSnapshotStore.SUFFIX)
+            file.isFile && file.name.endsWith(SUFFIX) &&
+                !file.name.endsWith(JobSnapshotStore.SUFFIX) &&
+                // 报告也是 `<id>.report.json`，同样以 .json 结尾；不排除就会冒出
+                // 一个叫 `job-x.report` 的假任务（快照那次已经踩过同一个坑）
+                !file.name.endsWith(JobReportStore.SUFFIX)
         }
             .orEmpty()
             .sortedByDescending { it.lastModified() }

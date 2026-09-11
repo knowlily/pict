@@ -26,6 +26,54 @@
     <string name="jobs_roadmap_report">报告与撤销：失败清单、导出报告、从备份回退（FR-31 / FR-34）</string>
     <string name="jobs_stage_note">当前阶段只做单张图片的元数据编辑与导出；批处理接上之后，这一页才会有真实队列与记录。</string>
 
+    <!-- 任务进度（T5.6，docs/06 §3.8、docs/01 FR-29） -->
+    <string name="jobs_progress_title">任务进度</string>
+    <string name="jobs_progress_back">返回</string>
+    <string name="jobs_progress_state_running">进行中</string>
+    <string name="jobs_progress_state_pending">排队中</string>
+    <string name="jobs_progress_state_completed">已完成</string>
+    <string name="jobs_progress_state_canceled">已取消</string>
+    <string name="jobs_progress_count">已完成 %1$d / %2$d · %3$d%%</string>
+    <string name="jobs_progress_current">正在处理 %1$s</string>
+    <string name="jobs_progress_waiting">排队中，马上开始…</string>
+    <string name="jobs_progress_remaining">约还剩 %1$s</string>
+    <string name="jobs_progress_remaining_unknown">剩余时间还在估</string>
+    <string name="jobs_progress_cancel">取消任务</string>
+    <string name="jobs_progress_canceled_note">已请求取消，手上的那一张会写完再停。</string>
+    <string name="jobs_progress_report">查看报告</string>
+    <string name="jobs_progress_items_title">逐项状态</string>
+    <string name="jobs_progress_item_no_detail">这个任务还没写下逐项明细（跑到一半的进度在通知栏里）。</string>
+    <string name="jobs_progress_dry_run">试运行：没有改文件</string>
+
+    <!-- 任务报告（T5.7，docs/01 FR-31） -->
+    <string name="jobs_report_title">任务报告</string>
+    <string name="jobs_report_back">返回</string>
+    <string name="jobs_report_summary_title">结果</string>
+    <string name="jobs_report_total">项目总数</string>
+    <string name="jobs_report_changed_total">变更字段合计</string>
+    <string name="jobs_report_params_title">参数与种子</string>
+    <string name="jobs_report_param_mode">模式</string>
+    <string name="jobs_report_param_preset">预设</string>
+    <string name="jobs_report_param_seed">随机种子</string>
+    <string name="jobs_report_param_overwrite">覆盖已有文件</string>
+    <string name="jobs_report_param_clear">清空字段</string>
+    <string name="jobs_report_param_concurrency">并发</string>
+    <string name="jobs_report_param_retries">重试上限</string>
+    <string name="jobs_report_param_items">项数</string>
+    <string name="jobs_report_param_none">无</string>
+    <string name="jobs_report_yes">是</string>
+    <string name="jobs_report_no">否</string>
+    <string name="jobs_report_notes_title">失败与丢弃</string>
+    <string name="jobs_report_notes_empty">没有需要说明的项。</string>
+    <string name="jobs_report_export_csv">导出 CSV</string>
+    <string name="jobs_report_export_json">导出 JSON</string>
+    <string name="jobs_report_exported">报告已导出。</string>
+    <string name="jobs_report_export_failed">导出没成功，换个位置再试一次。</string>
+    <string name="jobs_report_missing">这个任务的明细不在了，可能已经被清理。</string>
+    <string name="jobs_duration_millis">%1$d 毫秒</string>
+    <string name="jobs_duration_seconds">%1$s 秒</string>
+    <string name="jobs_duration_minutes">%1$s 分 %2$s 秒</string>
+
     <!-- 图库（T1.9，docs/06 §3.1） -->
     <string name="library_title">图片</string>
     <string name="library_count_total">共 %1$d 张</string>
@@ -49,6 +97,8 @@
     <string name="library_message_import_empty">没有可用的图片，换一批再试试。</string>
     <string name="library_message_import_failed">这个位置读不到，可能是授权被撤销了，重新选一次文件夹。</string>
     <string name="library_message_scan_truncated">已到单次上限 %1$d 张，先处理这批，剩下的再导一次。</string>
+    <string name="library_recent_title">最近目录</string>
+    <string name="library_message_folder_lost">这个目录的授权已失效，重新选一次它就好。</string>
 
     <!-- 详情页（T1.10，docs/06 §3.2） -->
     <string name="detail_fallback_title">图片详情</string>

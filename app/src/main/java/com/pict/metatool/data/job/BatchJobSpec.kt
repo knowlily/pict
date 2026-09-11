@@ -7,6 +7,7 @@ import com.pict.metatool.domain.batch.BatchTarget
 import com.pict.metatool.domain.job.Job
 import com.pict.metatool.domain.job.JobItem
 import com.pict.metatool.domain.job.JobOptions
+import com.pict.metatool.domain.job.JobReportParams
 import com.pict.metatool.domain.model.ImageFormatHint
 import com.pict.metatool.domain.model.SourceInfo
 import com.pict.metatool.domain.plan.ClearTarget
@@ -82,6 +83,24 @@ data class BatchJobSpec(
         createdAtMillis = createdAtMillis,
         items = items.map { it.toJobItem() },
         options = options,
+    )
+
+    /**
+     * 报告里那份「参数与种子」（FR-31）。
+     *
+     * 从定义里**原样抄**，不重算：报告要回答的是「这批值是怎么来的」，
+     * 唯一的答案只能是排队那一刻写下来的这份。界面上后来改了什么，跟已经跑完的任务无关。
+     */
+    fun toReportParams(): JobReportParams = JobReportParams(
+        mode = mode.name,
+        presetId = presetId,
+        overwriteExisting = overwriteExisting,
+        seed = seed,
+        clearTargets = clearTargets.map { it.name },
+        dryRun = dryRun,
+        concurrency = options.concurrency,
+        maxRetries = options.maxRetries,
+        itemCount = items.size,
     )
 
     fun toJson(): String = buildJsonObject {

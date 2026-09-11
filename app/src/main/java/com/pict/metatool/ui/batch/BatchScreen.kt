@@ -88,6 +88,8 @@ import kotlinx.coroutines.launch
 fun BatchScreen(
     targets: List<BatchTarget>,
     onBack: () -> Unit,
+    /** 排队成功后跳去看进度（T5.6）；不关心时传默认的空实现。 */
+    onOpenJob: (String) -> Unit = {},
     viewModel: BatchViewModel = viewModel(
         factory = BatchViewModel.factory(LocalContext.current, targets),
     ),
@@ -115,6 +117,11 @@ fun BatchScreen(
         val message = state.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         viewModel.consumeMessage()
+    }
+
+    // 排上队就进进度页：这是「开始执行」之后的必然动作，别让用户自己去任务页找
+    LaunchedEffect(state.queuedJobId) {
+        state.queuedJobId?.let(onOpenJob)
     }
 
     // 预览是页内的第二步，返回键先退到「改一改」，再退才是离开这一页。

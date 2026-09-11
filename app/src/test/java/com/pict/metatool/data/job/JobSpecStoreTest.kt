@@ -94,6 +94,18 @@ class JobSpecStoreTest {
     }
 
     @Test
+    fun `报告文件也不算一个任务 id`() {
+        val store = store()
+        val original = spec()
+        store.save(original)
+        // 报告叫 `<id>.report.json`（T5.7），同样以 .json 结尾，同一个坑不能再踩一次
+        File(store.fileOf(original.jobId).parentFile, "${original.jobId}${JobReportStore.SUFFIX}")
+            .writeText("{}")
+
+        assertEquals(listOf(original.jobId), store.ids())
+    }
+
+    @Test
     fun `定义文件里的 id 拼不成路径穿越`() {
         val store = store()
 
