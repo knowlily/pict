@@ -235,6 +235,8 @@ fun EditScreen(
             onChoosePreset = { presetId -> viewModel.chooseRandomFillPreset(presetId) },
             onToggleKey = { key -> viewModel.toggleRandomFillKey(key) },
             onRerollSeed = { viewModel.rerollRandomFillSeed() },
+            onPreview = { viewModel.previewRandomFill() },
+            onClearPreview = { viewModel.clearRandomFillPreview() },
             onFill = { viewModel.fillRandom() },
             onDismiss = { viewModel.closeRandomFill() },
         )

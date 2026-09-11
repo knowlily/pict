@@ -98,6 +98,12 @@ data class EditUiState(
     val randomFillPresetId: String? = null,
     val randomFillKeys: Set<TagKey> = emptySet(),
     val randomFillSeed: Long = 0L,
+    /**
+     * 「生成预览」算出来的字段 diff；null = 还没生成（docs/06 §3.3：先看清楚要写什么，再确认）。
+     *
+     * 与草稿无关：预览只算不写，用户点「确认填入」才会走 [withPresetFill]。
+     */
+    val randomFillPreview: List<EditDiffRow>? = null,
     /** 「添加字段」弹层里的本地搜索词（目录里一百多个字段，不给过滤等于不可用）。 */
     val addFieldQuery: String = "",
 ) {
@@ -290,7 +296,11 @@ data class EditUiState(
 
     fun withAddFieldQuery(query: String): EditUiState = copy(addFieldQuery = query)
 
-    /** 打开随机填充弹层：默认选中第一个预设，并勾上它全部会浮动的字段。 */
+    /**
+     * 打开随机填充弹层：默认选中第一个预设，并勾上它全部会浮动的字段。
+     *
+     * 每次都从「没预览」开始：上一次的预览属于上一次的预设 / 勾选 / 种子，留在这里只会骗人。
+     */
     fun openRandomFill(preset: Preset?): EditUiState {
         val chosen = preset ?: presets.firstOrNull()
         return copy(
@@ -298,22 +308,29 @@ data class EditUiState(
             randomFillPresetId = chosen?.id,
             randomFillKeys = chosen?.randomKeys.orEmpty(),
             randomFillSeed = if (randomFillSeed == 0L) DEFAULT_RANDOM_SEED else randomFillSeed,
+            randomFillPreview = null,
         )
     }
 
-    fun closeRandomFill(): EditUiState = copy(showRandomFill = false)
+    fun closeRandomFill(): EditUiState = copy(showRandomFill = false, randomFillPreview = null)
 
     /** 换取值预设：勾选集合跟着换成新预设的字段，避免留下不属于它的键。 */
     fun withRandomFillPreset(preset: Preset): EditUiState = copy(
         randomFillPresetId = preset.id,
         randomFillKeys = preset.randomKeys,
+        randomFillPreview = null,
     )
 
     fun toggleRandomFillKey(key: TagKey): EditUiState = copy(
         randomFillKeys = if (key in randomFillKeys) randomFillKeys - key else randomFillKeys + key,
+        randomFillPreview = null,
     )
 
-    fun withRandomFillSeed(seed: Long): EditUiState = copy(randomFillSeed = seed)
+    /** 换种子同理：种子变了，上一批值就不成立了。 */
+    fun withRandomFillSeed(seed: Long): EditUiState = copy(randomFillSeed = seed, randomFillPreview = null)
+
+    /** 记下「生成预览」的结果（null = 退回挑选那一步）。 */
+    fun withRandomFillPreview(rows: List<EditDiffRow>?): EditUiState = copy(randomFillPreview = rows)
 
     /**
      * 把一次填充的结果并入草稿（套用预设与随机填充共用）。

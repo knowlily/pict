@@ -1,5 +1,6 @@
 package com.pict.metatool.ui.edit
 
+import com.pict.metatool.domain.format.TagValueFormatter
 import com.pict.metatool.domain.model.FieldCatalog
 import com.pict.metatool.domain.model.ImageFormatHint
 import com.pict.metatool.domain.model.MetadataSet
@@ -152,6 +153,72 @@ class EditPresetStateTest {
         val rerolled = state.withRandomFillSeed(777L)
         assertEquals(777L, rerolled.randomFillSeed)
         assertEquals(state.randomFillKeys, rerolled.randomFillKeys)
+    }
+
+    // ---------- 生成预览（docs/06 §3.3：先看清要写什么，再确认） ----------
+
+    /** 预览按当前预设 / 勾选 / 种子算一遍，结果与后来的确认同源。 */
+    private fun filled(state: EditUiState) = PresetResolver
+        .fill(
+            state.randomFillPreset!!,
+            state.metadata!!,
+            keys = state.randomFillKeys,
+            onlyMissing = false,
+            seed = state.randomFillSeed,
+        )
+        .getOrNull()!!
+
+    @Test
+    fun `生成预览列出将要写入的字段且不动草稿`() {
+        val opened = loaded(make to TagValue.Text("Sony"), presets = listOf(device)).openRandomFill(device)
+        val previewed = opened.withRandomFillPreview(EditDiff.rows(opened.metadata!!, filled(opened)))
+
+        val rows = previewed.randomFillPreview!!
+        assertTrue("预览该有内容", rows.isNotEmpty())
+        assertTrue("预览是只读的一步：草稿必须还是空的", previewed.draft.isEmpty)
+        assertFalse("没确认就什么都不算改过", previewed.isDirty)
+
+        val row = rows.single { it.key == model }
+        assertEquals("源里没有机型，所以是新增", EditDiffKind.ADDED, row.kind)
+        assertEquals("原值这边是空的", null, row.before)
+        assertTrue("新值要能看到", !row.after.isNullOrEmpty())
+    }
+
+    @Test
+    fun `确认后进草稿的值与预览里看到的一致`() {
+        val opened = loaded(presets = listOf(device)).openRandomFill(device)
+        val fill = filled(opened)
+        val previewed = opened.withRandomFillPreview(EditDiff.rows(opened.metadata!!, fill))
+
+        val row = previewed.randomFillPreview!!.single { it.key == model }
+        val written = previewed.withPresetFill(device.name, fill).draft.of(model)
+
+        assertEquals(
+            "预览里的新值就是确认后写进草稿的值",
+            row.after,
+            TagValueFormatter.format((written as DraftValue.Value).value, FieldCatalog.spec(model)),
+        )
+    }
+
+    @Test
+    fun `换预设换勾选换种子或关弹层都会让预览作废`() {
+        val rows = listOf(EditDiffRow(model, "机型", null, "iPhone 16 Pro", EditDiffKind.ADDED))
+        val opened = loaded(presets = listOf(device, location)).openRandomFill(device).withRandomFillPreview(rows)
+        assertEquals(rows, opened.randomFillPreview)
+
+        assertNull("换预设后旧预览不成立", opened.withRandomFillPreset(location).randomFillPreview)
+        assertNull("改勾选后旧预览不成立", opened.toggleRandomFillKey(model).randomFillPreview)
+        assertNull("换种子后旧预览不成立", opened.withRandomFillSeed(9L).randomFillPreview)
+        assertNull("关掉弹层不该留着预览", opened.closeRandomFill().randomFillPreview)
+        assertNull("重新打开从「没预览」开始", opened.openRandomFill(device).randomFillPreview)
+    }
+
+    @Test
+    fun `一项都不变的预览是空列表而不是没有预览`() {
+        val empty = loaded(presets = listOf(device)).withRandomFillPreview(emptyList())
+
+        assertTrue("空列表表示「算过了，没东西可写」，与 null 不是一回事", empty.randomFillPreview!!.isEmpty())
+        assertNull("没生成过才是 null", loaded(presets = listOf(device)).randomFillPreview)
     }
 
     // ---------- 填充结果并入草稿 ----------

@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -127,7 +128,10 @@ internal fun PreviewSheet(
     onDismiss: () -> Unit,
     onApply: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // 整屏展开，不停在半屏：列表下面的按钮得留在屏幕上（改动的行数与按钮同屏才好看）。
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -171,7 +175,7 @@ internal fun PreviewSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight())) {
                     items(items = state.diffRows, key = { it.key.full }) { row ->
                         DiffRowView(row = row)
                     }
@@ -198,7 +202,7 @@ internal fun PreviewSheet(
 }
 
 @Composable
-private fun DiffRowView(row: EditDiffRow) {
+internal fun DiffRowView(row: EditDiffRow) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(

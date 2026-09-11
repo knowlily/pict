@@ -8,6 +8,7 @@ import com.pict.metatool.domain.model.TagValue
 import com.pict.metatool.domain.plan.EditOperation
 import com.pict.metatool.domain.plan.EditOutcome
 import com.pict.metatool.domain.plan.EditPlan
+import com.pict.metatool.domain.preset.PresetResolver
 
 /**
  * 单文件编辑的草稿模型（docs/07 T2.10）。
@@ -142,7 +143,19 @@ data class EditDiffRow(
 object EditDiff {
 
     fun rows(source: MetadataSet, outcome: EditOutcome): List<EditDiffRow> =
-        outcome.changedKeys
+        rows(source, outcome.target, outcome.changedKeys)
+
+    /**
+     * 填充预览（套用预设 / 随机填充的「生成预览」一步，docs/06 §3.3）。
+     *
+     * 与 [rows] 共用同一份行构造与排序：填充做的也是「把某些键写成新值」，
+     * 用户要看的还是同一张表，没有理由长成两个样子。
+     */
+    fun rows(source: MetadataSet, fill: PresetResolver.Fill): List<EditDiffRow> =
+        rows(source, fill.target, fill.changedKeys)
+
+    private fun rows(source: MetadataSet, target: MetadataSet, keys: Set<TagKey>): List<EditDiffRow> =
+        keys
             .sortedWith(
                 compareBy(
                     { orderOf(it) },
@@ -150,23 +163,26 @@ object EditDiff {
                     { it.name },
                 ),
             )
-            .map { key ->
-                val spec = FieldCatalog.spec(key)
-                val before = source[key]?.let { TagValueFormatter.format(it, spec) }
-                val after = outcome.target[key]?.let { TagValueFormatter.format(it, spec) }
-                val kind = when {
-                    before == null -> EditDiffKind.ADDED
-                    after == null -> EditDiffKind.CLEARED
-                    else -> EditDiffKind.CHANGED
-                }
-                EditDiffRow(
-                    key = key,
-                    label = spec?.label ?: key.full,
-                    before = before,
-                    after = after,
-                    kind = kind,
-                )
-            }
+            .map { key -> row(source, target, key) }
+
+    /** 一行的构造只在这里：值怎么显示、类型怎么判，全页只有一份口径。 */
+    private fun row(source: MetadataSet, target: MetadataSet, key: TagKey): EditDiffRow {
+        val spec = FieldCatalog.spec(key)
+        val before = source[key]?.let { TagValueFormatter.format(it, spec) }
+        val after = target[key]?.let { TagValueFormatter.format(it, spec) }
+        val kind = when {
+            before == null -> EditDiffKind.ADDED
+            after == null -> EditDiffKind.CLEARED
+            else -> EditDiffKind.CHANGED
+        }
+        return EditDiffRow(
+            key = key,
+            label = spec?.label ?: key.full,
+            before = before,
+            after = after,
+            kind = kind,
+        )
+    }
 }
 
 /**

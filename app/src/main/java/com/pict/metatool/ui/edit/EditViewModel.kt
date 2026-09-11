@@ -183,6 +183,36 @@ class EditViewModel(
     }
 
     /**
+     * 「生成预览」：先把这次填充会写进去的字段算出来给用户看，**不动草稿**（docs/06 §3.3）。
+     *
+     * 与 [fillRandom] 走的是同一次纯计算（`PresetResolver.fill`，同预设 + 同勾选 + 同种子），
+     * 所以预览里的值与确认后进草稿的值必然一致——预览不是另算一遍，
+     * 否则「看到的」和「写进去的」就成了两件事。
+     */
+    fun previewRandomFill() {
+        val current = _state.value
+        val preset = current.randomFillPreset ?: return
+        val base = current.proposed ?: current.metadata ?: return
+        val filled = PresetResolver.fill(
+            preset,
+            base,
+            keys = current.randomFillKeys,
+            onlyMissing = false,
+            seed = current.randomFillSeed,
+        )
+        when (filled) {
+            is PictResult.Failure -> update {
+                it.withMessage("预览失败：${filled.failure.detail ?: filled.code}", isError = true)
+            }
+
+            is PictResult.Success -> update { state -> state.withRandomFillPreview(EditDiff.rows(base, filled.value)) }
+        }
+    }
+
+    /** 「返回修改」：丢掉这次预览，退回挑选那一步（草稿本来就没动过）。 */
+    fun clearRandomFillPreview() = update { it.withRandomFillPreview(null) }
+
+    /**
      * 填充的公共路径：以「源文件 + 已有草稿」为基准算目标，再把**变化项**并进草稿。
      *
      * 为什么基准不是源文件：用户可能已经手改过几项，「只填空缺」理应把那些手改当成已有值，

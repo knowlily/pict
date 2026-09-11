@@ -172,7 +172,12 @@
     <string name="edit_random_no_candidates">这个预设里没有可勾选的浮动字段。</string>
     <string name="edit_random_seed_value">种子：%1$d</string>
     <string name="edit_random_seed_reroll">换一批</string>
-    <string name="edit_random_fill">填入草稿</string>
+    <string name="edit_random_preview">生成预览</string>
+    <string name="edit_random_preview_title">将要写入的字段</string>
+    <string name="edit_random_preview_count">共 %1$d 项，确认后才进草稿</string>
+    <string name="edit_random_preview_none">这个种子下一项都不会变，确认也不会动草稿。</string>
+    <string name="edit_random_preview_back">返回修改</string>
+    <string name="edit_random_fill">确认填入</string>
 
     <string name="edit_add_title">添加字段</string>
     <string name="edit_add_hint">这是字段目录里可写、但本文件还没有的字段，点一行加进去。</string>

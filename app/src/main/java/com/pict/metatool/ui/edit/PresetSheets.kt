@@ -22,9 +22,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.pict.metatool.R
@@ -39,6 +41,22 @@ import com.pict.metatool.domain.preset.Preset
  * 因此「挑错了」的代价是撤销而不是写坏原图。
  */
 
+/**
+ * 弹层里列表的高度上限：半屏。
+ *
+ * 这里踩过坑（2026-09-11 真机）：预设列表曾经是一个不受限的 `forEach`，20 个预设把
+ * 弹层整个顶了下去——「填入草稿」按钮落在屏幕外，用户翻不到，于是「随机填充点了没反应」。
+ * 改成「列表自己滚、按钮钉在外面」，并且给列表一个**跟着屏幕走**的上限：写死 420dp
+ * 在 411dp 高的手机上仍然会把下面的按钮挤出屏幕。
+ */
+@Composable
+internal fun sheetListMaxHeight() = (LocalConfiguration.current.screenHeightDp / 2).dp
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text = text, style = MaterialTheme.typography.labelLarge)
+}
+
 /** 预设快选：整套档案一次填好（设备 / 位置 / 时间 / 混合）。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +66,11 @@ internal fun PresetSheet(
     onApply: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // 整屏展开，不停在半屏：这些弹层是「可滚的列表 + 钉在下面的按钮」，
+    // 停在半屏展开的位置时按钮正好落在屏幕外，翻都翻不到（2026-09-11 真机踩到）。
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -101,7 +123,7 @@ internal fun PresetSheet(
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
             ) {
                 state.presetsByKind.forEach { (kind, presets) ->
                     item(key = "kind-${kind.id}") {
@@ -148,10 +170,14 @@ private fun PresetRow(preset: Preset, onApply: () -> Unit) {
 }
 
 /**
- * 随机填充：挑预设 → 勾字段 → 定种子 → 填入草稿。
+ * 随机填充：挑预设 → 勾字段 → 定种子 → **生成预览** → 确认填入。
  *
  * 「种子」是显式且可见的：同一张图 + 同一预设 + 同一种子必然得到同一批值（docs/07 T3.6）。
  * 「换一批」只是换一个种子，不是引入不可复现的随机。
+ *
+ * 分两步而不是「一按就填」，是因为填充一次动的是几十个字段（docs/06 §3.3：
+ * 「显示将写入的字段 diff」）：先让用户看清要写什么，再决定要不要。预览只算不写，
+ * 所以「返回修改」没有任何代价。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,10 +186,16 @@ internal fun RandomFillSheet(
     onChoosePreset: (String) -> Unit,
     onToggleKey: (com.pict.metatool.domain.model.TagKey) -> Unit,
     onRerollSeed: () -> Unit,
+    onPreview: () -> Unit,
+    onClearPreview: () -> Unit,
     onFill: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // 整屏展开，不停在半屏：这些弹层是「可滚的列表 + 钉在下面的按钮」，
+    // 停在半屏展开的位置时按钮正好落在屏幕外，翻都翻不到（2026-09-11 真机踩到）。
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -172,17 +204,48 @@ internal fun RandomFillSheet(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(text = stringResource(R.string.edit_random_title), style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = stringResource(R.string.edit_random_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
-            Text(
-                text = stringResource(R.string.edit_random_preset),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            state.presets.forEach { preset ->
+            val preview = state.randomFillPreview
+            if (preview == null) {
+                RandomFillPicker(
+                    state = state,
+                    onChoosePreset = onChoosePreset,
+                    onToggleKey = onToggleKey,
+                    onRerollSeed = onRerollSeed,
+                    onPreview = onPreview,
+                )
+            } else {
+                RandomFillPreview(rows = preview, onBack = onClearPreview, onConfirm = onFill)
+            }
+        }
+    }
+}
+
+/** 第一步：挑预设、勾字段、定种子。 */
+@Composable
+private fun RandomFillPicker(
+    state: EditUiState,
+    onChoosePreset: (String) -> Unit,
+    onToggleKey: (com.pict.metatool.domain.model.TagKey) -> Unit,
+    onRerollSeed: () -> Unit,
+    onPreview: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.edit_random_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            item { SectionLabel(stringResource(R.string.edit_random_preset)) }
+
+            items(items = state.presets, key = { "preset:" + it.id }) { preset ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -200,66 +263,119 @@ internal fun RandomFillSheet(
                 }
             }
 
-            Text(
-                text = stringResource(R.string.edit_random_fields),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            Text(
-                text = stringResource(R.string.edit_random_fixed_note),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
+            item {
+                Column {
+                    SectionLabel(stringResource(R.string.edit_random_fields))
+                    Text(
+                        text = stringResource(R.string.edit_random_fixed_note),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
 
             val candidates = state.randomFillCandidates
             if (candidates.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.edit_random_no_candidates),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                item {
+                    Text(
+                        text = stringResource(R.string.edit_random_no_candidates),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp)) {
-                    items(items = candidates, key = { it.key.full }) { spec ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleKey(spec.key) },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = spec.key in state.randomFillKeys,
-                                onCheckedChange = { onToggleKey(spec.key) },
+                items(items = candidates, key = { "field:" + it.key.full }) { spec ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleKey(spec.key) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = spec.key in state.randomFillKeys,
+                            onCheckedChange = { onToggleKey(spec.key) },
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = spec.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = spec.key.full,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = spec.label, style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = spec.key.full,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                         }
                     }
                 }
             }
+        }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.edit_random_seed_value, state.randomFillSeed),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onRerollSeed) {
-                    Text(text = stringResource(R.string.edit_random_seed_reroll))
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.edit_random_seed_value, state.randomFillSeed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onRerollSeed) {
+                Text(text = stringResource(R.string.edit_random_seed_reroll))
             }
+        }
 
-            Button(onClick = onFill, enabled = state.randomFillReady) {
+        Button(
+            onClick = onPreview,
+            enabled = state.randomFillReady,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(text = stringResource(R.string.edit_random_preview))
+        }
+    }
+}
+
+/** 第二步：看清「将要写入」的字段 diff，再决定填不填。 */
+@Composable
+private fun RandomFillPreview(
+    rows: List<EditDiffRow>,
+    onBack: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            item { SectionLabel(stringResource(R.string.edit_random_preview_title)) }
+
+            if (rows.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.edit_random_preview_none),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                item {
+                    Text(
+                        text = stringResource(R.string.edit_random_preview_count, rows.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                items(items = rows, key = { "row:" + it.key.full }) { row -> DiffRowView(row) }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.weight(1f)) {
+                Text(text = stringResource(R.string.edit_random_preview_back))
+            }
+            Button(onClick = onConfirm, modifier = Modifier.weight(1f)) {
                 Text(text = stringResource(R.string.edit_random_fill))
             }
         }
@@ -281,7 +397,11 @@ internal fun AddFieldSheet(
     onPick: (FieldSpec) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // 整屏展开，不停在半屏：这些弹层是「可滚的列表 + 钉在下面的按钮」，
+    // 停在半屏展开的位置时按钮正好落在屏幕外，翻都翻不到（2026-09-11 真机踩到）。
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -313,7 +433,7 @@ internal fun AddFieldSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight())) {
                     items(items = fields, key = { it.key.full }) { spec ->
                         AddRow(spec = spec, onAdd = { onPick(spec) })
                     }
