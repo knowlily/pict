@@ -3,6 +3,7 @@ package com.pict.metatool.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -12,9 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -27,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pict.metatool.data.batch.SafBatchTargets
 import com.pict.metatool.domain.batch.BatchTarget
 import com.pict.metatool.domain.settings.AppSettings
 import com.pict.metatool.domain.settings.NavBarStyle
@@ -43,6 +47,8 @@ import com.pict.metatool.ui.navigation.FloatingNavBarReservedHeight
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.settings.SettingsScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 应用根组件（docs/02 §3）：Scaffold + 底部导航 + NavHost。
@@ -164,15 +170,28 @@ fun PictApp(
                             )
                         }
                         composable(BatchRoute.PATTERN) { entry ->
-                            // 路由里只有地址：文件名先按末段凑个占位，真名在预览读取时换成
-                            // 文件里读到的那份（`BatchPreviewer` 会替换来源信息）
-                            val targets = BatchRoute
-                                .parse(entry.arguments?.getString(BatchRoute.ARG_URIS))
-                                .map { uri -> BatchTarget.of(uri, uri.substringAfterLast('/')) }
-                            BatchScreen(
-                                targets = targets,
-                                onBack = { navController.popBackStack() },
-                            )
+                            // 路由里只有地址，来源信息（真名 / MIME / 大小 / 可写位）得先查出来：
+                            // 拿「末段当名字 + 格式未知」的占位去预览，可写性判不出来，
+                            // 结果是把一个个能写的 JPEG 全标成「不支持原地写」。
+                            // 查询是阻塞 IO —— 放 IO 线程，查完再建页面，没查完先转圈。
+                            val context = LocalContext.current
+                            val uris = BatchRoute.parse(entry.arguments?.getString(BatchRoute.ARG_URIS))
+                            val targets by produceState<List<BatchTarget>?>(null, uris) {
+                                value = withContext(Dispatchers.IO) {
+                                    SafBatchTargets(context.contentResolver).of(uris)
+                                }
+                            }
+                            val resolved = targets
+                            if (resolved == null) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                BatchScreen(
+                                    targets = resolved,
+                                    onBack = { navController.popBackStack() },
+                                )
+                            }
                         }
                     }
                 }

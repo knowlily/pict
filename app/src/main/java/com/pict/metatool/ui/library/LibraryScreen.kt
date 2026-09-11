@@ -141,7 +141,15 @@ fun LibraryScreen(
                         ImageGridCell(
                             item = item,
                             selected = item.uri in state.selectedUris,
-                            onClick = { onOpen(item.uri) },
+                            onClick = {
+                                // 已经进了多选就按 Android 惯例「点一下就再勾一项」，
+                                // 否则选中第二张会直接跳进详情页、多选根本没法组批
+                                if (state.selectedUris.isEmpty()) {
+                                    onOpen(item.uri)
+                                } else {
+                                    viewModel.toggleSelection(item.uri)
+                                }
+                            },
                             onLongClick = { viewModel.toggleSelection(item.uri) },
                         )
                     }
