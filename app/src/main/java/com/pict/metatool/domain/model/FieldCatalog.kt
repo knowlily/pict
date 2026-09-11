@@ -256,6 +256,19 @@ object FieldCatalog {
 
     fun group(group: FieldGroup): List<FieldSpec> = byGroup[group].orEmpty()
 
+    /**
+     * 字段在附录 A 里的次序；未收录的键（自定义、或解析不出来的）排在最后。
+     *
+     * 为什么需要它：diff 预览（编辑页）与批量预览（T5.5）都要把变更列表按
+     * 「用户熟悉的顺序」排——按 `Map` 迭代顺序排会出现同一批字段每次顺序都不同，
+     * 看上去像数据在抖。
+     */
+    fun order(key: TagKey): Int = orderIndex[key] ?: Int.MAX_VALUE
+
+    private val orderIndex: Map<TagKey, Int> by lazy {
+        all.withIndex().associate { (index, spec) -> spec.key to index }
+    }
+
     /** 字段名 / 中文名 / 备注的模糊匹配（详情页搜索，T1.11）。 */
     fun search(query: String): List<FieldSpec> {
         val q = query.trim()

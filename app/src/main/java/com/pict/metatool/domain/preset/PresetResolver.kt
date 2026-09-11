@@ -3,6 +3,7 @@ package com.pict.metatool.domain.preset
 import com.pict.metatool.core.error.PictError
 import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.core.result.failureOf
+import com.pict.metatool.core.result.map
 import com.pict.metatool.core.result.successOf
 import com.pict.metatool.domain.model.MetadataSet
 import com.pict.metatool.domain.model.TagKey
@@ -42,6 +43,19 @@ object PresetResolver {
         val operations: List<EditOperation>,
         val keptKeys: Set<TagKey>,
         val skipped: List<MetadataRandomizer.Skip>,
+    )
+
+    /**
+     * 计划路径的完整执行结果：折叠结果 + 汇报明细。
+     *
+     * `dryRun` 的含义在这里特别容易误读：**本类算出来的 [outcome].target 只是
+     * 「将会变成什么样」**，是否落盘由调用方决定——预览（T5.5）到此为止，
+     * 批量执行（T5.4）才把 target 交给 `MetadataWriter`。
+     */
+    data class Applied(
+        val outcome: EditOutcome,
+        val keptKeys: Set<TagKey> = emptySet(),
+        val skipped: List<MetadataRandomizer.Skip> = emptyList(),
     )
 
     /**
@@ -136,18 +150,37 @@ object PresetResolver {
      * 于是「按预设填充」这类操作只能由本类落地。T5.2 之前 [expand] 只有测试在调、没有生产调用点，
      * 结果是走计划路径（批量必然走它）的随机填充 / 预设会直接撞「尚未实现」。
      *
-     * dry-run 与备份标志原样带过去：预览只算 diff，不落盘（FR-32）。
+     * dry-run 与备份标志原样带过去：预览只算 diff、不落盘（FR-32）。
+     *
+     * 只要折叠结果、不关心「哪些被保留 / 哪些没能填」的场景用这个；
+     * 需要那份明细（批量预览与批量执行报告）用 [applyPlanDetailed]。
      */
     fun applyPlan(
         plan: EditPlan,
         source: MetadataSet,
         catalog: PresetCatalog,
-    ): PictResult<EditOutcome> {
-        if (plan.isEmpty) return EditPlanExecutor.execute(plan, source)
+    ): PictResult<EditOutcome> = applyPlanDetailed(plan, source, catalog).map { it.outcome }
+
+    /**
+     * 计划路径的完整执行，并保留「哪些字段被保留、哪些没能填」的明细。
+     *
+     * 谁要这份明细：批量预览（T5.5）与批量执行（T5.4）。只给 [EditOutcome] 的话，
+     * 「这个文件为什么只改了两项」就答不上来——是字段本来就有值所以跳过
+     * （[Expanded.keptKeys]），还是预设里根本没这个字段（[Expanded.skipped]）。
+     *
+     * dry-run 与备份标志原样带过去：预览只算 diff、不落盘（FR-32）。
+     */
+    fun applyPlanDetailed(
+        plan: EditPlan,
+        source: MetadataSet,
+        catalog: PresetCatalog,
+    ): PictResult<Applied> {
+        if (plan.isEmpty) return EditPlanExecutor.execute(plan, source).map { Applied(it) }
         return when (val expanded = expand(plan, source, catalog)) {
             is PictResult.Failure -> expanded
-            is PictResult.Success ->
-                EditPlanExecutor.execute(plan.copy(operations = expanded.value.operations), source)
+            is PictResult.Success -> EditPlanExecutor
+                .execute(plan.copy(operations = expanded.value.operations), source)
+                .map { Applied(it, expanded.value.keptKeys, expanded.value.skipped) }
         }
     }
 
