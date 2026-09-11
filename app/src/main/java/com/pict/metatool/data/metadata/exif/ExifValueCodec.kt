@@ -90,18 +90,72 @@ object ExifValueCodec {
         }
     }
 
+    /**
+     * 解析有理数字面量。两条入路都要吃：
+     * - 真分数 `483328/65536`——库对多数标签原样返回；
+     * - **十进制 `0.00625`**——androidx 对 `ExposureTime`/`FNumber` 这类标签会先把有理数转成
+     *   十进制字符串再返回（真机与 JVM 上一致，实测 `0.00625` / `7.1`）。
+     *
+     * 只认真分数时，`EXIF:ExposureTime` / `EXIF:FNumber` 会**静默解析失败**：值写进了文件
+     * （exiftool 能读到），可回读永远缺这两个键 → 写完校验永远判「缺失」→ 每张都报
+     * 校验未通过。十进制按连分数还成最简分数（`0.00625` → `1/160`），见 [rationalOfDecimal]。
+     */
     fun parseRational(raw: String): Rational? {
         val s = raw.trim()
         if (s.isEmpty()) return null
         val slash = s.indexOf('/')
         return if (slash < 0) {
-            s.toLongOrNull()?.let { Rational(it, 1) }
+            s.toLongOrNull()?.let { Rational(it, 1) } ?: rationalOfDecimal(s)
         } else {
             val num = s.substring(0, slash).trim().toLongOrNull() ?: return null
             val den = s.substring(slash + 1).trim().toLongOrNull() ?: return null
             Rational(num, den)
         }
     }
+
+    /**
+     * 十进制字面量 → 最简分数；不是十进制就返回 null。
+     *
+     * 不能直接当成 `unscaledValue / 10^scale`：EXIF 有理数是两个 32 位整数，`ExifInterface`
+     * 打印时已经截断（真值 `1/75` 变成 `0.01333333333`）。照抄成分母 10^11 的分数，写回文件
+     * 时分母溢出 32 位、值直接写坏——金标准用例抓到过：`ExposureTime 0.01333333333 → 0.3519331784`。
+     * 所以用连分数取分母不超过 [MAX_RATIONAL_DENOMINATOR] 的最佳逼近：`1/75` 还它 `1/75`，
+     * `0.00625` 还它 `1/160`，误差上界约 `1/q²`。
+     */
+    private fun rationalOfDecimal(raw: String): Rational? {
+        val value = raw.toBigDecimalOrNull()?.toDouble() ?: return null
+        if (!value.isFinite()) return null
+        if (value == 0.0) return Rational(0, 1)
+
+        val sign = if (value < 0) -1L else 1L
+        var x = kotlin.math.abs(value)
+        var pPrev = 0L // h(-2) = 0/1
+        var qPrev = 1L
+        var p = 1L // h(-1) = 1/0
+        var q = 0L
+        var guard = 0
+        while (guard++ < MAX_CONVERGENTS) {
+            val a = x.toLong()
+            val pNext = a * p + pPrev
+            val qNext = a * q + qPrev
+            // 分母超限、溢出成负数就停在上一个收敛项——宁可放宽到 1/q² 也别写坏文件
+            if (qNext > MAX_RATIONAL_DENOMINATOR || qNext <= 0L || pNext < 0L) break
+            pPrev = p
+            qPrev = q
+            p = pNext
+            q = qNext
+            val remainder = x - a
+            if (remainder <= 0.0) break
+            x = 1.0 / remainder
+        }
+        return if (q <= 0L) null else Rational(sign * p, q)
+    }
+
+    /** 连分数收敛项轮数上限，挡住 `1e18` 这种病态输入。 */
+    private const val MAX_CONVERGENTS = 32
+
+    /** 分母上限：压到 10^6 时逼近误差约 1e-12，又远小于 32 位有理数能存的量级。 */
+    private const val MAX_RATIONAL_DENOMINATOR = 1_000_000L
 
     fun parseRationals(raw: String): List<Rational>? {
         val parts = splitValues(raw)

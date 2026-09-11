@@ -61,7 +61,7 @@ class ExifMetadataStoreTest {
         val shot = entries[TagKey.of("EXIF:DateTimeOriginal")]
         assertTrue("拍摄时间应为 Timestamp，实际 $shot", shot is TagValue.Timestamp)
         assertEquals(2008, (shot as TagValue.Timestamp).value.year)
-        // 光圈（该样本没有 FNumber，只有 APEX 的 ApertureValue）
+        // 光圈：APEX 值（该样本另有 FNumber = 7.1，见 WrittenFileReadBackTest）
         val aperture = entries[TagKey.of("EXIF:ApertureValue")]
         assertTrue("应读到光圈 APEX 值，实际 $aperture", aperture is TagValue.RationalValue)
         assertEquals(5.625, (aperture as TagValue.RationalValue).value.asDouble, 1e-6)

@@ -303,7 +303,15 @@ class EditViewModel(
             hasher.hashOf(resolver, source.uri)
         }.getOrNull()
         val report = after?.let {
-            MetadataVerifier.compare(before, target, it.set, fingerprintBefore, fingerprintAfter)
+            MetadataVerifier.compare(
+                before = before,
+                target = target,
+                after = it.set,
+                fingerprintBefore = fingerprintBefore,
+                fingerprintAfter = fingerprintAfter,
+                // 写入器事前声明装不下的键（XMP 之类）不算缺失，否则永远报「校验未通过」
+                dropped = written.droppedKeys,
+            )
         }
         val verifyText = report?.summary() ?: "读回失败，无法校验"
         val failed = report?.isLossless == false
@@ -424,6 +432,7 @@ class EditViewModel(
                                 after = it.set,
                                 fingerprintBefore = fingerprintBefore,
                                 fingerprintAfter = fingerprintAfter,
+                                dropped = written.value.droppedKeys,
                             )
                         }
                         val verifyText = report?.summary() ?: "读回失败，无法校验"

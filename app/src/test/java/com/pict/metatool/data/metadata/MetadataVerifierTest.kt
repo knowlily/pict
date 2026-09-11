@@ -140,6 +140,86 @@ class MetadataVerifierTest {
         assertTrue(summary, summary.contains("像素已变"))
     }
 
+    @Test
+    fun `详细摘要把出问题的键名点出来`() {
+        val before = metaSet(gpsLat to TagValue.RationalValue(Rational(31, 1)))
+        val target = metaSet(make to TagValue.Text("PictTool"))
+        val after = metaSet(
+            make to TagValue.Text("Canon"),
+            gpsLat to TagValue.RationalValue(Rational(31, 1)),
+            model to TagValue.Text("X100"),
+        )
+
+        val detail = MetadataVerifier.compare(before, target, after, "abc", "def").detail()
+
+        assertTrue(detail, detail.contains("值不符 1 项[EXIF:Make]"))
+        assertTrue(detail, detail.contains("未删除 1 项[GPS:GPSLatitude]"))
+        assertTrue(detail, detail.contains("多出 1 项[EXIF:Model]"))
+        assertTrue(detail, detail.contains("像素已变"))
+    }
+
+    @Test
+    fun `键太多时每类只点名前几个，并交代还有多少`() {
+        val keys = (1..7).map { TagKey("EXIF", "Tag$it") }
+        val target = metaSet(*keys.map { it to TagValue.Text("PictTool") }.toTypedArray())
+        val after = metaSet(*keys.map { it to TagValue.Text("别的") }.toTypedArray())
+
+        val detail = MetadataVerifier.compare(target, target, after).detail(maxPerCategory = 2)
+
+        assertTrue(detail, detail.contains("值不符 7 项[EXIF:Tag1、EXIF:Tag2 等 7 项]"))
+    }
+
+    @Test
+    fun `写入器事前声明装不下的键不算缺失`() {
+        // XMP 段这类「格式存不下」由写入器事前声明（WriteResult.droppedKeys），
+        // 读不回来不该判成校验未通过——否则用得上这些键的图永远报错
+        val xmpMake = TagKey.of("XMP:tiff:Make")
+        val target = metaSet(make to TagValue.Text("PictTool"), xmpMake to TagValue.Text("PictTool"))
+        val after = metaSet(make to TagValue.Text("PictTool"))
+
+        val report = MetadataVerifier.compare(target, target, after, dropped = setOf(xmpMake))
+
+        assertTrue(report.missing.toString(), report.missing.isEmpty())
+        assertEquals(setOf(xmpMake), report.dropped)
+        assertTrue(report.isLossless)
+        assertEquals("1 项格式存不下", report.droppedNote)
+        assertTrue(report.summary(), report.summary().contains("格式存不下 1 项"))
+        assertTrue(report.detail(), report.detail().contains("格式存不下 1 项[XMP:tiff:Make]"))
+    }
+
+    @Test
+    fun `没声明过的键读不回来还是算缺失`() {
+        val xmpModel = TagKey.of("XMP:tiff:Model")
+        val target = metaSet(make to TagValue.Text("PictTool"), xmpModel to TagValue.Text("PictTool"))
+        val after = metaSet(make to TagValue.Text("PictTool"))
+
+        val report = MetadataVerifier.compare(
+            target,
+            target,
+            after,
+            dropped = setOf(TagKey.of("XMP:dc:format")),
+        )
+
+        assertEquals(setOf(xmpModel), report.missing)
+        assertTrue(report.dropped.isEmpty())
+        assertNull(report.droppedNote)
+        assertFalse(report.isLossless)
+    }
+
+    @Test
+    fun `声明丢弃但值其实写进去了，照样按读回值比对`() {
+        // 只信声明的一半：写入器说装不下，文件里却真有且值不对，那就是不一致
+        val xmpModel = TagKey.of("XMP:tiff:Model")
+        val target = metaSet(xmpModel to TagValue.Text("PictTool"))
+        val after = metaSet(xmpModel to TagValue.Text("别的值"))
+
+        val report = MetadataVerifier.compare(target, target, after, dropped = setOf(xmpModel))
+
+        assertEquals(setOf(xmpModel), report.mismatched.keys)
+        assertTrue(report.dropped.isEmpty())
+        assertFalse(report.isLossless)
+    }
+
     private companion object {
         val SOURCE = SourceInfo("sample.jpg", "image/jpeg", 1024L, ImageFormatHint.JPEG)
     }

@@ -24,6 +24,8 @@ object MetadataVerifier {
      * @param after 写入后重新读到的元数据
      * @param fingerprintBefore 写入前的像素指纹；任一为空则不校验像素
      * @param fingerprintAfter 写入后的像素指纹
+     * @param dropped 写入器**事前声明**丢弃的键（`WriteResult.droppedKeys`）。这些键读不回来
+     *   不算缺失（它早知道装不下），单独记一档；但只信声明——真写进去了就照样比对读回值。
      */
     fun compare(
         before: MetadataSet,
@@ -31,14 +33,17 @@ object MetadataVerifier {
         after: MetadataSet,
         fingerprintBefore: String? = null,
         fingerprintAfter: String? = null,
+        dropped: Set<TagKey> = emptySet(),
     ): MetadataVerifyReport {
         val matched = mutableSetOf<TagKey>()
         val mismatched = mutableMapOf<TagKey, FieldMismatch>()
         val missing = mutableSetOf<TagKey>()
+        val declaredDropped = mutableSetOf<TagKey>()
 
         for ((key, expected) in target.entries) {
             val actual = after.entries[key]
             when {
+                actual == null && key in dropped -> declaredDropped += key
                 actual == null -> missing += key
                 sameValue(expected, actual) -> matched += key
                 else -> mismatched[key] = FieldMismatch(normalize(expected), normalize(actual))
@@ -62,6 +67,7 @@ object MetadataVerifier {
             matched = matched,
             mismatched = mismatched,
             missing = missing,
+            dropped = declaredDropped,
             notRemoved = notRemoved,
             unexpected = unexpected,
             pixelsIdentical = pixelsIdentical,
