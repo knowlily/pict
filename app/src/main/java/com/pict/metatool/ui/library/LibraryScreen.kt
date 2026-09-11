@@ -21,6 +21,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,11 +39,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.model.ImageItem
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.domain.settings.RecentFolder
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.components.PlaceholderPane
 import com.pict.metatool.ui.theme.PictSpacing
@@ -109,6 +112,7 @@ fun LibraryScreen(
                 onClearSelection = viewModel::clearSelection,
                 onRemoveSelected = viewModel::removeSelected,
                 onBatchEdit = onBatchEdit,
+                onOpenRecentFolder = viewModel::openRecentFolder,
             )
 
             if (state.isScanning) {
@@ -119,6 +123,8 @@ fun LibraryScreen(
                 state.showEmptyState -> LibraryEmptyState(
                     onPickFiles = { pickFiles.launch(FILE_PICKER_MIME_TYPES) },
                     onPickFolder = { pickFolder.launch(null) },
+                    recentFolders = state.recentFolders,
+                    onOpenRecentFolder = viewModel::openRecentFolder,
                     modifier = Modifier.weight(1f),
                 )
 
@@ -177,6 +183,7 @@ private fun LibraryHeader(
     onClearSelection: () -> Unit,
     onRemoveSelected: () -> Unit,
     onBatchEdit: (List<String>) -> Unit,
+    onOpenRecentFolder: (RecentFolder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -234,6 +241,32 @@ private fun LibraryHeader(
                             onPickPhotos()
                         },
                     )
+                    if (state.hasRecentFolders) {
+                        HorizontalDivider()
+                        // 这是分组标题不是菜单项：做成不可点的 Text，免得点了没反应像坏了
+                        Text(
+                            text = stringResource(R.string.library_recent_title),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                start = PictSpacing.md,
+                                end = PictSpacing.md,
+                                top = PictSpacing.xs,
+                                bottom = PictSpacing.xs,
+                            ),
+                        )
+                        state.recentFolders.forEach { folder ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(text = folder.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onOpenRecentFolder(folder)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -297,6 +330,8 @@ private fun ScanBanner(found: Int, onCancel: () -> Unit, modifier: Modifier = Mo
 private fun LibraryEmptyState(
     onPickFiles: () -> Unit,
     onPickFolder: () -> Unit,
+    recentFolders: List<RecentFolder>,
+    onOpenRecentFolder: (RecentFolder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -306,6 +341,35 @@ private fun LibraryEmptyState(
             body = stringResource(R.string.library_empty_body),
             modifier = Modifier.weight(1f),
         )
+
+        // 空状态才是「最近目录」最该出现的地方：这儿正是要重新找一个目录的时候（FR-03）
+        if (recentFolders.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = PictSpacing.screenHorizontal,
+                        end = PictSpacing.screenHorizontal,
+                        bottom = PictSpacing.sm,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(PictSpacing.xs),
+            ) {
+                Text(
+                    text = stringResource(R.string.library_recent_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                recentFolders.take(RECENT_FOLDERS_IN_EMPTY_STATE).forEach { folder ->
+                    TextButton(onClick = { onOpenRecentFolder(folder) }) {
+                        Text(
+                            text = folder.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -332,7 +396,11 @@ private fun libraryMessageText(message: LibraryMessage): String = when (message)
     LibraryMessage.ImportEmpty -> stringResource(R.string.library_message_import_empty)
     LibraryMessage.ImportFailed -> stringResource(R.string.library_message_import_failed)
     is LibraryMessage.ScanTruncated -> stringResource(R.string.library_message_scan_truncated, message.limit)
+    LibraryMessage.FolderPermissionLost -> stringResource(R.string.library_message_folder_lost)
 }
+
+/** 空状态里最多列几个最近目录：再多会把两个导入按钮挤到屏幕外。 */
+private const val RECENT_FOLDERS_IN_EMPTY_STATE = 3
 
 /** 文件选择只收图片（docs/05 §3.1）。 */
 private val FILE_PICKER_MIME_TYPES = arrayOf("image/*")

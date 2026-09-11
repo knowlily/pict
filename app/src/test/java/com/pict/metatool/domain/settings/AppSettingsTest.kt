@@ -31,6 +31,64 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `最近目录：同一目录只留最近那一次`() {
+        val trimmed = AppSettings.normalizeRecentFolders(
+            listOf(
+                RecentFolder("content://tree/a", "A", 100L),
+                RecentFolder("content://tree/a", "A", 900L),
+            ),
+        )
+        assertEquals(1, trimmed.size)
+        assertEquals(900L, trimmed.first().usedAtMillis)
+    }
+
+    @Test
+    fun `最近目录：按时间倒序、最多十条`() {
+        val many = (1..12).map { RecentFolder("content://tree/$it", "目录$it", it.toLong()) }
+        val trimmed = AppSettings.normalizeRecentFolders(many)
+
+        assertEquals(AppSettings.MAX_RECENT_FOLDERS, trimmed.size)
+        assertEquals("目录12", trimmed.first().name)
+        // 掉下去的是最早的两条，不是最新的两条
+        assertFalse(trimmed.any { it.name == "目录1" })
+        assertFalse(trimmed.any { it.name == "目录2" })
+    }
+
+    @Test
+    fun `最近目录：空 URI 或空名字的记录进不来`() {
+        val trimmed = AppSettings.normalizeRecentFolders(
+            listOf(
+                RecentFolder("   ", "没有 URI", 3L),
+                RecentFolder("content://tree/a", "   ", 2L),
+                RecentFolder("content://tree/b", "B", 1L),
+            ),
+        )
+        assertEquals(listOf("B"), trimmed.map { it.name })
+    }
+
+    @Test
+    fun `记一次最近目录：新的排最前，重复的只刷新时间`() {
+        val settings = AppSettings()
+            .withRecentFolder("content://tree/a", "A", 1L)
+            .withRecentFolder("content://tree/b", "B", 2L)
+            .withRecentFolder("content://tree/a", "A", 3L)
+
+        assertEquals(listOf("A", "B"), settings.recentFolders.map { it.name })
+        assertEquals(listOf(3L, 2L), settings.recentFolders.map { it.usedAtMillis })
+    }
+
+    @Test
+    fun `规范化会把最近目录也一起收干净`() {
+        val settings = AppSettings(
+            recentFolders = listOf(
+                RecentFolder("content://tree/a", "A", 5L),
+                RecentFolder("", "没有 URI", 9L),
+            ),
+        ).normalized()
+        assertEquals(listOf("A"), settings.recentFolders.map { it.name })
+    }
+
+    @Test
     fun `文件名里的非法字符被清掉而不是原样写进去`() {
         assertEquals("abcdefghij", AppSettings.normalizeSuffix("a/b\\c:d*e?f\"g<h>i|j"))
     }

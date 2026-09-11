@@ -34,6 +34,9 @@ private const val KEY_GRID_COLUMNS = "grid_columns"
 private const val KEY_NAV_BAR_STYLE = "navbar_style"
 private const val KEY_NAV_ITEMS = "navbar_items"
 
+/** 最近目录（FR-03）：一条一行，明细见 [RecentFolderCodec]。 */
+private const val KEY_RECENT_FOLDERS = "recent_folders"
+
 private fun prefsOf(context: Context): SharedPreferences =
     context.applicationContext.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
 
@@ -50,6 +53,8 @@ internal fun loadSettings(prefs: SharedPreferences): AppSettings {
         navBarStyle = NavBarStyle.fromName(prefs.getString(KEY_NAV_BAR_STYLE, null)),
         // 没存过、或存进去的名字一个都不认识：decode 给空集合，normalized 会把它兜回默认三栏
         navItems = NavItem.decode(prefs.getString(KEY_NAV_ITEMS, null)),
+        // 同理：没存过是一张白纸（不是错误），坏行由 codec 自己丢掉，剩下的过规范化
+        recentFolders = RecentFolderCodec.decode(prefs.getString(KEY_RECENT_FOLDERS, null)),
     ).normalized()
 }
 
@@ -64,6 +69,7 @@ internal fun saveSettings(prefs: SharedPreferences, settings: AppSettings) {
         .putInt(KEY_GRID_COLUMNS, settings.gridColumns)
         .putString(KEY_NAV_BAR_STYLE, settings.navBarStyle.name)
         .putString(KEY_NAV_ITEMS, NavItem.encode(settings.navItems))
+        .putString(KEY_RECENT_FOLDERS, RecentFolderCodec.encode(settings.recentFolders))
         .apply()
 }
 

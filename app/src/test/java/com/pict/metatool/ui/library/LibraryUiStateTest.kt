@@ -2,6 +2,7 @@ package com.pict.metatool.ui.library
 
 import com.pict.metatool.domain.model.ImageFormatHint
 import com.pict.metatool.domain.model.ImageItem
+import com.pict.metatool.domain.settings.RecentFolder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -31,6 +32,25 @@ class LibraryUiStateTest {
         writable = writable,
         origin = ImageItem.Origin.FILE_PICKER,
     )
+
+    @Test
+    fun `一条最近目录都没有时不占地方`() {
+        assertFalse(LibraryUiState().hasRecentFolders)
+    }
+
+    @Test
+    fun `换上最近目录不动已导入的图和选中态`() {
+        val state = LibraryUiState()
+            .withItems(listOf(item("a.jpg"), item("b.jpg")))
+            .toggled("content://media/a.jpg")
+            .withRecentFolders(listOf(RecentFolder("content://tree/x", "相机", 1L)))
+
+        assertEquals(listOf("相机"), state.recentFolders.map { it.name })
+        assertTrue(state.hasRecentFolders)
+        // 最近目录是「以前去过哪些地方」，跟这次挑出来的图不能互相干扰
+        assertEquals(2, state.totalCount)
+        assertEquals(1, state.selectedCount)
+    }
 
     @Test
     fun `初始状态是空的且显示空状态`() {

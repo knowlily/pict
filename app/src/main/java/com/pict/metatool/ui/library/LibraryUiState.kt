@@ -1,6 +1,7 @@
 package com.pict.metatool.ui.library
 
 import com.pict.metatool.domain.model.ImageItem
+import com.pict.metatool.domain.settings.RecentFolder
 
 /**
  * 图库页状态（docs/02 §10 单向数据流：状态自 ViewModel 向下流，事件自界面向上抛）。
@@ -17,6 +18,12 @@ data class LibraryUiState(
     val isScanning: Boolean = false,
     /** 扫描过程中已发现的数量，用于「正在扫描…已发现 N 张」。 */
     val scannedCount: Int = 0,
+    /**
+     * 最近用过的目录（FR-03），最近用的排前面。
+     *
+     * 值来自应用设置而不是本页的临时状态：重启之后还要在，才是这条需求的意义。
+     */
+    val recentFolders: List<RecentFolder> = emptyList(),
     /** 一次性提示，UI 弹完 Snackbar 后调用 `consumeMessage()` 清掉。 */
     val message: LibraryMessage? = null,
 ) {
@@ -34,6 +41,9 @@ data class LibraryUiState(
 
     /** 是否该显示空状态：既没有图，也没有正在扫描。 */
     val showEmptyState: Boolean get() = items.isEmpty() && !isScanning
+
+    /** 空状态里要不要给「最近目录」这块：一条都没有时不必占地方。 */
+    val hasRecentFolders: Boolean get() = recentFolders.isNotEmpty()
 
     /**
      * 合并新导入的图片：按 [ImageItem.uri] 去重，重复导入同一张不会出现两条；
@@ -73,6 +83,15 @@ data class LibraryUiState(
     fun withScanning(scanning: Boolean, found: Int = scannedCount): LibraryUiState =
         copy(isScanning = scanning, scannedCount = found)
 
+    /**
+     * 换一份「最近目录」（设置里改了、或本页刚导入成功）。
+     *
+     * 不去动 [items] / [selectedUris]：这两个是「这次会话挑出来的」，
+     * 最近目录是「以前挑过哪些地方」，混在一起会让列表莫名其妙变空。
+     */
+    fun withRecentFolders(folders: List<RecentFolder>): LibraryUiState =
+        if (folders == recentFolders) this else copy(recentFolders = folders)
+
     fun withMessage(message: LibraryMessage?): LibraryUiState = copy(message = message)
 }
 
@@ -89,4 +108,12 @@ sealed interface LibraryMessage {
 
     /** 扫描达到单次上限，剩下的要再导一次。 */
     data class ScanTruncated(val limit: Int) : LibraryMessage
+
+    /**
+     * 点开「最近目录」时持久授权已经失效（卸载重装、系统回收过授权，docs/05 §…）。
+     *
+     * 只提示、不把这条记录删掉：目录还在那儿，重新获得授权之后它又能用了，
+     * 替用户做「一次失败就永远别记了」的判断太傲慢。
+     */
+    data object FolderPermissionLost : LibraryMessage
 }

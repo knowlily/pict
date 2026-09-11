@@ -88,6 +88,24 @@ enum class NavItem {
 }
 
 /**
+ * 最近导入过的目录（docs/01 FR-03：「杀进程重启后仍可直接访问该目录」）。
+ *
+ * 只记 URI 与名字：存文件列表没有意义（列表每次重新扫，还可能已经变了），
+ * 这里要回答的只是「上次在哪儿」。
+ *
+ * 授权是否仍然有效**不在这里判断**——那是设备的事（`persistedUriPermissions`），
+ * 由 `data/source` 层每次用之前校验；这条记录只保证存下来的值合法、可去重、有上限。
+ */
+data class RecentFolder(
+    /** SAF 树 URI 的字符串形式。 */
+    val uri: String,
+    /** 给用户看的目录名。 */
+    val name: String,
+    /** 上次使用时刻：排序与「最近」的依据。 */
+    val usedAtMillis: Long,
+)
+
+/**
  * 应用设置（docs/01 FR-35 / FR-38，界面对应 docs/06 §3.7）。
  *
  * 纯数据 + 纯函数：不碰 Android、不碰存储。落盘与读取在 `data/settings`，
@@ -114,6 +132,14 @@ data class AppSettings(
     val navBarStyle: NavBarStyle = DEFAULT_NAV_BAR_STYLE,
     /** 底栏显示哪些入口；空集合非法，规范化会还给默认三栏。 */
     val navItems: Set<NavItem> = DEFAULT_NAV_ITEMS,
+    /**
+     * 最近导入过的目录，最近用的排前面（FR-03）。
+     *
+     * 授权本身早就持久化了，缺的一直是「上次是哪个目录」这笔账：重启之后只能重新点
+     * 「选择文件夹」把同一棵树再挑一遍。存的是目录 URI 与名字，不是文件列表——
+     * 列表每次重新扫，目录才是「上次在这儿」这件事的答案。
+     */
+    val recentFolders: List<RecentFolder> = emptyList(),
 ) {
 
     /**
@@ -126,6 +152,19 @@ data class AppSettings(
         exportSuffix = normalizeSuffix(exportSuffix),
         gridColumns = gridColumns.coerceIn(MIN_GRID_COLUMNS, MAX_GRID_COLUMNS),
         navItems = normalizeNavItems(navItems),
+        recentFolders = normalizeRecentFolders(recentFolders),
+    )
+
+    /**
+     * 记下一次走通的目录：新的一条排在最前面，同一目录只留最新那一次。
+     *
+     * 只在**授权拿到手之后**记（见 `LibraryViewModel.importFolder`）：没拿到授权就记下来，
+     * 下次点它会直接失败，那是在给人挖坑。
+     */
+    fun withRecentFolder(uri: String, name: String, usedAtMillis: Long): AppSettings = copy(
+        recentFolders = normalizeRecentFolders(
+            listOf(RecentFolder(uri = uri, name = name, usedAtMillis = usedAtMillis)) + recentFolders,
+        ),
     )
 
     companion object {
@@ -184,6 +223,22 @@ data class AppSettings(
          */
         val OPTIONAL_NAV_ITEMS: List<NavItem> =
             NavItem.entries.filterNot { it in REQUIRED_NAV_ITEMS }
+
+        /** 最近目录最多记这几条：再多也不叫「最近」，只是没删干净的历史。 */
+        const val MAX_RECENT_FOLDERS: Int = 10
+
+        /**
+         * 规范化最近目录：丢掉空 URI / 空名字的、同一目录只留最近那一次、
+         * 按时间倒序、最多 [MAX_RECENT_FOLDERS] 条。
+         *
+         * 去重与上限放在这里而不是写盘那侧：读回来的旧账（比如以后把上限调小）
+         * 也该在进内存的时候就被收干净，别的代码就不用各自再防一遍。
+         */
+        fun normalizeRecentFolders(raw: List<RecentFolder>): List<RecentFolder> = raw
+            .filter { it.uri.isNotBlank() && it.name.isNotBlank() }
+            .sortedByDescending { it.usedAtMillis }
+            .distinctBy { it.uri }
+            .take(MAX_RECENT_FOLDERS)
 
         /**
          * 规范化底栏入口：按枚举顺序重排、丢掉不认识的项（防 pref 被手改），

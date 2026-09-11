@@ -44,6 +44,22 @@ class SafSource(private val resolver: ContentResolver) {
     fun hasPersistedPermission(treeUri: Uri, requireWrite: Boolean = false): Boolean =
         UriAccess.hasPersistedPermission(resolver, treeUri, requireWrite)
 
+    /**
+     * 树 URI 的目录显示名（「最近目录」记账用，FR-03）。
+     *
+     * 先问 Provider：`COLUMN_DISPLAY_NAME` 才是用户在系统选择器里看到的那串字。
+     * 问不到（Provider 不认这个 URI、或授权已经失效）就返回 null，让调用方用
+     * [TreeDocumentName.fromUri] 兜底——不在这里编一个假名字，也不抛异常：
+     * 记一个名字不该比扫描目录更容易失败。
+     */
+    fun treeDisplayName(treeUri: Uri): String? = runCatching {
+        val documentId = DocumentsContract.getTreeDocumentId(treeUri)
+        val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+        resolver
+            .query(documentUri, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.isNotBlank() } else null }
+    }.getOrNull()
+
     // ---------------- 2. URI → ImageItem ----------------
 
     /**
