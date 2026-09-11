@@ -105,6 +105,9 @@ dependencies {
     // 协程：任务层（domain/job，T5.1/T5.2）显式声明；之前只是 Compose 传递进来的
     implementation(libs.kotlinx.coroutines.core)
 
+    // 任务队列与前台服务（data/job，T5.3）：批量写元数据要能在退到后台后继续跑
+    implementation(libs.androidx.work.runtime.ktx)
+
     // 图片加载（缩略图网格 T1.9）
     implementation(libs.coil)
 

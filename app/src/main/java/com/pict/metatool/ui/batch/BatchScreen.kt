@@ -1,6 +1,11 @@
 package com.pict.metatool.ui.batch
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.batch.BatchMode
@@ -72,8 +78,8 @@ import kotlinx.coroutines.launch
  * 预览这一步**只读**（FR-32）——它拿不到任何写方法，因为读侧接口
  * `BatchSourceReader` 上就没声明过 `write`。
  *
- * 执行按钮只到提示为止：真跑要等任务队列（WorkManager，T5.3）接上，
- * 现在能保证的是「计划与预览算得准」。
+ * 「开始执行」把这一批交给 WorkManager（T5.3）：定义先落盘再入队，进度在通知栏，
+ * 通知里带「取消」（FR-29）。页面这层不盯着它跑完——进度页是 T5.6 的事。
  *
  * @param targets 从图库带过来的这批图（URI + 来源快照）
  */
@@ -88,8 +94,22 @@ fun BatchScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val pendingText = stringResource(R.string.batch_execute_pending)
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* 拒了也照跑：任务不依赖通知，只是进度看不见 */ }
+
+    // Android 13 起通知要用户点头。先问、再排队：这是唯一自然的时机，
+    // 等任务开跑了再问就晚了（那时通知本该已经出现）。
+    val startJob: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        viewModel.start()
+    }
 
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
@@ -141,7 +161,7 @@ fun BatchScreen(
                 state = state,
                 contentPadding = innerPadding,
                 viewModel = viewModel,
-                onExecute = { scope.launch { snackbarHostState.showSnackbar(pendingText) } },
+                onExecute = startJob,
             )
         }
     }
@@ -339,18 +359,38 @@ private fun BatchPreviewStep(
         }
 
         item {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(PictSpacing.sm),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedButton(
-                    onClick = viewModel::backToEdit,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(text = stringResource(R.string.batch_preview_back))
+            Column(verticalArrangement = Arrangement.spacedBy(PictSpacing.xs)) {
+                if (state.isQueued) {
+                    Text(
+                        text = stringResource(R.string.batch_execute_queued, state.queuedCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
-                Button(onClick = onExecute, modifier = Modifier.weight(1f)) {
-                    Text(text = stringResource(R.string.batch_execute))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(PictSpacing.sm),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedButton(
+                        onClick = viewModel::backToEdit,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(text = stringResource(R.string.batch_preview_back))
+                    }
+                    // 排过队就锁住：同一个 jobId 重复入队是 KEEP，点了也不会有第二个任务，
+                    // 但按钮还亮着会让人以为「没点上」。要再跑一次，先改一改草稿（改了就解锁）。
+                    Button(
+                        onClick = onExecute,
+                        enabled = !state.isQueued,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (state.isQueued) R.string.batch_execute_queued_action
+                                else R.string.batch_execute,
+                            ),
+                        )
+                    }
                 }
             }
         }

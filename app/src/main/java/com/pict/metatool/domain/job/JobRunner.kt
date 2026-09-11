@@ -25,10 +25,16 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 sealed interface ItemResult {
 
-    /** 成功；[changedKeys] 只放真正变了值的键（dry-run 时是「将会变」的键）。 */
+    /**
+     * 成功；[changedKeys] 只放真正变了值的键（dry-run 时是「将会变」的键）。
+     *
+     * [note] 给「成了但有话要说」用（眼下只有一种：写入器事前声明丢过键），
+     * 正常成功是 null——不要拿它当成功提示的抽屉。
+     */
     data class Done(
         val changedKeys: Set<TagKey> = emptySet(),
         val outputUri: String? = null,
+        val note: String? = null,
     ) : ItemResult
 
     /** 失败；[error] 决定要不要重试（见 [isRetryable]）。 */
@@ -37,10 +43,16 @@ sealed interface ItemResult {
         val detail: String? = null,
     ) : ItemResult
 
-    /** 写后校验未通过（FR-33）：不算失败也不算成功，单独一档。 */
+    /**
+     * 写后校验未通过（FR-33）：不算失败也不算成功，单独一档。
+     *
+     * 带上 [changedKeys]：**值确实写进去了**，只是没通过读回比对，计数不该显示成 0
+     * （那会让人以为一个字段都没动）。
+     */
     data class VerifyFailed(
         val error: PictError = PictError.META_VERIFY,
         val detail: String? = null,
+        val changedKeys: Set<TagKey> = emptySet(),
     ) : ItemResult
 
     /** 前置条件不满足（格式不支持 / 无写权限），跳过但不报错。 */
@@ -156,6 +168,7 @@ class JobRunner(
                             status = JobItemStatus.SUCCESS,
                             changedKeys = result.changedKeys,
                             outputUri = result.outputUri ?: it.outputUri,
+                            note = result.note,
                             finishedAtMillis = clock(),
                         )
                     }
@@ -168,6 +181,7 @@ class JobRunner(
                             status = JobItemStatus.VERIFY_FAILED,
                             error = result.error,
                             detail = result.detail,
+                            changedKeys = result.changedKeys,
                             finishedAtMillis = clock(),
                         )
                     }

@@ -265,7 +265,26 @@
     <string name="batch_item_skipped">%1$d 个字段没能填（%2$s）</string>
     <string name="batch_item_segments">另有 %1$d 处段级清除</string>
     <string name="batch_execute">开始执行</string>
-    <string name="batch_execute_pending">执行要等任务队列接上（WorkManager，T5.3）才会真跑；这一步先把计划算准。</string>
+    <string name="batch_execute_pending">已交给后台队列；通知栏能看进度，也能取消。</string>
+    <string name="batch_execute_queued">已交给后台队列：%1$d 张 · 通知栏可看进度，也可以取消</string>
+    <string name="batch_execute_queued_action">已在队列里</string>
+    <string name="batch_execute_queue_failed">排不上队：%1$s</string>
+
+    <!-- 批量任务通知（T5.3，data/job/JobNotifier） -->
+    <string name="job_channel_name">批量任务</string>
+    <string name="job_channel_description">批量改写元数据时的进度通知</string>
+    <string name="job_action_cancel">取消</string>
+    <string name="job_notify_running">已处理 %1$d / %2$d</string>
+    <string name="job_notify_done">已完成</string>
+    <string name="job_notify_canceled">已取消</string>
+    <string name="job_notify_queued">排队中</string>
+    <string name="job_notify_succeeded">成功 %1$d</string>
+    <string name="job_notify_failed">失败 %1$d</string>
+    <string name="job_notify_verify_failed">校验未通过 %1$d</string>
+    <string name="job_notify_unsupported">不支持 %1$d</string>
+    <string name="job_notify_skipped">已跳过 %1$d</string>
+    <string name="job_notify_current">正在处理 %1$s</string>
+    <string name="job_notify_dry_run">只算不写</string>
     <string name="batch_no_targets">没有选中任何图片</string>
     <string name="library_action_batch">批量编辑</string>
 </resources>

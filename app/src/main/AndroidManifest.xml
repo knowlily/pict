@@ -1,10 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       设计约定（ADR-09）：V1 不申请 INTERNET 权限。
       文件访问全部通过 SAF / MediaStore，不使用 MANAGE_EXTERNAL_STORAGE（ADR-04）。
     -->
+
+    <!--
+      批量任务（T5.3）：要「退到后台还能继续写」，就得是前台服务。
+      三个权限各管一段：
+      - FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC：Android 14 起前台服务必须声明类型，
+        批量改写元数据属于 dataSync；
+      - POST_NOTIFICATIONS：Android 13 起通知要用户点头；拒绝了任务照跑，
+        只是进度看不见（界面上会提示），所以它不是启动门槛。
+      WAKE_LOCK 由 WorkManager 在跑任务时使用，声明在这里而不是让库自己合进来，
+      是为了让「这个 App 会持有唤醒锁」在清单里一眼可见。
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:name=".app.PictApplication"
@@ -26,6 +42,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          WorkManager 的前台服务：库自己声明了这个 service，但类型是空的。
+          用 tools:node="merge" 只补上 foregroundServiceType，不重复声明一个服务
+          （自己写一份会盖住库的实现，任务就起不来了）。
+        -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!-- 通知栏「取消」按钮的落点（FR-29）：不导出，只有我们自己的 PendingIntent 能触发 -->
+        <receiver
+            android:name=".data.job.JobCancelReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.pict.metatool.action.CANCEL_JOB" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

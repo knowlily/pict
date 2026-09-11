@@ -6,14 +6,20 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.pict.metatool.R
 import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.data.batch.SafBatchSourceReader
+import com.pict.metatool.data.job.BatchJobSpec
+import com.pict.metatool.data.job.JobIds
+import com.pict.metatool.data.job.JobQueue
+import com.pict.metatool.data.job.JobSpecStore
 import com.pict.metatool.data.preset.AssetPresetCatalog
 import com.pict.metatool.domain.batch.BatchDraft
 import com.pict.metatool.domain.batch.BatchMode
 import com.pict.metatool.domain.batch.BatchPreviewer
 import com.pict.metatool.domain.batch.BatchSourceReader
 import com.pict.metatool.domain.batch.BatchTarget
+import com.pict.metatool.domain.job.JobOptions
 import com.pict.metatool.domain.plan.ClearTarget
 import com.pict.metatool.domain.preset.PresetCatalog
 import kotlinx.coroutines.Dispatchers
@@ -35,9 +41,13 @@ import kotlinx.coroutines.withContext
  * 每算完一张回主线程更新进度，取消靠 `viewModelScope`（用户退出页面即停）。
  */
 class BatchViewModel(
+    private val appContext: Context,
     private val targets: List<BatchTarget>,
     private val reader: BatchSourceReader,
     private val catalog: PresetCatalog,
+    /** 时钟与 id 可注入：排队这件事本身能单测，不必等真时间。 */
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val newJobId: (Long) -> String = { JobIds.newId(it) },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -120,10 +130,61 @@ class BatchViewModel(
         }
     }
 
+    /**
+     * 开始执行（T5.3）：把这一批交给 WorkManager 的后台队列。
+     *
+     * 顺序不能反：**先把定义存下来，再入队**。worker 可能在我们入队后的下一秒就被系统拉起来，
+     * 那时它唯一的信息来源就是盘上那份定义——先入队后落盘会撞上「任务起来了、定义还没写完」。
+     *
+     * 只管排队、不等结果：进度在通知栏（[com.pict.metatool.data.job.JobNotifier]），
+     * 页面这层的责任是「计划算准 + 交出去」，不是盯着它跑完（T5.6 才是进度页）。
+     */
+    fun start() {
+        val current = _state.value
+        if (!current.canExecute) return
+
+        val now = clock()
+        val jobId = newJobId(now)
+        val spec = BatchJobSpec.from(
+            draft = current.draft,
+            targets = current.targets,
+            options = JobOptions(),
+            jobId = jobId,
+            nowMillis = now,
+            presetName = current.draft.presetId
+                ?.let { id -> current.presets.firstOrNull { it.id == id }?.name },
+        )
+
+        viewModelScope.launch {
+            val saved = withContext(Dispatchers.IO) { JobSpecStore(appContext).save(spec) }
+            if (saved is PictResult.Failure) {
+                val reason = saved.failure.detail ?: saved.failure.error.code
+                _state.update { it.copy(message = appContext.getString(R.string.batch_execute_queue_failed, reason)) }
+                return@launch
+            }
+
+            JobQueue.enqueue(appContext, jobId)
+            _state.update {
+                it.copy(
+                    queuedJobId = jobId,
+                    queuedCount = spec.items.size,
+                    message = appContext.getString(R.string.batch_execute_pending),
+                )
+            }
+        }
+    }
+
     private fun updateDraft(transform: (BatchDraft) -> BatchDraft) {
         _state.update { state ->
-            // 改了草稿就丢掉旧预览：留着的话，屏幕上那些数字已经不是这份计划算出来的了
-            state.copy(draft = transform(state.draft), preview = null, message = null)
+            // 改了草稿就丢掉旧预览：留着的话，屏幕上那些数字已经不是这份计划算出来的了。
+            // 排队记录一并清掉——队列里那份是**旧**计划，改完再点执行应该排新的一次。
+            state.copy(
+                draft = transform(state.draft),
+                preview = null,
+                message = null,
+                queuedJobId = null,
+                queuedCount = 0,
+            )
         }
     }
 
@@ -138,6 +199,7 @@ class BatchViewModel(
                 initializer {
                     val app = context.applicationContext
                     BatchViewModel(
+                        appContext = app,
                         targets = targets,
                         reader = SafBatchSourceReader(app.contentResolver),
                         catalog = AssetPresetCatalog(app.assets),

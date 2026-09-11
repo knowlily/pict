@@ -69,11 +69,25 @@ data class BatchUiState(
     /** 预览进行中：已完成 → 总数；null 表示没在算。 */
     val progress: Pair<Int, Int>? = null,
     val message: String? = null,
+    /** 已排队的任务 id（T5.3）：非 null = 这一批已经交给 WorkManager 了。 */
+    val queuedJobId: String? = null,
+    /** 排队那一刻的张数。排队之后 targets 可能被重建，文案要留住当时那个数。 */
+    val queuedCount: Int = 0,
 ) {
 
     val hasTargets: Boolean get() = targets.isNotEmpty()
 
     val isPreviewing: Boolean get() = progress != null
+
+    val isQueued: Boolean get() = queuedJobId != null
+
+    /**
+     * 「开始执行」的门槛：有目标、有预览、还没排过队。
+     *
+     * 卡在「已经预览过」是刻意的（docs/06 §3.3）：计划与预览同源，
+     * 有预览就意味着这份计划真算过一遍、用户也真看过将要发生什么。
+     */
+    val canExecute: Boolean get() = hasTargets && preview != null && !isPreviewing && !isQueued
 
     /** 预览按钮是否可用：计划填完了、没在算、也确实有目标。 */
     val canPreview: Boolean get() = hasTargets && draft.isReady && !isPreviewing
