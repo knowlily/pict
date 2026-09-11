@@ -3,6 +3,7 @@ package com.pict.metatool.data.job
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 
 /**
  * 通知栏「取消」按钮的接收者（docs/07 T5.3，FR-29）。
@@ -19,11 +20,18 @@ class JobCancelReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != JobQueue.CANCEL_ACTION) return
         val jobId = intent.getStringExtra(JobQueue.KEY_JOB_ID)
+        // 留一行日志：这颗按钮有没有生效，只能从「任务真的停了」看出来，
+        // 排查「点了没反应」时先看这行在不在（判断意图有没有送到），再看快照停在了哪一项。
+        Log.i(TAG, "取消请求：jobId=${jobId ?: "(缺失 → 全停)"}")
         if (jobId.isNullOrEmpty()) {
             // 没带 id（比如通知被系统重建过）：宁可按「全停」，也不留一个停不下来的任务
             JobQueue.cancelAll(context)
             return
         }
         JobQueue.cancel(context, jobId)
+    }
+
+    companion object {
+        private const val TAG = "JobCancelReceiver"
     }
 }

@@ -119,6 +119,19 @@ data class JobSnapshot(
             )
         }
 
+        /**
+         * 收尾那一版快照：worker 的 `finally` 用它，别直接写 `of(last, now())`。
+         *
+         * 为什么：[JobWorker] 里那个 200 ms 轮询 `isStopped` 的看门狗**抢不过 WorkManager**——
+         * 取消一个 unique work 时框架会直接把 worker 的协程取消掉，于是域层那张
+         * CANCELED 的终态根本没机会发出来（收集协程先死了），`last` 上留的还是 RUNNING。
+         * 只写 `of(last, …)` 的话，记录就永远停在「已处理 11/19」，未开工项也永远挂着。
+         * 所以收尾时补一刀：**被叫停且没到终态，就按取消记账**
+         * （未开工项记 SKIPPED，与域层 [Job.cancel] 同一套语义）。
+         */
+        fun endOf(last: Job, stopped: Boolean, nowMillis: Long): JobSnapshot =
+            of(if (stopped && !last.isTerminal) last.cancel(nowMillis) else last, nowMillis)
+
         /** 快照里最多留几条失败原因。 */
         const val MAX_FAILURES = 5
 

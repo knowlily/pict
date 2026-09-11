@@ -167,4 +167,42 @@ class JobSnapshotTest {
         assertNull(JobSnapshot.fromJson("半截 json"))
         assertNull(JobSnapshot.fromJson("""{"jobId":"j","status":"TELEPORTING"}"""))
     }
+
+    @Test
+    fun `被叫停还没到终态时，收尾按取消记账`() {
+        // 真机实测的形态：已经落地几项、有项正在写、其余还没开工，此时 WorkManager 把
+        // worker 的协程取消了 —— 域层那张 CANCELED 发不出来，收尾必须自己补上
+        val ended = JobSnapshot.endOf(
+            job(
+                items = listOf(
+                    item("item-0", "a.jpg", JobItemStatus.SUCCESS, setOf(make)),
+                    item("item-1", "b.jpg", JobItemStatus.SUCCESS),
+                    item("item-2", "c.jpg", JobItemStatus.RUNNING),
+                    item("item-3", "d.jpg", JobItemStatus.RUNNING),
+                    item("item-4", "e.jpg", JobItemStatus.PENDING),
+                    item("item-5", "f.jpg", JobItemStatus.PENDING),
+                ),
+            ),
+            stopped = true,
+            nowMillis = 1_726_000_009_000L,
+        )
+
+        assertEquals(JobStatus.CANCELED, ended.status)
+        assertTrue(ended.isTerminal)
+        assertEquals(1_726_000_009_000L, ended.finishedAtMillis)
+        // 未开工的两项记 SKIPPED（与 Job.cancel 同一套口径），正在写的两项原样留着
+        assertEquals(2, ended.skipped)
+        assertEquals(2, ended.running)
+        assertEquals(4, ended.finished)
+    }
+
+    @Test
+    fun `没被叫停就别把跑完的任务改成取消`() {
+        val done = job(status = JobStatus.COMPLETED, items = listOf(item("item-0", "a.jpg", JobItemStatus.SUCCESS)))
+
+        val ended = JobSnapshot.endOf(done, stopped = false, nowMillis = 1_726_000_009_000L)
+
+        assertEquals(JobStatus.COMPLETED, ended.status)
+        assertEquals(0, ended.skipped)
+    }
 }

@@ -106,7 +106,9 @@ class JobWorker(
                 }
             }
         } finally {
-            val ended = JobSnapshot.of(last, now())
+            // 收尾这版要走 endOf：被叫停时域层那张 CANCELED 发不出来（看门狗抢不过 WorkManager
+            // 的协程取消），不补这一刀，记录就永远停在 RUNNING、未开工项永远挂着（FR-29）
+            val ended = JobSnapshot.endOf(last, stopped = isStopped, nowMillis = now())
             // 阻塞 IO：协程被取消也写得进去，别让「被掐断」这件事连记录都没有
             snapshots.save(ended)
             // 取消后就别再碰前台服务了（挂起的调用在取消状态下会立刻抛）
