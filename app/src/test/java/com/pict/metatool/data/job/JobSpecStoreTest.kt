@@ -81,6 +81,19 @@ class JobSpecStoreTest {
     }
 
     @Test
+    fun `快照文件不算一个任务 id`() {
+        val store = store()
+        val original = spec()
+        store.save(original)
+        // 同一个目录里还躺着执行态快照（JobSnapshotStore）：它同样以 .json 结尾，
+        // 早先会被 ids() 当成任务报出去（job-1-abcd.snapshot），历史列表就会多出幽灵条目
+        File(store.fileOf(original.jobId).parentFile, "${original.jobId}${JobSnapshotStore.SUFFIX}")
+            .writeText("{}")
+
+        assertEquals(listOf(original.jobId), store.ids())
+    }
+
+    @Test
     fun `定义文件里的 id 拼不成路径穿越`() {
         val store = store()
 

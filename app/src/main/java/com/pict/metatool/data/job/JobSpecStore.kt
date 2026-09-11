@@ -52,9 +52,17 @@ class JobSpecStore(private val dir: File) {
         File(dir, "$jobId.json.tmp").delete()
     }
 
-    /** 已经落盘的任务 id，最近的排前面（按文件修改时间）。 */
+    /**
+     * 已经落盘的任务 id，最近的排前面（按文件修改时间）。
+     *
+     * 要排掉快照文件（`<id>.snapshot.json`，见 `JobSnapshotStore.SUFFIX`）：
+     * 它同样以 `.json` 结尾，早先会把快照当成一个任务 id 报出去
+     * （`job-1.snapshot`），历史列表照着列就会多出幽灵条目。
+     */
     fun ids(): List<String> = runCatching {
-        dir.listFiles { file -> file.isFile && file.name.endsWith(SUFFIX) }
+        dir.listFiles { file ->
+            file.isFile && file.name.endsWith(SUFFIX) && !file.name.endsWith(JobSnapshotStore.SUFFIX)
+        }
             .orEmpty()
             .sortedByDescending { it.lastModified() }
             .map { it.name.removeSuffix(SUFFIX) }
