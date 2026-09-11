@@ -27,12 +27,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pict.metatool.domain.batch.BatchTarget
 import com.pict.metatool.domain.settings.AppSettings
 import com.pict.metatool.domain.settings.NavBarStyle
+import com.pict.metatool.ui.batch.BatchScreen
 import com.pict.metatool.ui.detail.DetailScreen
 import com.pict.metatool.ui.edit.EditScreen
 import com.pict.metatool.ui.jobs.JobsScreen
 import com.pict.metatool.ui.library.LibraryScreen
+import com.pict.metatool.ui.navigation.BatchRoute
 import com.pict.metatool.ui.navigation.DetailRoute
 import com.pict.metatool.ui.navigation.EditRoute
 import com.pict.metatool.ui.navigation.FloatingNavBar
@@ -65,8 +68,10 @@ fun PictApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // 详情页与编辑页都是二级页面，进来就收起底部导航（docs/06 §3.2 / §3.3）。
-    val topLevel = currentRoute != DetailRoute.PATTERN && currentRoute != EditRoute.PATTERN
+    // 详情页、编辑页、批量页都是二级页面，进来就收起底部导航（docs/06 §3.2 / §3.3 / §3.8）。
+    val topLevel = currentRoute != DetailRoute.PATTERN &&
+        currentRoute != EditRoute.PATTERN &&
+        currentRoute != BatchRoute.PATTERN
     val destinations = remember(settings.navItems) { PictDestination.visibleItems(settings.navItems) }
     val floatingBar = topLevel && settings.navBarStyle == NavBarStyle.FLOATING
 
@@ -136,6 +141,8 @@ fun PictApp(
                             LibraryScreen(
                                 columns = settings.gridColumns,
                                 onOpen = { uri -> navController.navigate(DetailRoute.build(uri)) },
+                                // 一张都没选时 BatchRoute 返回 null，这里就不发导航
+                                onBatchEdit = { uris -> BatchRoute.build(uris)?.let(navController::navigate) },
                             )
                         }
                         composable(PictDestination.Jobs.route) { JobsScreen() }
@@ -154,6 +161,17 @@ fun PictApp(
                                 uri = entry.arguments?.getString(EditRoute.ARG_URI).orEmpty(),
                                 onBack = { navController.popBackStack() },
                                 settings = settings,
+                            )
+                        }
+                        composable(BatchRoute.PATTERN) { entry ->
+                            // 路由里只有地址：文件名先按末段凑个占位，真名在预览读取时换成
+                            // 文件里读到的那份（`BatchPreviewer` 会替换来源信息）
+                            val targets = BatchRoute
+                                .parse(entry.arguments?.getString(BatchRoute.ARG_URIS))
+                                .map { uri -> BatchTarget.of(uri, uri.substringAfterLast('/')) }
+                            BatchScreen(
+                                targets = targets,
+                                onBack = { navController.popBackStack() },
                             )
                         }
                     }

@@ -61,11 +61,13 @@ import androidx.compose.ui.platform.LocalContext
  * 与文档一致：单击进详情（T1.10 接入），长按进入多选（额外给一次触感反馈）。
  *
  * @param onOpen 点开某张图，由导航层跳到详情页。
+ * @param onBatchEdit 把选中的这几张一起交给批量编辑页（docs/06 §3.8）。
  */
 @Composable
 fun LibraryScreen(
     columns: Int = AppSettings.DEFAULT_GRID_COLUMNS,
     onOpen: (String) -> Unit = {},
+    onBatchEdit: (List<String>) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = viewModel(
         factory = LibraryViewModel.factory(LocalContext.current),
@@ -106,6 +108,7 @@ fun LibraryScreen(
                 onToggleSelectAll = viewModel::toggleSelectAll,
                 onClearSelection = viewModel::clearSelection,
                 onRemoveSelected = viewModel::removeSelected,
+                onBatchEdit = onBatchEdit,
             )
 
             if (state.isScanning) {
@@ -165,6 +168,7 @@ private fun LibraryHeader(
     onToggleSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
     onRemoveSelected: () -> Unit,
+    onBatchEdit: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -183,6 +187,11 @@ private fun LibraryHeader(
             )
 
             if (state.hasSelection) {
+                // 送过去的是 items 的顺序（不是选中集合的顺序）：批量页按序号错开随机种子，
+                // 序号得跟图库里看到的顺序是一回事，否则「第 3 张」在两处指的不是同一张。
+                TextButton(onClick = { onBatchEdit(state.selectedItems.map { it.uri }) }) {
+                    Text(text = stringResource(R.string.library_action_batch))
+                }
                 TextButton(onClick = onRemoveSelected) {
                     Text(text = stringResource(R.string.library_action_remove))
                 }
