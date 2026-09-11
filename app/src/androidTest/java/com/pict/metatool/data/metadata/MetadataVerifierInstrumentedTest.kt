@@ -38,14 +38,14 @@ class MetadataVerifierInstrumentedTest {
         val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
         val info = infoOf(file)
 
-        val before = store.readFrom(ExifInterface(file), info)
+        val before = store.readFrom(ExifInterface(file), info, file.readBytes())
         val fingerprintBefore = hasher.hashOf(resolver, uri).getOrNull()
         assertNotNull("样本应能算出像素指纹", fingerprintBefore)
 
         val target = MetadataSet(info, before.entries + (MAKE to TagValue.Text("PictTool")))
         store.writeTo(ExifInterface(file), target)
 
-        val after = store.readFrom(ExifInterface(file), info)
+        val after = store.readFrom(ExifInterface(file), info, file.readBytes())
         val fingerprintAfter = hasher.hashOf(resolver, uri).getOrNull()
 
         val report = MetadataVerifier.compare(before, target, after, fingerprintBefore, fingerprintAfter)

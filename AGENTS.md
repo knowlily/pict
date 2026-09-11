@@ -37,6 +37,9 @@ cd /d/githubs/pict && export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17
    别拿 `EXIT=0` 当绿。
 5. **临时诊断测试用完即删**，不随提交入库。
 6. KDoc / 块注释里**不得出现字面 `/*`**（会提前闭合注释）。
+7. **底栏悬浮样式（液态玻璃）必须浮在内容之上**：别把它塞回 `Scaffold` 的 `bottomBar` 槽——塞回去内容会被顶上去，
+   玻璃底下没东西可糊，等于白做。代价是页面要自己按 `LocalBottomBarInset`（`PictApp` 提供）给滚动内容留底，
+   少留一道就会让最后一项目永久压在玻璃下面。
 
 ## 踩坑清单（实测过，别再踩）
 
@@ -72,6 +75,13 @@ cd /d/githubs/pict && export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17
   `-a -G1 -s -n`（`[组] 标签 : 值`，`-n` 出裸数值），group 名是 family-1（`IFD0` / `ExifIFD` / `GPS` / `IFD1` / `System` / `Composite`）。
 - 金标准已钉住两个写通道缺口：**R-16**（JPEG 无损重写丢 IFD1 缩略图）、**R-17**（GPS IFD 重建丢 `GPSVersionID`）。
   它们在 `ExiftoolGoldStandardTest.defaultGaps()` 里逐条声明，修好会立刻失败提醒删条目 —— 别把断言改松。
+- **`GRADLE_USER_HOME` 的 transforms 缓存坏了别去删它**：`rm -rf …/caches/<版本>/transforms` 会被门禁拦下，
+  换成纯 ASCII 的干净目录重跑即可（本机备用 `D:/tmp/gradle-home-t28`）——改环境变量比动缓存安全。
+- **判断「文件里有没有这个标签」只认字节层 IFD 目录**（`data/metadata/exif/IfdTagIndex`，R-19）：
+  `ExifInterface.getAttributeRange` 的负偏移**不是**判据——本工具写过的文件里 `LightSource` 物理存在
+  （exiftool 可见），库报的区间照样 `[-1, 4]`。写侧算差集时**故意**不传字节（`readFrom(exif, info)`），
+  让库补出来的默认值落进 `removals` 被清掉；读取侧才传字节。命名/编号这层映射用机器导出的
+  `ExifTagNumbers`（守门用例 `ExifTagNumbersTest` 跟库对账），别手抄。
 
 ## 工作流
 

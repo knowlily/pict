@@ -36,7 +36,7 @@ class ExifMetadataStoreTest {
         val file = File("src/test/resources/samples/$name")
         assertTrue("样本缺失：${file.absolutePath}", file.exists())
         val info = SourceInfo(name, mime, file.length(), format)
-        return store.readFrom(ExifInterface(file), info).entries
+        return store.readFrom(ExifInterface(file), info, file.readBytes()).entries
     }
 
     private fun dump(name: String, entries: Map<TagKey, TagValue>) {

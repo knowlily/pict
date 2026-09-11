@@ -46,7 +46,7 @@ class ExifMetadataStoreWriteInstrumentedTest {
         SourceInfo(file.name, "image/jpeg", file.length(), ImageFormatHint.JPEG)
 
     private fun readAll(file: File): Map<TagKey, TagValue> =
-        store.readFrom(ExifInterface(file), infoOf(file)).entries
+        store.readFrom(ExifInterface(file), infoOf(file), file.readBytes()).entries
 
     @Test
     fun 改值落盘后读回是新值() {

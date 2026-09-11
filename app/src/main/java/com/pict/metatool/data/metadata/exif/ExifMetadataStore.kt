@@ -53,7 +53,13 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
         try {
             val stream = resolver.openInputStream(source.uri)
                 ?: return@withContext failureOf(PictError.IO_OPEN, "无法打开输入流：${source.uri}")
-            stream.use { successOf(readFrom(ExifInterface(it), source.info)) }
+            // 文件字节要一并留给读取层：判断「库报出来的标签文件里到底有没有」必须回字节层看 IFD 目录
+            // （R-19），没有字节就只能照单全收。代价是整份文件会读进内存——元数据编辑器本来就要读整份，
+            // 这里只是把它留到判定用完为止。
+            stream.use { input ->
+                val bytes = input.readBytes()
+                successOf(readFrom(ExifInterface(bytes.inputStream()), source.info, bytes))
+            }
         } catch (e: IOException) {
             failureOf(PictError.IO_READ, e.message, e)
         } catch (e: SecurityException) {
@@ -96,6 +102,9 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
     fun writeTo(exif: ExifInterface, target: MetadataSet): WriteResult {
         // 先过段大小预算：超限时按「缩略图 → XMP → 非关键」丢，避免 saveAttributes 直接抛
         val fit = ExifSegmentBudget.fit(target)
+        // 这里**故意**不传字节：写侧要的是库报出来的全部属性（含它自己补的兼容默认值），
+        // 那些「文件里根本没有」的键才会落进 removals、被 setAttribute(tag, null) 清掉。
+        // 读侧诚实之后，读出来的目标集不再含这些键，幽灵标签就在这里被拦下，不会再被写回文件（R-19）。
         val plan = planWrites(readFrom(exif, target.source).entries, fit.kept)
         plan.removals.forEach { key ->
             TAG_BY_KEY[key]?.let { exif.setAttribute(it, null) }
@@ -153,15 +162,30 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
     /**
      * 从已构造好的 [ExifInterface] 提取（抽出来便于 JVM 单测直接喂真实相机样张）。
      *
-     * 顺序：先按 [TAGS] 收 EXIF/GPS 标量，再用 GPS 专用 API 补齐十进制坐标与海拔，
-     * 最后解析 XMP 包（已存在的键不覆盖 EXIF，EXIF 更权威）。
+     * [raw] 是文件原始字节：给了才能用 [IfdTagIndex] 判断「库报出来的这个标签，文件里到底有没有」。
+     * 不给就只能照单全收（证不了），所以生产路径一定要给——见 [read]，以及写入路径的相反用法见 [writeTo]。
      */
-    fun readFrom(exif: ExifInterface, info: SourceInfo): MetadataSet {
+    fun readFrom(exif: ExifInterface, info: SourceInfo, raw: ByteArray? = null): MetadataSet =
+        collectTags(exif, info, raw?.let { IfdTagIndex.of(info.format, it) })
+
+    /**
+     * 按 [TAGS] 收 EXIF/GPS 标量，再补 GPS 十进制坐标与海拔，最后解析 XMP 包（已存在的键不覆盖 EXIF）。
+     *
+     * [index] 为 null 表示**证不了**（没给字节 / 容器不支持 / 字节结构读不通），此时一律保留：
+     * 宁可多显示一个字段，也不要把文件里真有的元数据藏起来。
+     */
+    private fun collectTags(exif: ExifInterface, info: SourceInfo, index: IfdTagIndex?): MetadataSet {
         val entries = LinkedHashMap<TagKey, TagValue>()
 
         TAGS.forEach { tag ->
             if (tag == ExifInterface.TAG_XMP) return@forEach
             val raw = exif.getAttribute(tag) ?: return@forEach
+            // ExifInterface 会为了兼容性自己补默认值（androidx `addDefaultValuesForCompatibility`：
+            // 文件里没有 LightSource 时它也返回 "0"），这些补出来的属性在文件里没有落点。
+            // 判据只能是字节层的 IFD 目录（docs/09 R-19 第七轮）：`getAttributeRange` 的负偏移**不能**用——
+            // 本工具写过的文件里 LightSource 物理存在（exiftool 可见），库报的区间**还是** [-1, 4]。
+            // 不挡掉的话，编辑页会凭空显示「光源 0」，保存时又把这个源文件没有的标签写回去。
+            if (index != null && index.provesAbsence(tag)) return@forEach
             // ExifInterface 在 PNG/WebP/HEIF 上会把缺失的 IFD0 尺寸读成 "0"；
             // 0 尺寸没有意义，丢掉它，容器读取器才能补上真实宽高
             if (tag in ZERO_SIZE_TAGS && raw.trim() == "0") return@forEach

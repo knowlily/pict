@@ -414,13 +414,14 @@ class ExiftoolGoldStandardTest {
             expected = "?",
             why = RAW_BYTES_AS_STRING,
         ),
-        // ---- 读侧补的默认值被写回（R-19 的写侧后果）--------------------------
-        rewritten(
-            sample = CANON_40D,
-            key = "ExifIFD:LightSource",
-            expected = "0",
-            why = "源文件没有这个标签，读侧补了默认值 0（R-19），写侧又整表回写，于是凭空落盘",
-        ),
+        // ---- R-19 那条「读侧默认值被写回」的偏差已于 2026-09-11 退休 -------------------
+        // 原来这里钉着 `rewritten(CANON_40D, "ExifIFD:LightSource", expected = "0")`：源文件没有这个标签，
+        // 读侧补默认值 0、写侧整表回写，于是凭空落盘。第八轮把判据换到字节层 IFD 目录（IfdTagIndex）
+        // 之后，写侧不再产生这个标签，规则当场红（`expected:<0> but was:<null>`）——按金标准的纪律，
+        // 偏差消失就该删条目，而不是把断言改松。
+        // 注意：这条泄漏的证人**不在金标准里**——金标准比的是「我们自己读产物」和「exiftool 读产物」，
+        // 产物真的多出一个标签时两边都会看到它、反而算「匹配」。真正的证人在 ExifWriteHonestyTest：
+        // 诚实读出的字段集回写后，直接查产物字节的 IFD 目录里有没有 0x9208。
         // ---- IFD0 被补上尺寸/压缩 -------------------------------------------
         mirrored(
             sample = CANON_40D,
@@ -664,7 +665,7 @@ class ExiftoolGoldStandardTest {
 
     private fun readFor(channel: Channel, bytes: ByteArray, info: SourceInfo): MetadataSet = when (channel) {
         Channel.COMMONS -> read(bytes, info)
-        Channel.PROD -> prodStore.readFrom(ExifInterface(bytes.inputStream()), info)
+        Channel.PROD -> prodStore.readFrom(ExifInterface(bytes.inputStream()), info, bytes)
     }
 
     /**
