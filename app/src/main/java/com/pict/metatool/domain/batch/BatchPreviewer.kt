@@ -38,6 +38,8 @@ class BatchPreviewer(
      *
      * @param onItem 每完成一项回调一次（已完成数、总数、该项结果），供进度条使用；
      *   在调用方的协程里执行，别在里面做重活。
+     *
+     * 每项按序号错开种子（[seededFor]）：否则一批图会被重掷成同一个机型、同一组坐标。
      */
     suspend fun preview(
         plan: EditPlan,
@@ -46,7 +48,7 @@ class BatchPreviewer(
     ): BatchPreview {
         val items = ArrayList<ItemPreview>(targets.size)
         targets.forEachIndexed { index, target ->
-            val item = previewOne(plan, target)
+            val item = previewOne(plan.seededFor(index), target)
             items += item
             onItem?.invoke(index + 1, targets.size, item)
         }
