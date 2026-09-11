@@ -42,9 +42,11 @@ data class EditOutcome(
  * [EditOutcome.segmentClears]；写通道尚未消费它，所以它既不会被丢掉也不会被冒充成
  * 「已经清干净」。
  *
- * 范围说明：RandomFill（T3.4）、ApplyPreset（Phase 3）依赖尚未实现的外部数据，
- * 这里显式返回失败而不是静默跳过——静默跳过会让用户以为改了。
- * 后续任务落地后把对应分支替换为真正的折叠逻辑。
+ * 范围说明：RandomFill（T3.4）、ApplyPreset（Phase 3）在本执行器里**显式失败**而不是静默跳过——
+ * 静默跳过会让用户以为改了，而这两类操作的取值来自预设（docs/03 §6），执行器又不认识预设
+ * （否则 plan ↔ preset 成包环）。
+ * 所以：**计划里带预设类操作时，先过 `PresetResolver.applyPlan`**，由它展开成原子操作
+ * （`SetField` / `SetGps` …）再交给这里；直接拿未展开的计划调用本执行器会得到 E-FIELD-INVALID。
  */
 object EditPlanExecutor {
 

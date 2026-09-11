@@ -1,5 +1,6 @@
 package com.pict.metatool.domain.preset
 
+import com.pict.metatool.core.error.PictError
 import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.domain.model.TagValue
 import com.pict.metatool.domain.plan.EditOperation
@@ -191,5 +192,68 @@ class PresetResolverTest {
         assertTrue("只填空缺时坐标不该被改", kotlin.math.abs(position.latitude - 22.5) < 1e-6)
         assertTrue(position.longitude - 114.0 < 1e-6)
         assertTrue("坐标被保留时要汇报", expanded.keptKeys.any { it == GpsEditor.LATITUDE })
+    }
+
+    // ---------- applyPlan：计划路径的完整执行 ----------
+
+    @Test
+    fun `applyPlan 让计划路径的随机填充真正落地`() {
+        // 执行器本身不认识预设（遇到 RandomFill 直接报「尚未实现」），而批量任务在计划里
+        // 写下的偏偏就是这类操作——applyPlan 是这条路的唯一入口（T5.2 之前它没有任何调用点）。
+        val plan = EditPlan(
+            operations = listOf(
+                EditOperation.RandomFill(fields = setOf(make, model), seed = 3L, presetId = device.id),
+            ),
+            dryRun = true,
+        )
+
+        val outcome = PresetResolver.applyPlan(plan, PresetTestSupport.emptySource(), catalog).getOrNull()!!
+
+        assertNotNull(outcome.target[make])
+        assertNotNull(outcome.target[model])
+        assertTrue("随机填充要报出变化", outcome.changedKeys.containsAll(setOf(make, model)))
+    }
+
+    @Test
+    fun `applyPlan 与 fill 对同一预设同一种子给出相同结果`() {
+        val source = PresetTestSupport.emptySource()
+        val filled = PresetResolver.fill(device, source, seed = 5L).getOrNull()!!
+        val outcome = PresetResolver.applyPlan(
+            EditPlan(listOf(EditOperation.ApplyPreset(device.id, seed = 5L))),
+            source,
+            catalog,
+        ).getOrNull()!!
+
+        assertEquals(filled.target[make], outcome.target[make])
+        assertEquals(filled.target[model], outcome.target[model])
+        assertEquals(filled.changedKeys, outcome.changedKeys)
+    }
+
+    @Test
+    fun `applyPlan 里字段操作与预设操作按顺序叠加`() {
+        val plan = EditPlan(
+            listOf(
+                EditOperation.SetField(artist, TagValue.Text("先写的人")),
+                EditOperation.ApplyPreset(device.id, overwriteExisting = false, seed = 1L),
+            ),
+        )
+
+        val outcome = PresetResolver.applyPlan(plan, PresetTestSupport.emptySource(), catalog).getOrNull()!!
+
+        assertEquals(TagValue.Text("先写的人"), outcome.target[artist])
+        assertNotNull("预设那部分照旧生效", outcome.target[model])
+        assertTrue(artist in outcome.changedKeys)
+    }
+
+    @Test
+    fun `applyPlan 遇到不认识的预设当场失败而不是静默跳过`() {
+        val result = PresetResolver.applyPlan(
+            EditPlan(listOf(EditOperation.ApplyPreset("device.nope"))),
+            PresetTestSupport.emptySource(),
+            catalog,
+        )
+
+        assertTrue(result is PictResult.Failure)
+        assertEquals(PictError.FIELD_INVALID, (result as PictResult.Failure).error)
     }
 }

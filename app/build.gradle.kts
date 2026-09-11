@@ -102,6 +102,9 @@ dependencies {
     // 预设 JSON 解析（T3.1，domain/preset）
     implementation(libs.kotlinx.serialization.json)
 
+    // 协程：任务层（domain/job，T5.1/T5.2）显式声明；之前只是 Compose 传递进来的
+    implementation(libs.kotlinx.coroutines.core)
+
     // 图片加载（缩略图网格 T1.9）
     implementation(libs.coil)
 

@@ -128,6 +128,29 @@ object PresetResolver {
         return successOf(Expanded(operations, kept, skipped))
     }
 
+    /**
+     * 计划路径的**完整一次执行**：先把 `RandomFill` / `ApplyPreset` 展开成原子操作，
+     * 再交 [EditPlanExecutor] 折叠。
+     *
+     * 为什么必须有这一层：执行器（`domain/plan`）刻意不认识预设，否则 plan ↔ preset 成包环，
+     * 于是「按预设填充」这类操作只能由本类落地。T5.2 之前 [expand] 只有测试在调、没有生产调用点，
+     * 结果是走计划路径（批量必然走它）的随机填充 / 预设会直接撞「尚未实现」。
+     *
+     * dry-run 与备份标志原样带过去：预览只算 diff，不落盘（FR-32）。
+     */
+    fun applyPlan(
+        plan: EditPlan,
+        source: MetadataSet,
+        catalog: PresetCatalog,
+    ): PictResult<EditOutcome> {
+        if (plan.isEmpty) return EditPlanExecutor.execute(plan, source)
+        return when (val expanded = expand(plan, source, catalog)) {
+            is PictResult.Failure -> expanded
+            is PictResult.Success ->
+                EditPlanExecutor.execute(plan.copy(operations = expanded.value.operations), source)
+        }
+    }
+
     private fun fold(operations: List<EditOperation>, source: MetadataSet): PictResult<EditOutcome> =
         EditPlanExecutor.execute(EditPlan(operations = operations, dryRun = true), source)
 }
