@@ -84,9 +84,8 @@ class JobNotifier(private val context: Context) {
     }
 
     private fun cancelJob(jobId: String): PendingIntent {
-        val intent = Intent(context, JobCancelReceiver::class.java)
-            .setAction(JobQueue.CANCEL_ACTION)
-            .putExtra(JobQueue.KEY_JOB_ID, jobId)
+        // 意图的 action/extra 由 JobQueue 定义，别在这里再拼一遍（见 JobQueue.cancelIntent）
+        val intent = JobQueue.cancelIntent(context, jobId)
         return PendingIntent.getBroadcast(context, REQUEST_CANCEL, intent, pendingFlags())
     }
 

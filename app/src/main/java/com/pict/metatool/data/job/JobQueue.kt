@@ -1,6 +1,7 @@
 package com.pict.metatool.data.job
 
 import android.content.Context
+import android.content.Intent
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
@@ -78,6 +79,18 @@ object JobQueue {
     fun cancelAll(context: Context) {
         WorkManager.getInstance(context).cancelAllWorkByTag(TAG)
     }
+
+    /**
+     * 「取消这个任务」的意图（FR-29）。
+     *
+     * 抽出来是为了**只有一处定义 action 和 extra**：通知栏那颗按钮（[com.pict.metatool.data.job.JobNotifier]）
+     * 和 debug 包里的验收探针都用它。两边各写一份的话，改了 receiver 的契约就可能只改到一边，
+     * 而「按钮点了没反应」这种毛病在真机上极难看出来。
+     */
+    fun cancelIntent(context: Context, jobId: String): Intent =
+        Intent(context, JobCancelReceiver::class.java)
+            .setAction(CANCEL_ACTION)
+            .putExtra(KEY_JOB_ID, jobId)
 
     /** 观察某条 work 的状态（T5.6 进度页读它）。 */
     fun observe(context: Context, jobId: String): Flow<WorkInfo?> =

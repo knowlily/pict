@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  只在 debug 包里存在的验收探针（T5.3 / FR-29）。正式包（release）合不到这个清单，
+  所以 CancelProbeActivity 永远不会出现在发布出去的 APK 里。
+
+  为什么要 export：探针得能被 `adb shell am start` 拉起来（shell 是另一个 uid）。
+  它自己不做任何写图片的事，只是重放「通知栏那颗取消按钮会做的事」——见那个类的注释。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+
+        <activity
+            android:name="com.pict.metatool.debug.CancelProbeActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
+    </application>
+
+</manifest>
