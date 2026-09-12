@@ -43,6 +43,9 @@ object JobReportJson {
         put("dryRun", report.dryRun)
         put("startedAt", report.startedAtMillis ?: 0L)
         put("finishedAt", report.finishedAtMillis ?: 0L)
+        // 撤销时刻（FR-34）。跟上面两个时间戳一样用 0 表示「没这回事」：
+        // 加这一个字段不用升版本——读的一头对缺字段一向是当 null 处理的
+        put("undoneAt", report.undoneAtMillis ?: 0L)
         put(
             "params",
             buildJsonObject {
@@ -72,6 +75,11 @@ object JobReportJson {
                             putNullable("errorCode", item.errorCode)
                             put("changedKeys", item.changedKeys)
                             putNullable("note", item.note)
+                            // 撤销要用的地址（FR-34）；没有就不写，报告文件更小
+                            putNullable("uri", item.uri)
+                            putNullable("outputUri", item.outputUri)
+                            putNullable("backupUri", item.backupUri)
+                            putNullable("backupFolder", item.backupFolder)
                         },
                     )
                 }
@@ -113,9 +121,14 @@ object JobReportJson {
                         errorCode = item.str("errorCode"),
                         changedKeys = item.intOrNull("changedKeys") ?: 0,
                         note = item.str("note"),
+                        uri = item.str("uri"),
+                        outputUri = item.str("outputUri"),
+                        backupUri = item.str("backupUri"),
+                        backupFolder = item.str("backupFolder"),
                     )
                 }
                 .orEmpty(),
+            undoneAtMillis = root.longOrNull("undoneAt"),
         )
     }.getOrNull()
 

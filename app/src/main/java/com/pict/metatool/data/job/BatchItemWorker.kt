@@ -10,10 +10,13 @@ import com.pict.metatool.data.metadata.MetadataVerifier
 import com.pict.metatool.data.metadata.MetadataWriter
 import com.pict.metatool.data.metadata.PixelHasher
 import com.pict.metatool.data.source.ImageSource
+import com.pict.metatool.domain.job.ItemBackupGuard
+import com.pict.metatool.domain.job.ItemBackupMark
 import com.pict.metatool.domain.job.ItemResult
 import com.pict.metatool.domain.job.JobItem
 import com.pict.metatool.domain.job.JobItemWorker
 import com.pict.metatool.domain.job.JobOptions
+import com.pict.metatool.domain.job.withBackup
 import com.pict.metatool.domain.plan.EditPlan
 import com.pict.metatool.domain.preset.PresetCatalog
 import com.pict.metatool.domain.preset.PresetResolver
@@ -31,8 +34,15 @@ import com.pict.metatool.domain.preset.PresetResolver
  * 域层（`domain/job`）不知道 `ContentResolver` 是什么，所以这一层是它唯一的下水道口：
  * 判断（怎么算不支持、怎么算校验未通过）全在 [BatchItemRules] 里，这里只搬数据。
  *
- * 尚未接的：覆写前的备份（FR-31 撤销，T5.8）。今天批量写的是原位覆写、无备份，
- * 所以计划里的 `backupBeforeOverwrite` 在这里还没有落点——不假装有。
+ * **覆写前先留备份**（FR-34，T5.8）：动手改之前，把这张现在的样子复制到
+ * `Pict/backup/<时间戳>/`；副本的地址挂在结果上（[ItemResult.Done] / 校验未通过 /
+ * 写失败三档都挂），撤销就是照着报告里的地址把副本写回去。
+ * 备份失败**不许接着写** —— 备份存在的理由就是「万一写坏了能回去」，备份没成还照写，
+ * 等于把回滚能力悄悄丢掉，比直接报错伤人。
+ *
+ * 重试时**不再留第二份**：第一次的备份才是「执行前的样子」，第二次再留一份，留的是
+ * 第一次改了一半的样子，撤销会把那张半成品写回去。所以 [JobItem.backupUri] 已经有值
+ * 就跳过备份，直接把旧的地址续到这一次的结果上。
  */
 class BatchItemWorker(
     private val resolver: ContentResolver,
@@ -43,6 +53,8 @@ class BatchItemWorker(
     private val reader: MetadataReader = MetadataReader(),
     private val writers: List<MetadataWriter> = SafBatchSourceReader.defaultWriters(),
     private val hasher: PixelHasher = BitmapPixelHasher(),
+    /** 不留备份（单测、不需要回滚的场景）时传 null。 */
+    private val backup: ItemBackupGuard? = null,
 ) : JobItemWorker {
 
     override suspend fun run(item: JobItem, options: JobOptions): ItemResult {
@@ -75,9 +87,25 @@ class BatchItemWorker(
         val writer = writers.firstOrNull { it.canWrite(item.source) }
             ?: return ItemResult.Unsupported("${item.source.format.label} 不支持原地写元数据")
 
+        // FR-34：动手之前先把这张现在的样子留一份。备份失败就别写了（理由见类注释）；
+        // 重试的第二次不再留新份 —— 第一次那份才是「执行前的样子」。
+        var mark = item.backupUri?.let { uri ->
+            ItemBackupMark(uri = uri, folder = item.backupFolder.orEmpty())
+        }
+        if (mark == null && backup != null) {
+            mark = backup.markFor(item).getOrElse { failure ->
+                return ItemResult.Failed(
+                    error = failure.error,
+                    detail = failure.detail?.let { "覆写前备份失败：$it" } ?: "覆写前备份失败",
+                )
+            }
+        }
+
         val fingerprintBefore = hasher.hashOf(resolver, source.uri).getOrNull()
         val written = writer.write(resolver, source, applied.outcome.target).getOrElse { failure ->
+            // 写坏了也把备份地址带上：这张已经动过了，撤销要能把它恢复回去
             return ItemResult.Failed(error = failure.error, detail = failure.detail ?: "写不进去")
+                .withBackup(mark)
         }
 
         val after = reader.read(resolver, source).getOrNull()
@@ -94,6 +122,6 @@ class BatchItemWorker(
                 dropped = written.droppedKeys,
             )
         }
-        return BatchItemRules.resultOf(changedKeys, report)
+        return BatchItemRules.resultOf(changedKeys, report).withBackup(mark)
     }
 }

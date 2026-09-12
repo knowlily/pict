@@ -132,6 +132,10 @@ data class JobItem(
     val note: String? = null,
     /** 输出落点（导出副本用；FR-31 撤销也靠它）。 */
     val outputUri: String? = null,
+    /** 覆写前留下的备份副本地址（FR-34 撤销靠它；没留备份时为 null）。 */
+    val backupUri: String? = null,
+    /** 备份所在的时间戳目录名（`20260912_101530`），撤销与过期判定都用它。 */
+    val backupFolder: String? = null,
 ) {
 
     val isTerminal: Boolean get() = status.isTerminal

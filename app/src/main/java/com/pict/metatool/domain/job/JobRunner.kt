@@ -35,12 +35,18 @@ sealed interface ItemResult {
         val changedKeys: Set<TagKey> = emptySet(),
         val outputUri: String? = null,
         val note: String? = null,
+        /** 覆写前那份备份的地址与目录（FR-34）；没开备份或不用备份时为 null。 */
+        val backupUri: String? = null,
+        val backupFolder: String? = null,
     ) : ItemResult
 
     /** 失败；[error] 决定要不要重试（见 [isRetryable]）。 */
     data class Failed(
         val error: PictError,
         val detail: String? = null,
+        /** 写坏了也得能回去：这一项留下的备份（FR-34 撤销会把它们一并恢复）。 */
+        val backupUri: String? = null,
+        val backupFolder: String? = null,
     ) : ItemResult
 
     /**
@@ -53,6 +59,9 @@ sealed interface ItemResult {
         val error: PictError = PictError.META_VERIFY,
         val detail: String? = null,
         val changedKeys: Set<TagKey> = emptySet(),
+        /** 值写进去了（只是没通过读回比对），撤销该把这张也还原。 */
+        val backupUri: String? = null,
+        val backupFolder: String? = null,
     ) : ItemResult
 
     /** 前置条件不满足（格式不支持 / 无写权限），跳过但不报错。 */
@@ -169,6 +178,8 @@ class JobRunner(
                             changedKeys = result.changedKeys,
                             outputUri = result.outputUri ?: it.outputUri,
                             note = result.note,
+                            backupUri = result.backupUri ?: it.backupUri,
+                            backupFolder = result.backupFolder ?: it.backupFolder,
                             finishedAtMillis = clock(),
                         )
                     }
@@ -182,6 +193,8 @@ class JobRunner(
                             error = result.error,
                             detail = result.detail,
                             changedKeys = result.changedKeys,
+                            backupUri = result.backupUri ?: it.backupUri,
+                            backupFolder = result.backupFolder ?: it.backupFolder,
                             finishedAtMillis = clock(),
                         )
                     }
@@ -221,6 +234,8 @@ class JobRunner(
                                 status = JobItemStatus.FAILED,
                                 error = result.error,
                                 detail = result.detail,
+                                backupUri = result.backupUri ?: it.backupUri,
+                                backupFolder = result.backupFolder ?: it.backupFolder,
                                 finishedAtMillis = clock(),
                             )
                         }
@@ -233,6 +248,10 @@ class JobRunner(
                             error = result.error,
                             detail = result.detail,
                             note = "第 $attempts 次失败，${result.error.code} 后重试",
+                            // 第一次尝试留下的备份才是「执行前」的样子：带着它进重试，
+                            // 后面的尝试就不会再拍一张（否则撤销会还原到写坏之后的状态）
+                            backupUri = result.backupUri ?: it.backupUri,
+                            backupFolder = result.backupFolder ?: it.backupFolder,
                         )
                     }
                     sleep(backoff(attempts))

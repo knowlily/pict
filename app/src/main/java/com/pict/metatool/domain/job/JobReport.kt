@@ -22,6 +22,15 @@ data class JobReport(
     val params: JobReportParams,
     /** 与任务定义里的顺序一致——对不上顺序的报告对不了账。 */
     val items: List<JobReportItem>,
+
+    /**
+     * 这次任务被撤销的时刻（FR-34）；没撤过就是 null。
+     *
+     * 撤销是**终态**：备份是一次性的，恢复回去之后再撤一次，就是把「撤销后的样子」再改回去。
+     * 记在报告里，历史行靠它把撤销按钮收掉。刻意不把 `backupUri` 抹掉——
+     * 「这次留过备份、后来撤了」本身就是账的一部分。
+     */
+    val undoneAtMillis: Long? = null,
 ) {
 
     val total: Int get() = items.size
@@ -101,6 +110,10 @@ data class JobReport(
                     // 两者都有时优先 note——它是当时最有用的那句
                     note = item.note?.takeIf { it.isNotBlank() }
                         ?: item.detail?.takeIf { it.isNotBlank() },
+                    uri = item.uri,
+                    outputUri = item.outputUri,
+                    backupUri = item.backupUri,
+                    backupFolder = item.backupFolder,
                 )
             },
         )
@@ -162,4 +175,16 @@ data class JobReportItem(
     val changedKeys: Int,
     /** 失败原因 / 丢弃字段说明；没有就是 null。 */
     val note: String?,
+    /**
+     * 源文件地址与写入落点——**撤销（FR-34）靠它们对账**。
+     *
+     * 报告存在 `files/jobs/` 里（应用私有），不是导出的 CSV，所以地址留在这里不会漏给外人；
+     * CSV 那边是显式列字段，不会被这几个加进去。
+     * 旧版本写的报告没有这几项，读出来就是 null：撤销会跳过它们（没地址，动手就是瞎猜），
+     * 列表与统计照常显示。
+     */
+    val uri: String? = null,
+    val outputUri: String? = null,
+    val backupUri: String? = null,
+    val backupFolder: String? = null,
 )

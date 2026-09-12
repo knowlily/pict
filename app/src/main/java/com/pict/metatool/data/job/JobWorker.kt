@@ -78,6 +78,8 @@ class JobWorker(
                 indices = spec.indices,
                 writableByIds = spec.writableByIds,
                 catalog = catalog,
+                // FR-34：覆写前备份。一次任务一个时间戳目录，整批的副本收在同一个地方
+                backup = SafItemBackupGuard(applicationContext.contentResolver),
             ),
         )
 
