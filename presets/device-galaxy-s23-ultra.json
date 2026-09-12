@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "id": "device.galaxy-s23-ultra",
+  "kind": "device",
+  "name": "Galaxy S23 系列",
+  "description": "三星 S23 Ultra / S23 机身档案。三星写 EXIF:Make 是小写 samsung，机型用 SM- 代号；光圈按四摄规格（f/1.7 主摄、f/2.2 超广、f/2.4 三倍、f/4.9 十倍潜望）。",
+  "tags": ["手机", "Samsung", "Android"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "samsung" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "SM-S918B", "weight": 3 },
+        { "value": "SM-S911B", "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.7, "weight": 6 },
+        { "value": 2.2, "weight": 2 },
+        { "value": 2.4, "weight": 2 },
+        { "value": 4.9, "weight": 1 }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 24, "weight": 6 },
+        { "value": 13, "weight": 2 },
+        { "value": 69, "weight": 2 },
+        { "value": 230, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/100", "weight": 4 },
+        { "value": "1/50", "weight": 3 },
+        { "value": "1/250", "weight": 2 },
+        { "value": "1/500", "weight": 1 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 50, "weight": 3 },
+        { "value": 100, "weight": 3 },
+        { "value": 200, "weight": 2 },
+        { "value": 320, "weight": 2 },
+        { "value": 640, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureBiasValue": { "mode": "fixed", "value": "0/10" },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "XMP:photoshop:DateCreated": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2025-12-31T23:59:59",
+      "hourWeights": [0,0,0,0,0,1,2,4,6,8,9,9,8,8,8,7,6,5,4,3,2,1,0,0]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "samsung" },
+    "XMP:tiff:Model": { "mode": "fixed", "value": "SM-S918B" }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:ISOSpeedRatings"] }
+  ]
+}

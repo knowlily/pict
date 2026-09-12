@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "device.pixel-8-pro",
+  "kind": "device",
+  "name": "Pixel 8 Pro",
+  "description": "Google Pixel 8 Pro / 8 档案。只钉住能把住的字段（Make/Model、光圈按三摄规格、拍摄参数区间），系统与相机算法的版本串不写。",
+  "tags": ["手机", "Google", "Android"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Google" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "Pixel 8 Pro", "weight": 3 },
+        { "value": "Pixel 8", "weight": 1 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Google" },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.68, "weight": 6 },
+        { "value": 1.95, "weight": 2 },
+        { "value": 2.8, "weight": 2 }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/120", "weight": 4 },
+        { "value": "1/60", "weight": 3 },
+        { "value": "1/240", "weight": 2 },
+        { "value": "1/500", "weight": 1 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 43, "weight": 3 },
+        { "value": 100, "weight": 3 },
+        { "value": 200, "weight": 2 },
+        { "value": 400, "weight": 2 },
+        { "value": 800, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureBiasValue": { "mode": "fixed", "value": "0/1" },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "XMP:photoshop:DateCreated": {
+      "mode": "datetime",
+      "start": "2024-01-01T00:00:00",
+      "end": "2025-12-31T23:59:59",
+      "hourWeights": [0,0,0,0,0,1,2,4,6,8,9,9,8,8,8,7,6,5,4,3,2,1,0,0]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Google" },
+    "XMP:tiff:Model": { "mode": "fixed", "value": "Pixel 8 Pro" }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:ISOSpeedRatings"] }
+  ]
+}

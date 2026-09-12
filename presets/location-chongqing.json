@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "location.chongqing",
+  "kind": "location",
+  "name": "重庆 · 解放碑周边 5 km",
+  "description": "以重庆解放碑为圆心、半径 5 km 的圆内均匀随机定位。海拔 220–300 m（山城高差大，区间放宽）。",
+  "tags": ["位置", "中国", "重庆"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "GPS:GPSVersionID": { "mode": "fixed", "value": "2.3.0.0" },
+    "GPS:GPSLatitudeRef": { "mode": "fixed", "value": "N" },
+    "GPS:GPSLongitudeRef": { "mode": "fixed", "value": "E" },
+    "GPS:GPSLatitude": { "mode": "gps", "lat": 29.557, "lon": 106.577, "radiusMeters": 5000 },
+    "GPS:GPSLongitude": { "mode": "gps", "lat": 29.557, "lon": 106.577, "radiusMeters": 5000 },
+    "GPS:GPSAltitudeRef": { "mode": "fixed", "value": 0 },
+    "GPS:GPSAltitude": { "mode": "range", "min": 220, "max": 300, "precision": 1 },
+    "GPS:GPSMapDatum": { "mode": "fixed", "value": "WGS-84" },
+    "GPS:GPSProcessingMethod": {
+      "mode": "pool",
+      "pool": [
+        { "value": "GPS", "weight": 3 },
+        { "value": "NETWORK", "weight": 1 }
+      ]
+    },
+    "GPS:GPSHPositioningError": { "mode": "range", "min": 4, "max": 35, "precision": 1 },
+    "XMP:photoshop:City": { "mode": "fixed", "value": "Chongqing" },
+    "XMP:photoshop:Country": { "mode": "fixed", "value": "China" },
+    "XMP:exif:GPSLatitude": { "mode": "gps", "lat": 29.557, "lon": 106.577, "radiusMeters": 5000 },
+    "XMP:exif:GPSLongitude": { "mode": "gps", "lat": 29.557, "lon": 106.577, "radiusMeters": 5000 }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["GPS:GPSLatitudeRef", "GPS:GPSLatitude"] },
+    { "type": "requires", "fields": ["GPS:GPSLongitudeRef", "GPS:GPSLongitude"] }
+  ]
+}

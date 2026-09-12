@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "location.guangzhou",
+  "kind": "location",
+  "name": "广州 · 天河周边 6 km",
+  "description": "以广州天河体育中心为圆心、半径 6 km 的圆内均匀随机定位。海拔 10–40 m。",
+  "tags": ["位置", "中国", "广州"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "GPS:GPSVersionID": { "mode": "fixed", "value": "2.3.0.0" },
+    "GPS:GPSLatitudeRef": { "mode": "fixed", "value": "N" },
+    "GPS:GPSLongitudeRef": { "mode": "fixed", "value": "E" },
+    "GPS:GPSLatitude": { "mode": "gps", "lat": 23.1357, "lon": 113.3255, "radiusMeters": 6000 },
+    "GPS:GPSLongitude": { "mode": "gps", "lat": 23.1357, "lon": 113.3255, "radiusMeters": 6000 },
+    "GPS:GPSAltitudeRef": { "mode": "fixed", "value": 0 },
+    "GPS:GPSAltitude": { "mode": "range", "min": 10, "max": 40, "precision": 1 },
+    "GPS:GPSMapDatum": { "mode": "fixed", "value": "WGS-84" },
+    "GPS:GPSProcessingMethod": {
+      "mode": "pool",
+      "pool": [
+        { "value": "GPS", "weight": 3 },
+        { "value": "NETWORK", "weight": 1 }
+      ]
+    },
+    "GPS:GPSHPositioningError": { "mode": "range", "min": 4, "max": 35, "precision": 1 },
+    "XMP:photoshop:City": { "mode": "fixed", "value": "Guangzhou" },
+    "XMP:photoshop:Country": { "mode": "fixed", "value": "China" },
+    "XMP:exif:GPSLatitude": { "mode": "gps", "lat": 23.1357, "lon": 113.3255, "radiusMeters": 6000 },
+    "XMP:exif:GPSLongitude": { "mode": "gps", "lat": 23.1357, "lon": 113.3255, "radiusMeters": 6000 }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["GPS:GPSLatitudeRef", "GPS:GPSLatitude"] },
+    { "type": "requires", "fields": ["GPS:GPSLongitudeRef", "GPS:GPSLongitude"] }
+  ]
+}

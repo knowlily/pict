@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "time.night-2026",
+  "kind": "time",
+  "name": "2026 夜间",
+  "description": "2026 全年，但小时权重压在 19–23 点（夜间拍摄的样子）。配合机型预设里的大光圈/高 ISO 更像。",
+  "tags": ["时间", "夜间"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:DateTimeOriginal": {
+      "mode": "datetime",
+      "start": "2026-01-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "hourWeights": [1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,4,7,9,9,6,3]
+    },
+    "EXIF:DateTimeDigitized": {
+      "mode": "datetime",
+      "start": "2026-01-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "hourWeights": [1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,4,7,9,9,6,3]
+    },
+    "XMP:xmp:CreateDate": {
+      "mode": "datetime",
+      "start": "2026-01-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "hourWeights": [1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,4,7,9,9,6,3]
+    },
+    "XMP:xmp:ModifyDate": {
+      "mode": "datetime",
+      "start": "2026-01-01T00:00:00",
+      "end": "2026-12-31T23:59:59",
+      "hourWeights": [1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,4,7,9,9,6,3]
+    },
+    "EXIF:OffsetTimeOriginal": { "mode": "fixed", "value": "+08:00" },
+    "EXIF:OffsetTimeDigitized": { "mode": "fixed", "value": "+08:00" },
+    "EXIF:SubSecTimeOriginal": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    },
+    "EXIF:SubSecTimeDigitized": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "type": "datetimeOrder",
+      "fields": ["EXIF:DateTimeOriginal", "EXIF:DateTimeDigitized", "XMP:xmp:ModifyDate"]
+    }
+  ]
+}
