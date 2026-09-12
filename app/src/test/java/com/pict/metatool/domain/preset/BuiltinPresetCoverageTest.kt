@@ -10,23 +10,30 @@ import org.junit.Test
  * docs/03 §7「内置预设清单」的覆盖度锁定（T3.2）。
  *
  * 「解析得过」由 [PresetParserTest] 保证；这里管的是另一件事：
- * 清单上写了的 20 个预设是不是真的都在、机型够不够杂、每个机型预设有没有自觉写 Make/Model。
+ * 清单上写了的 36 个预设是不是真的都在、机型够不够杂、每个机型预设有没有自觉写 Make/Model。
  * 少一个文件、改错 id、把机型预设写成只有 GPS，都会在这里红掉。
  */
 class BuiltinPresetCoverageTest {
 
     /** docs/03 §7 的清单，逐个钉住。 */
     private val expectedIds = listOf(
-        // 设备：手机 6 + 相机 4 + 运动相机 1 + 无人机 1
+        // 设备：手机 9 + 相机 8 + 运动相机 1 + 无人机 1
         "device.iphone-16-pro",
+        "device.iphone-15-pro",
         "device.iphone-13",
         "device.pixel-9-pro",
+        "device.pixel-8-pro",
         "device.galaxy-s24-ultra",
+        "device.galaxy-s23-ultra",
         "device.huawei-mate-60",
         "device.xiaomi-14",
         "device.sony-a7iv",
+        "device.sony-a7-iii",
         "device.canon-r6m2",
+        "device.canon-eos-r8",
+        "device.canon-eos-5d-mark-iv",
         "device.nikon-z6ii",
+        "device.nikon-z50",
         "device.fujifilm-x-t5",
         "device.gopro-hero12",
         "device.dji-mini4pro",
@@ -34,11 +41,20 @@ class BuiltinPresetCoverageTest {
         "location.shanghai",
         "location.beijing",
         "location.shenzhen",
+        "location.guangzhou",
+        "location.hangzhou",
+        "location.chengdu",
+        "location.xian",
+        "location.chongqing",
+        "location.nanjing",
         "location.tokyo",
         // 时间
+        "time.2023",
         "time.2024",
         "time.2025",
         "time.2026-h1",
+        "time.2026-h2",
+        "time.night-2026",
         // 混合
         "mixed.ecommerce",
     )
@@ -63,9 +79,9 @@ class BuiltinPresetCoverageTest {
     @Test
     fun `四类预设都在，机型最杂`() {
         val byKind = PresetTestSupport.builtinPresets().groupingBy { it.kind.id }.eachCount()
-        assertEquals(12, byKind["device"])
-        assertEquals(4, byKind["location"])
-        assertEquals(3, byKind["time"])
+        assertEquals(19, byKind["device"])
+        assertEquals(10, byKind["location"])
+        assertEquals(6, byKind["time"])
         assertEquals(1, byKind["mixed"])
     }
 

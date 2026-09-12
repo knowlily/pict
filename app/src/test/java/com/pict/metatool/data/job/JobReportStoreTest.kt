@@ -61,7 +61,7 @@ class JobReportStoreTest {
         ),
         JobReportParams(
             mode = "PRESET",
-            presetId = "iphone-15",
+            presetIds = listOf("iphone-15"),
             overwriteExisting = true,
             seed = 20260101L,
             clearTargets = listOf("GPS", "ORIENTATION"),
@@ -83,7 +83,7 @@ class JobReportStoreTest {
         assertEquals(original, loaded)
         assertEquals(20260101L, loaded?.params?.seed)
         assertEquals(listOf("GPS", "ORIENTATION"), loaded?.params?.clearTargets)
-        assertEquals("iphone-15", loaded?.params?.presetId)
+        assertEquals(listOf("iphone-15"), loaded?.params?.presetIds)
     }
 
     @Test

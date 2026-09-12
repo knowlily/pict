@@ -22,7 +22,7 @@ class JobReportTest {
 
     private val params = JobReportParams(
         mode = "PRESET",
-        presetId = "iphone-15",
+        presetIds = listOf("iphone-15"),
         overwriteExisting = true,
         seed = 20260101L,
         clearTargets = listOf("GPS"),

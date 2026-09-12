@@ -13,6 +13,7 @@ import com.pict.metatool.domain.preset.PresetOrigin
 import com.pict.metatool.domain.preset.PresetParseResult
 import com.pict.metatool.domain.preset.PresetParser
 import com.pict.metatool.domain.preset.PresetResolver
+import com.pict.metatool.domain.preset.PresetSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -278,12 +279,31 @@ class EditPresetStateTest {
     // ---------- 列表与分组 ----------
 
     @Test
-    fun `预设按类别分组且保持声明顺序`() {
+    fun `预设按类别分栏，空栏也留着`() {
         val state = loaded(presets = listOf(location, device)).withPresets(listOf(location, device))
 
-        val kinds = state.presetsByKind.map { it.first.id }
-        assertEquals(listOf("device", "location"), kinds)
-        assertEquals(device.id, state.presetsByKind.first().second.single().id)
+        val columns = PresetSelection.byKind(state.presets)
+        // 四栏都在（空栏也得留着，栏头挂着「自己加一个」）；栏内保持目录里的声明顺序
+        assertEquals(listOf("device", "location", "time", "mixed"), columns.map { it.first.id })
+        assertEquals(device.id, columns.first { it.first.id == "device" }.second.single().id)
+        assertTrue(columns.first { it.first.id == "time" }.second.isEmpty())
+    }
+
+    @Test
+    fun `分栏多选：同一栏换人，跨栏共存，再点取消`() {
+        val other = device.copy(id = "device.another", name = "另一个机型")
+
+        var state = loaded(presets = listOf(device, other, location)).withPresets(listOf(device, other, location))
+        state = state.togglePresetPick(device).togglePresetPick(location)
+        assertEquals(listOf(device.id, location.id), state.pickedPresets.map { it.id })
+
+        // 同一栏里点第二个：换人，不是叠加
+        state = state.togglePresetPick(other)
+        assertEquals(listOf(other.id, location.id), state.pickedPresets.map { it.id })
+
+        // 再点一次同一个：取消那一栏，别的栏不受影响
+        state = state.togglePresetPick(other)
+        assertEquals(listOf(location.id), state.pickedPresets.map { it.id })
     }
 
     @Test

@@ -45,7 +45,7 @@ class JobUndoTest {
         finishedAtMillis = 1_726_000_009_000L,
         params = JobReportParams(
             mode = "PRESET",
-            presetId = "device.iphone-16-pro",
+            presetIds = listOf("device.iphone-16-pro"),
             overwriteExisting = true,
             seed = 7L,
             clearTargets = emptyList(),

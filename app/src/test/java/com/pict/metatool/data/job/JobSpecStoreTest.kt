@@ -29,7 +29,7 @@ class JobSpecStoreTest {
     private fun store(root: File = folder.root) = JobSpecStore(File(root, JobSpecStore.DIR))
 
     private fun spec(jobId: String = "job-1-abcd") = BatchJobSpec.from(
-        draft = BatchDraft(mode = BatchMode.RANDOM, presetId = "device.iphone-16-pro", seed = 3L),
+        draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf("device.iphone-16-pro"), seed = 3L),
         targets = listOf(BatchTarget.of("content://pict/a.jpg", "a.jpg", ImageFormatHint.JPEG)),
         options = JobOptions(),
         jobId = jobId,

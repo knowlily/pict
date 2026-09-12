@@ -27,7 +27,7 @@ class JobProgressUiStateTest {
 
     private val params = JobReportParams(
         mode = "PRESET",
-        presetId = null,
+        presetIds = emptyList(),
         overwriteExisting = false,
         seed = 1L,
         clearTargets = emptyList(),

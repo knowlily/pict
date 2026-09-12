@@ -45,7 +45,7 @@ class BatchDraftTest {
     fun `套用预设：计划里带覆盖开关与种子`() {
         val draft = BatchDraft(
             mode = BatchMode.PRESET,
-            presetId = device.id,
+            presetIds = listOf(device.id),
             overwriteExisting = true,
             seed = 42L,
         )
@@ -59,7 +59,7 @@ class BatchDraftTest {
 
     @Test
     fun `套用预设：目录里没有这个预设时报字段非法`() {
-        val draft = BatchDraft(mode = BatchMode.PRESET, presetId = "hello.kitty")
+        val draft = BatchDraft(mode = BatchMode.PRESET, presetIds = listOf("hello.kitty"))
 
         assertEquals(PictError.FIELD_INVALID, draft.toPlan(catalog).failureOrNull()?.error)
     }
@@ -75,7 +75,7 @@ class BatchDraftTest {
 
     @Test
     fun `随机填充：字段取自预设声明的全部字段`() {
-        val draft = BatchDraft(mode = BatchMode.RANDOM, presetId = device.id, seed = 7L)
+        val draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf(device.id), seed = 7L)
 
         val operation = draft.toPlan(catalog).getOrNull()!!.operations.single() as EditOperation.RandomFill
         assertEquals(device.fields.keys, operation.fields)
@@ -152,7 +152,7 @@ class BatchDraftTest {
 
     @Test
     fun `同一批里两张同源图不会被重掷成同一个值`() = runBlocking {
-        val draft = BatchDraft(mode = BatchMode.RANDOM, presetId = device.id, seed = 0L)
+        val draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf(device.id), seed = 0L)
         val plan = draft.toPlan(catalog).getOrNull()!!
 
         val targets = (1..5).map { BatchTarget.of("content://pict/$it.jpg", "$it.jpg", ImageFormatHint.JPEG) }
@@ -165,7 +165,7 @@ class BatchDraftTest {
 
     @Test
     fun `换个批次（同种子）结果可复现`() = runBlocking {
-        val draft = BatchDraft(mode = BatchMode.RANDOM, presetId = device.id, seed = 11L)
+        val draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf(device.id), seed = 11L)
         val plan = draft.toPlan(catalog).getOrNull()!!
         val targets = (1..3).map { BatchTarget.of("content://pict/$it.jpg", "$it.jpg", ImageFormatHint.JPEG) }
         val reader = InMemorySourceReader(targets.associate { it.uri to source(it.displayName) })
@@ -180,7 +180,7 @@ class BatchDraftTest {
     fun `随机填充给已有值的字段也会被重掷（不像套用预设那样只填缺失）`() = runBlocking {
         val key = device.fields.keys.first()
         val existing = source("a.jpg").copy(entries = mapOf(key to TagValue.Text("旧值")))
-        val draft = BatchDraft(mode = BatchMode.RANDOM, presetId = device.id, seed = 3L)
+        val draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf(device.id), seed = 3L)
         val plan = draft.toPlan(catalog).getOrNull()!!
 
         val item = BatchPreviewer(InMemorySourceReader(mapOf(target.uri to existing)), catalog)

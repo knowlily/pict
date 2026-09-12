@@ -71,7 +71,7 @@ class JobHistoryStoreTest {
         finishedAtMillis = 1_726_000_009_000L,
         params = JobReportParams(
             mode = "PRESET",
-            presetId = "device.iphone-16-pro",
+            presetIds = listOf("device.iphone-16-pro"),
             overwriteExisting = true,
             seed = 7L,
             clearTargets = emptyList(),
@@ -115,7 +115,7 @@ class JobHistoryStoreTest {
     )
 
     private fun spec(jobId: String) = BatchJobSpec.from(
-        draft = BatchDraft(mode = BatchMode.RANDOM, presetId = "device.iphone-16-pro", seed = 3L),
+        draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf("device.iphone-16-pro"), seed = 3L),
         targets = listOf(BatchTarget.of("content://pict/a.jpg", "a.jpg", ImageFormatHint.JPEG)),
         options = JobOptions(),
         jobId = jobId,

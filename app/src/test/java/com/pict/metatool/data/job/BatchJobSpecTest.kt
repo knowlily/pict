@@ -30,7 +30,7 @@ class BatchJobSpecTest {
     private val readonly = BatchTarget.of("content://pict/b.heic", "b.heic", ImageFormatHint.HEIF, writable = false)
 
     private fun spec(
-        draft: BatchDraft = BatchDraft(mode = BatchMode.PRESET, presetId = device.id, seed = 7L),
+        draft: BatchDraft = BatchDraft(mode = BatchMode.PRESET, presetIds = listOf(device.id), seed = 7L),
         options: JobOptions = JobOptions(),
     ) = BatchJobSpec.from(
         draft = draft,
@@ -38,7 +38,7 @@ class BatchJobSpecTest {
         options = options,
         jobId = "job-1726000000000-abcd1234",
         nowMillis = 1_726_000_000_000L,
-        presetName = device.name,
+        presetNames = listOf(device.name),
     )
 
     // ---------- 攒定义 ----------
@@ -132,7 +132,7 @@ class BatchJobSpecTest {
 
     @Test
     fun `预设没了就拼不出计划`() {
-        val built = spec(draft = BatchDraft(mode = BatchMode.PRESET, presetId = "device.不存在"))
+        val built = spec(draft = BatchDraft(mode = BatchMode.PRESET, presetIds = listOf("device.不存在")))
 
         val result = built.toPlan(catalog)
 
@@ -159,7 +159,7 @@ class BatchJobSpecTest {
     fun `标签说清做什么与多少张`() {
         assertEquals("套用预设「${device.name}」 · 2 张", spec().label)
 
-        val random = spec(draft = BatchDraft(mode = BatchMode.RANDOM, presetId = device.id, seed = 1L))
+        val random = spec(draft = BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf(device.id), seed = 1L))
         assertTrue(random.label.startsWith("按「"))
         assertTrue(random.label.endsWith(" · 2 张"))
 
@@ -172,7 +172,7 @@ class BatchJobSpecTest {
         assertTrue(cleared.label.startsWith("清除"))
         assertTrue(cleared.label.contains("等 3 组"))
 
-        val unnamed = BatchJobSpec.labelOf(BatchDraft(mode = BatchMode.RANDOM, presetId = "x"), 5)
+        val unnamed = BatchJobSpec.labelOf(BatchDraft(mode = BatchMode.RANDOM, presetIds = listOf("x")), 5)
         assertEquals("随机填充 · 5 张", unnamed)
     }
 }
