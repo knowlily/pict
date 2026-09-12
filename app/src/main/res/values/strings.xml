@@ -330,6 +330,18 @@
     <string name="settings_dynamic_color">动态取色</string>
     <string name="settings_dynamic_color_hint">颜色跟着壁纸走（Material You），换张壁纸整套配色跟着换</string>
     <string name="settings_dynamic_color_unsupported">需要 Android 12 及以上：这台机器系统给不出壁纸配色，先用应用自带的配色</string>
+    <string name="settings_backdrop">背景色</string>
+    <string name="settings_backdrop_hint">关掉上面的动态取色才能自己挑；深色主题下这几个色号会自动压暗</string>
+    <string name="settings_backdrop_locked">动态取色开着的时候底色跟着壁纸走；先关掉它才能自己挑</string>
+    <string name="settings_backdrop_current">当前：%1$s</string>
+    <string name="backdrop_auto">自动</string>
+    <string name="backdrop_cloud">云白</string>
+    <string name="backdrop_sand">暖砂</string>
+    <string name="backdrop_mint">薄荷</string>
+    <string name="backdrop_sky">天青</string>
+    <string name="backdrop_lilac">藕荷</string>
+    <string name="backdrop_moss">苔绿</string>
+    <string name="backdrop_blush">淡粉</string>
     <string name="settings_navbar_items_hint">至少留一个；关掉正待着的这一页，会自动换到还留着的页</string>
     <string name="settings_navbar_min_note">底栏至少保留一个入口</string>
 

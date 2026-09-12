@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.pict.metatool.data.settings.SettingsProvider
+import com.pict.metatool.domain.settings.backdropArgbFor
 import com.pict.metatool.ui.PictApp
 import com.pict.metatool.ui.theme.PictTheme
 import com.pict.metatool.ui.theme.supportsDynamicColor
@@ -28,6 +29,9 @@ import com.pict.metatool.ui.theme.supportsDynamicColor
  * 取色来源（FR-38）也得在这一层定：跟主题一样属于「整棵树重画」的东西。
  * 设置里开着**且**这台机器给得出壁纸调色板（Android 12+）才真的跟着壁纸走，
  * 于是 `dynamicColor` 这一项在旧机器上是「存了但不生效」，界面里那一行会写明原因。
+ *
+ * 页面底色也在这里定：动态取色开着时底色跟着壁纸走（不必传），关掉之后才轮到设置里挑的
+ * 那一个（[backdropArgbFor] 顺带处理深浅主题——浅色原样、深色压暗）。
  */
 class MainActivity : ComponentActivity() {
 
@@ -39,9 +43,17 @@ class MainActivity : ComponentActivity() {
             val store = remember(context) { SettingsProvider.of(context) }
             val settings by store.settings.collectAsState()
 
+            val darkTheme = settings.themeMode.isDark(isSystemInDarkTheme())
+            val dynamicColor = settings.dynamicColor && supportsDynamicColor()
+
             PictTheme(
-                darkTheme = settings.themeMode.isDark(isSystemInDarkTheme()),
-                dynamicColor = settings.dynamicColor && supportsDynamicColor(),
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColor,
+                backdrop = if (dynamicColor) {
+                    null
+                } else {
+                    backdropArgbFor(settings.backgroundColor, darkTheme)
+                },
             ) {
                 PictApp(
                     settings = settings,

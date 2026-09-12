@@ -148,6 +148,14 @@ data class AppSettings(
      */
     val dynamicColor: Boolean = DEFAULT_DYNAMIC_COLOR,
     /**
+     * 页面底色（FR-38 续）：关掉动态取色之后，底色可以自己挑。
+     *
+     * 存 ARGB 色号，[BACKGROUND_AUTO] = 不改、用主题自带的那一个。取值来自 [Backdrop] 那几个
+     * 低饱和浅底；深色主题下由 `backdropArgbFor` 按同一色相压暗，所以一份色号两种主题都能用。
+     * 认不出来的色号在 [normalized] 里回到 AUTO——这里只认自己发出去的那几个。
+     */
+    val backgroundColor: Long = BACKGROUND_AUTO,
+    /**
      * 最近导入过的目录，最近用的排前面（FR-03）。
      *
      * 授权本身早就持久化了，缺的一直是「上次是哪个目录」这笔账：重启之后只能重新点
@@ -166,6 +174,7 @@ data class AppSettings(
     fun normalized(): AppSettings = copy(
         exportSuffix = normalizeSuffix(exportSuffix),
         gridColumns = gridColumns.coerceIn(MIN_GRID_COLUMNS, MAX_GRID_COLUMNS),
+        backgroundColor = Backdrop.fromArgb(backgroundColor).argb,
         navItems = normalizeNavItems(navItems),
         recentFolders = normalizeRecentFolders(recentFolders),
     )
@@ -213,6 +222,9 @@ data class AppSettings(
          * 12 以下的机器上系统给不出调色板，这个 true 会被 `supportsDynamicColor` 拦下。
          */
         const val DEFAULT_DYNAMIC_COLOR: Boolean = true
+
+        /** 底色「自动」：不改主题自带的那一个（也是存量设置读不到这个键时的取值）。 */
+        const val BACKGROUND_AUTO: Long = 0L
 
         /** 默认三栏全开。 */
         val DEFAULT_NAV_ITEMS: Set<NavItem> = NavItem.entries.toSet()

@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -84,14 +85,20 @@ private val DarkColors = darkColorScheme(
  *
  * 版本判断走 [supportsDynamicColor]：那边一处定规则，设置页里那一行的可用状态共用同一个判断，
  * 不会出现「开关亮着但颜色没变」。
+ *
+ * @param backdrop 自选页面底色（FR-38 续，ARGB），`null` = 用主题自带的那一个。只换
+ *   `background` 这一个角色：卡片表面、强调色、状态色都还是各自那一套，挑个底色不会顺带把
+ *   「导出成功/失败」的颜色改掉。动态取色开着时底色跟着壁纸走，调用方传 `null`——
+ *   判断留在 `MainActivity`，主题这一层不偷看设置。
  */
 @Composable
 fun PictTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
+    backdrop: Long? = null,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
+    val baseColors = when {
         dynamicColor && supportsDynamicColor() -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -100,6 +107,8 @@ fun PictTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
+
+    val colorScheme = if (backdrop == null) baseColors else baseColors.copy(background = Color(backdrop))
 
     val view = LocalView.current
     if (!view.isInEditMode) {

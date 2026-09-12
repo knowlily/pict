@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.pict.metatool.BuildConfig
 import com.pict.metatool.R
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.domain.settings.Backdrop
 import com.pict.metatool.domain.settings.NavBarStyle
 import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
@@ -65,17 +66,21 @@ fun SettingsScreen(
     val themeLabels = ThemeMode.entries.associateWith { themeLabel(it) }
     val navBarStyleLabels = NavBarStyle.entries.associateWith { navBarStyleLabel(it) }
     val navItemLabels = NavItem.entries.associateWith { navItemLabel(it) }
+    val backdropLabels = Backdrop.entries.associateWith { backdropLabel(it) }
     val keepOneNavItem = stringResource(R.string.settings_navbar_min_note)
 
     var editingSuffix by remember { mutableStateOf(false) }
     var editingSeed by remember { mutableStateOf(false) }
     var confirmingReset by remember { mutableStateOf(false) }
-    // 三个编辑项的落点：弹出的编辑层要盖在被点的那一行上（见 SettingsRowPopup 的说明）
-    val suffixAnchor = rememberSettingsRowAnchor()
-    val seedAnchor = rememberSettingsRowAnchor()
-    val resetAnchor = rememberSettingsRowAnchor()
+    // 三个编辑项的落点：弹出的编辑层要盖住**它所在的那张设置卡**（见 SettingsCardPopup 的说明）
+    val suffixAnchor = rememberSettingsCardAnchor()
+    val seedAnchor = rememberSettingsCardAnchor()
+    val resetAnchor = rememberSettingsCardAnchor()
     // Android 12 以下系统给不出壁纸调色板：那一行是灰的，写明原因，而不是「开了没反应」
     val dynamicColorSupported = supportsDynamicColor()
+    // 底色要等动态取色关掉之后才轮到自己挑：开着的时候底色跟着壁纸走（FR-38 续）
+    val backdropEnabled = !(settings.dynamicColor && dynamicColorSupported)
+    val backdrop = Backdrop.fromArgb(settings.backgroundColor)
 
     Scaffold(
         modifier = modifier,
@@ -98,7 +103,10 @@ fun SettingsScreen(
                 .padding(bottom = LocalBottomBarInset.current + PictSpacing.aboveBottomBar),
             verticalArrangement = Arrangement.spacedBy(PictSpacing.xl),
         ) {
-            SettingsSection(title = stringResource(R.string.settings_section_output)) {
+            SettingsSection(
+                title = stringResource(R.string.settings_section_output),
+                anchor = suffixAnchor,
+            ) {
                 SettingsValueRow(
                     title = stringResource(R.string.settings_export_suffix),
                     value = settings.exportSuffix.ifEmpty {
@@ -109,7 +117,6 @@ fun SettingsScreen(
                         ExportNaming.suggest(SAMPLE_FILE_NAME, settings.exportSuffix),
                     ),
                     onClick = { editingSuffix = true },
-                    modifier = Modifier.settingsRowAnchor(suffixAnchor),
                 )
 
                 SettingsSwitchRow(
@@ -120,7 +127,10 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSection(title = stringResource(R.string.settings_section_preset)) {
+            SettingsSection(
+                title = stringResource(R.string.settings_section_preset),
+                anchor = seedAnchor,
+            ) {
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_preset_overwrite),
                     subtitle = stringResource(R.string.settings_preset_overwrite_hint),
@@ -133,7 +143,6 @@ fun SettingsScreen(
                     value = settings.randomSeedDefault.toString(),
                     subtitle = stringResource(R.string.settings_random_seed_hint),
                     onClick = { editingSeed = true },
-                    modifier = Modifier.settingsRowAnchor(seedAnchor),
                 )
             }
 
@@ -159,6 +168,24 @@ fun SettingsScreen(
                     checked = settings.dynamicColor && dynamicColorSupported,
                     enabled = dynamicColorSupported,
                     onCheckedChange = { on -> onUpdate { it.copy(dynamicColor = on) } },
+                )
+
+                // 底色（FR-38 续）：动态取色关掉之后才轮到自己挑，所以这一行跟着上面那一项亮/灰
+                SettingsSwatchRow(
+                    title = stringResource(R.string.settings_backdrop),
+                    subtitle = stringResource(
+                        if (backdropEnabled) {
+                            R.string.settings_backdrop_current
+                        } else {
+                            R.string.settings_backdrop_locked
+                        },
+                        backdropLabels.getValue(backdrop),
+                    ),
+                    options = Backdrop.entries,
+                    selected = backdrop,
+                    label = { option -> backdropLabels.getValue(option) },
+                    enabled = backdropEnabled,
+                    onSelect = { option -> onUpdate { it.copy(backgroundColor = option.argb) } },
                 )
 
                 SettingsChoiceRow(
@@ -212,7 +239,10 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSection(title = stringResource(R.string.settings_section_about)) {
+            SettingsSection(
+                title = stringResource(R.string.settings_section_about),
+                anchor = resetAnchor,
+            ) {
                 SettingsValueRow(
                     title = stringResource(R.string.settings_version),
                     value = stringResource(R.string.settings_version_value, versionName, versionCode),
@@ -227,7 +257,6 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_reset),
                     subtitle = stringResource(R.string.settings_reset_hint),
                     onClick = { confirmingReset = true },
-                    modifier = Modifier.settingsRowAnchor(resetAnchor),
                 )
             }
         }
@@ -295,6 +324,21 @@ private fun navBarStyleLabel(style: NavBarStyle): String = stringResource(
     },
 )
 
+/** 底色的中文名。枚举本身在 domain 里，不带界面文案。 */
+@Composable
+private fun backdropLabel(option: Backdrop): String = stringResource(
+    when (option) {
+        Backdrop.AUTO -> R.string.backdrop_auto
+        Backdrop.CLOUD -> R.string.backdrop_cloud
+        Backdrop.SAND -> R.string.backdrop_sand
+        Backdrop.MINT -> R.string.backdrop_mint
+        Backdrop.SKY -> R.string.backdrop_sky
+        Backdrop.LILAC -> R.string.backdrop_lilac
+        Backdrop.MOSS -> R.string.backdrop_moss
+        Backdrop.BLUSH -> R.string.backdrop_blush
+    },
+)
+
 /** 底栏入口的显示名：跟底栏自己用同一份文案，不另写一套。 */
 @Composable
 private fun navItemLabel(item: NavItem): String = stringResource(
@@ -314,14 +358,14 @@ private fun navItemLabel(item: NavItem): String = stringResource(
  */
 @Composable
 private fun EditSuffixPopup(
-    anchor: SettingsRowAnchor,
+    anchor: SettingsCardAnchor,
     current: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
     var text by remember { mutableStateOf(current) }
 
-    SettingsRowPopup(
+    SettingsCardPopup(
         anchor = anchor,
         title = stringResource(
             R.string.settings_edit_title,
@@ -360,7 +404,7 @@ private fun EditSuffixPopup(
 /** 默认种子编辑层：解析不了就当场说清楚，不悄悄换成 0（0 是「还没定过种子」的哨兵值）。 */
 @Composable
 private fun EditSeedPopup(
-    anchor: SettingsRowAnchor,
+    anchor: SettingsCardAnchor,
     current: Long,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
@@ -369,7 +413,7 @@ private fun EditSeedPopup(
     val seed = AppSettings.parseSeed(text)
     val invalid = seed == null
 
-    SettingsRowPopup(
+    SettingsCardPopup(
         anchor = anchor,
         title = stringResource(R.string.settings_random_seed_dialog_title),
         onDismiss = onDismiss,
@@ -407,11 +451,11 @@ private fun EditSeedPopup(
 /** 恢复默认的二次确认：破坏性动作，确认按钮走 error 色（docs/06 §5）。 */
 @Composable
 private fun ResetPopup(
-    anchor: SettingsRowAnchor,
+    anchor: SettingsCardAnchor,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    SettingsRowPopup(
+    SettingsCardPopup(
         anchor = anchor,
         title = stringResource(R.string.settings_reset_title),
         onDismiss = onDismiss,

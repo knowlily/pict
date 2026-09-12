@@ -160,6 +160,21 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `底色默认自动，认不出来的色号回到自动`() {
+        assertEquals(AppSettings.BACKGROUND_AUTO, AppSettings().backgroundColor)
+        // 手改过 pref 的色号不该以「半生效」的样子留下来：规范化里回到自动
+        assertEquals(
+            AppSettings.BACKGROUND_AUTO,
+            AppSettings(backgroundColor = 0xFF123456L).normalized().backgroundColor,
+        )
+        // 认得出的一律留着
+        assertEquals(
+            Backdrop.MINT.argb,
+            AppSettings(backgroundColor = Backdrop.MINT.argb).normalized().backgroundColor,
+        )
+    }
+
+    @Test
     fun `动态取色默认开着，关掉之后规范化也不会掀回默认`() {
         assertTrue(AppSettings().dynamicColor)
         // 同理：这是「颜色从哪来」的选择，normalized() 管的是后缀/列数/入口/最近目录，别越界
