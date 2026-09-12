@@ -95,7 +95,7 @@
     <string name="jobs_duration_minutes">%1$s 分 %2$s 秒</string>
 
     <!-- 图库（T1.9，docs/06 §3.1） -->
-    <string name="library_title">图片</string>
+    <string name="library_title">图库</string>
     <string name="library_count_total">共 %1$d 张</string>
     <string name="library_count_selected">已选 %1$d 张 · 共 %2$d 张</string>
     <string name="library_action_import">导入</string>
