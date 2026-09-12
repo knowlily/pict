@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +36,7 @@ import com.pict.metatool.domain.settings.ThemeMode
 import com.pict.metatool.ui.edit.ExportNaming
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.theme.PictSpacing
+import com.pict.metatool.ui.theme.supportsDynamicColor
 import kotlinx.coroutines.launch
 
 /**
@@ -70,6 +70,12 @@ fun SettingsScreen(
     var editingSuffix by remember { mutableStateOf(false) }
     var editingSeed by remember { mutableStateOf(false) }
     var confirmingReset by remember { mutableStateOf(false) }
+    // 三个编辑项的落点：弹出的编辑层要盖在被点的那一行上（见 SettingsRowPopup 的说明）
+    val suffixAnchor = rememberSettingsRowAnchor()
+    val seedAnchor = rememberSettingsRowAnchor()
+    val resetAnchor = rememberSettingsRowAnchor()
+    // Android 12 以下系统给不出壁纸调色板：那一行是灰的，写明原因，而不是「开了没反应」
+    val dynamicColorSupported = supportsDynamicColor()
 
     Scaffold(
         modifier = modifier,
@@ -103,6 +109,7 @@ fun SettingsScreen(
                         ExportNaming.suggest(SAMPLE_FILE_NAME, settings.exportSuffix),
                     ),
                     onClick = { editingSuffix = true },
+                    modifier = Modifier.settingsRowAnchor(suffixAnchor),
                 )
 
                 SettingsSwitchRow(
@@ -126,6 +133,7 @@ fun SettingsScreen(
                     value = settings.randomSeedDefault.toString(),
                     subtitle = stringResource(R.string.settings_random_seed_hint),
                     onClick = { editingSeed = true },
+                    modifier = Modifier.settingsRowAnchor(seedAnchor),
                 )
             }
 
@@ -136,6 +144,21 @@ fun SettingsScreen(
                     selected = settings.themeMode,
                     label = { mode -> themeLabels.getValue(mode) },
                     onSelect = { mode -> onUpdate { it.copy(themeMode = mode) } },
+                )
+
+                // 取色来源（FR-38）：只在系统给得出壁纸调色板时可点，旧机器上是灰的并写明原因
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_dynamic_color),
+                    subtitle = stringResource(
+                        if (dynamicColorSupported) {
+                            R.string.settings_dynamic_color_hint
+                        } else {
+                            R.string.settings_dynamic_color_unsupported
+                        },
+                    ),
+                    checked = settings.dynamicColor && dynamicColorSupported,
+                    enabled = dynamicColorSupported,
+                    onCheckedChange = { on -> onUpdate { it.copy(dynamicColor = on) } },
                 )
 
                 SettingsChoiceRow(
@@ -156,6 +179,14 @@ fun SettingsScreen(
                     selected = settings.navBarStyle,
                     label = { style -> navBarStyleLabels.getValue(style) },
                     onSelect = { style -> onUpdate { it.copy(navBarStyle = style) } },
+                )
+
+                // 玻璃开关紧跟在样式后面：样式管底栏长什么样，这一项管那层玻璃要不要。
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_navbar_glass),
+                    subtitle = stringResource(R.string.settings_navbar_glass_hint),
+                    checked = settings.liquidGlass,
+                    onCheckedChange = { on -> onUpdate { it.copy(liquidGlass = on) } },
                 )
 
                 // 只列可选入口：必需项不出现——给一个关不掉的开关，比没有这个开关更让人困惑。
@@ -196,13 +227,15 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_reset),
                     subtitle = stringResource(R.string.settings_reset_hint),
                     onClick = { confirmingReset = true },
+                    modifier = Modifier.settingsRowAnchor(resetAnchor),
                 )
             }
         }
     }
 
     if (editingSuffix) {
-        EditSuffixDialog(
+        EditSuffixPopup(
+            anchor = suffixAnchor,
             current = settings.exportSuffix,
             onDismiss = { editingSuffix = false },
             onConfirm = { raw ->
@@ -213,7 +246,8 @@ fun SettingsScreen(
     }
 
     if (editingSeed) {
-        EditSeedDialog(
+        EditSeedPopup(
+            anchor = seedAnchor,
             current = settings.randomSeedDefault,
             onDismiss = { editingSeed = false },
             onConfirm = { seed ->
@@ -224,7 +258,8 @@ fun SettingsScreen(
     }
 
     if (confirmingReset) {
-        ResetDialog(
+        ResetPopup(
+            anchor = resetAnchor,
             onDismiss = { confirmingReset = false },
             onConfirm = {
                 confirmingReset = false
@@ -271,74 +306,61 @@ private fun navItemLabel(item: NavItem): String = stringResource(
 )
 
 /**
- * 导出后缀编辑框。
+ * 导出后缀编辑层：落在「导出文件名后缀」那一行上，把它盖住（docs/06 §3.7）。
  *
  * 边打边给示例文件名：`ExportNaming.suggest` 就是导出时真正用的那个函数，
  * 于是这里看到的截断与「已带后缀就不重复加」的规则，跟落盘时完全一致——
  * 不另写一套「预览规则」。
  */
 @Composable
-private fun EditSuffixDialog(
+private fun EditSuffixPopup(
+    anchor: SettingsRowAnchor,
     current: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
     var text by remember { mutableStateOf(current) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(
-                    R.string.settings_edit_title,
-                    stringResource(R.string.settings_export_suffix),
-                ),
-            )
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    label = { Text(text = stringResource(R.string.settings_export_suffix)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    SettingsRowPopup(
+        anchor = anchor,
+        title = stringResource(
+            R.string.settings_edit_title,
+            stringResource(R.string.settings_export_suffix),
+        ),
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(text) },
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            label = { Text(text = stringResource(R.string.settings_export_suffix)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-                Text(
-                    text = stringResource(
-                        R.string.settings_export_suffix_sample,
-                        ExportNaming.suggest(SAMPLE_FILE_NAME, text),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = PictSpacing.md),
-                )
+        Text(
+            text = stringResource(
+                R.string.settings_export_suffix_sample,
+                ExportNaming.suggest(SAMPLE_FILE_NAME, text),
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = PictSpacing.md),
+        )
 
-                Text(
-                    text = stringResource(R.string.settings_export_suffix_empty_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = PictSpacing.sm),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }) {
-                Text(text = stringResource(R.string.settings_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.settings_cancel))
-            }
-        },
-    )
+        Text(
+            text = stringResource(R.string.settings_export_suffix_empty_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = PictSpacing.sm),
+        )
+    }
 }
 
-/** 默认种子编辑框：解析不了就当场说清楚，不悄悄换成 0（0 是「还没定过种子」的哨兵值）。 */
+/** 默认种子编辑层：解析不了就当场说清楚，不悄悄换成 0（0 是「还没定过种子」的哨兵值）。 */
 @Composable
-private fun EditSeedDialog(
+private fun EditSeedPopup(
+    anchor: SettingsRowAnchor,
     current: Long,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
@@ -347,78 +369,60 @@ private fun EditSeedDialog(
     val seed = AppSettings.parseSeed(text)
     val invalid = seed == null
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.settings_random_seed_dialog_title)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    isError = invalid,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    SettingsRowPopup(
+        anchor = anchor,
+        title = stringResource(R.string.settings_random_seed_dialog_title),
+        onDismiss = onDismiss,
+        onConfirm = { seed?.let(onConfirm) },
+        confirmEnabled = seed != null,
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            isError = invalid,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
 
+        Text(
+            text = stringResource(
                 if (invalid) {
-                    Text(
-                        text = stringResource(R.string.settings_random_seed_invalid),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = PictSpacing.sm),
-                    )
+                    R.string.settings_random_seed_invalid
                 } else {
-                    Text(
-                        text = stringResource(R.string.settings_random_seed_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = PictSpacing.sm),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { seed?.let(onConfirm) },
-                enabled = seed != null,
-            ) {
-                Text(text = stringResource(R.string.settings_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.settings_cancel))
-            }
-        },
-    )
+                    R.string.settings_random_seed_hint
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (invalid) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.padding(top = PictSpacing.sm),
+        )
+    }
 }
 
 /** 恢复默认的二次确认：破坏性动作，确认按钮走 error 色（docs/06 §5）。 */
 @Composable
-private fun ResetDialog(
+private fun ResetPopup(
+    anchor: SettingsRowAnchor,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.settings_reset_title)) },
-        text = { Text(text = stringResource(R.string.settings_reset_body)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = stringResource(R.string.settings_reset),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(R.string.settings_cancel),
-                    textAlign = TextAlign.Start,
-                )
-            }
-        },
-    )
+    SettingsRowPopup(
+        anchor = anchor,
+        title = stringResource(R.string.settings_reset_title),
+        onDismiss = onDismiss,
+        onConfirm = onConfirm,
+        confirmLabel = stringResource(R.string.settings_reset),
+        confirmColor = MaterialTheme.colorScheme.error,
+    ) {
+        Text(
+            text = stringResource(R.string.settings_reset_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }

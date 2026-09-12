@@ -2,7 +2,6 @@ package com.pict.metatool.ui.theme
 
 import android.app.Activity
 import android.graphics.drawable.ColorDrawable
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -71,12 +70,20 @@ private val DarkColors = darkColorScheme(
 )
 
 /**
- * @param dynamicColor 默认关闭：品牌色优先，避免 Material You 取色破坏状态色语义（docs/06 §2）。
+ * @param dynamicColor 取色来源（FR-38）：true = 跟着壁纸走（Material You），false = 用应用
+ *   自带的品牌配色。默认 false 是「调用方没说就用品牌色」；`MainActivity` 传的是设置里
+ *   那一项（默认开），所以在 Android 12 及以上，实际观感是跟着壁纸的。
+ *
+ *   品牌配色仍然是一等公民：状态色语义（error、导出成功/失败）在动态取色下由系统的
+ *   error 角色兜底，不靠写死的色值（docs/06 §2）。
  *
  * 系统栏与窗口底色也在这里接管，**以应用选定的主题为准**，而不是只靠 `values-night/`：
  * 那份资源只有「系统夜间模式」一个输入。用户在设置里选「深色」而系统是浅色（或反过来）时，
  * 图标明暗会跟背景同色——实测就是「黑图标压黑底」「白图标压白底」，状态栏基本看不见
  * （docs/08 §10.5）。所以图标明暗与窗口底色都跟着 [darkTheme] 走。
+ *
+ * 版本判断走 [supportsDynamicColor]：那边一处定规则，设置页里那一行的可用状态共用同一个判断，
+ * 不会出现「开关亮着但颜色没变」。
  */
 @Composable
 fun PictTheme(
@@ -85,7 +92,7 @@ fun PictTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor && supportsDynamicColor() -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

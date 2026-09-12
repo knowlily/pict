@@ -133,6 +133,21 @@ data class AppSettings(
     /** 底栏显示哪些入口；空集合非法，规范化会还给默认三栏。 */
     val navItems: Set<NavItem> = DEFAULT_NAV_ITEMS,
     /**
+     * 底栏是不是液态玻璃（只有悬浮样式用得上）。
+     *
+     * 「悬浮／贴底」说的是底栏长什么样，这一项说的是**那层玻璃要不要**：关掉 = 一层实心底栏，
+     * 不录背板、不模糊、不透光。嫌玻璃糊得看不清底下、或者机器糊不动想省一次离屏绘制时都有得选。
+     */
+    val liquidGlass: Boolean = DEFAULT_LIQUID_GLASS,
+    /**
+     * 取色来源（FR-38）：true = 跟着壁纸走（Material You），false = 用应用自带的品牌配色。
+     *
+     * 这一项管的是**颜色从哪来**，跟深浅色是两件事：`themeMode` 定深浅，这一项定色相。
+     * 只在 Android 12（API 31）及以上有效——系统从那一版起才给得出壁纸调色板
+     * （判断在 `supportsDynamicColor`，域层不认识 SDK 号，所以这里只管存）。
+     */
+    val dynamicColor: Boolean = DEFAULT_DYNAMIC_COLOR,
+    /**
      * 最近导入过的目录，最近用的排前面（FR-03）。
      *
      * 授权本身早就持久化了，缺的一直是「上次是哪个目录」这笔账：重启之后只能重新点
@@ -186,6 +201,18 @@ data class AppSettings(
 
         /** 默认底栏样式：胶囊。 */
         val DEFAULT_NAV_BAR_STYLE: NavBarStyle = NavBarStyle.FLOATING
+
+        /** 默认开玻璃：悬浮样式的默认观感就是它。 */
+        const val DEFAULT_LIQUID_GLASS: Boolean = true
+
+        /**
+         * 默认跟着壁纸取色（FR-38）。
+         *
+         * Material You 是 Android 12+ 上用户已经习惯的样子：应用一开就跟着系统，不用先去设置里翻。
+         * 品牌配色没被丢掉——关掉这一项就回到 [BluePrimary] 那一套，设置里一行就能切。
+         * 12 以下的机器上系统给不出调色板，这个 true 会被 `supportsDynamicColor` 拦下。
+         */
+        const val DEFAULT_DYNAMIC_COLOR: Boolean = true
 
         /** 默认三栏全开。 */
         val DEFAULT_NAV_ITEMS: Set<NavItem> = NavItem.entries.toSet()

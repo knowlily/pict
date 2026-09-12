@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -406,7 +407,14 @@ private fun FieldRow(row: EditFieldRow, onEdit: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (row.editable) Modifier.clickable(onClick = onEdit) else Modifier)
+            .then(
+                if (row.editable) {
+                    // 圆角在 clickable 之前：高亮跟卡片同一套形状，不然长按是个方框
+                    Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onEdit)
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -463,6 +471,7 @@ internal fun AddRow(spec: FieldSpec, onAdd: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onAdd)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -324,6 +324,12 @@
     <string name="settings_navbar_style_hint">悬浮是浮在内容上的胶囊，贴底是传统的通栏</string>
     <string name="settings_navbar_style_floating">悬浮</string>
     <string name="settings_navbar_style_docked">贴底</string>
+    <!-- 玻璃开关：只在悬浮样式下看得到，所以文案里把前提写明 -->
+    <string name="settings_navbar_glass">液态玻璃</string>
+    <string name="settings_navbar_glass_hint">关掉就是一层实心底栏，不再透光也不糊背板；悬浮样式才有玻璃，Android 12 以下糊不动、只剩半透明</string>
+    <string name="settings_dynamic_color">动态取色</string>
+    <string name="settings_dynamic_color_hint">颜色跟着壁纸走（Material You），换张壁纸整套配色跟着换</string>
+    <string name="settings_dynamic_color_unsupported">需要 Android 12 及以上：这台机器系统给不出壁纸配色，先用应用自带的配色</string>
     <string name="settings_navbar_items_hint">至少留一个；关掉正待着的这一页，会自动换到还留着的页</string>
     <string name="settings_navbar_min_note">底栏至少保留一个入口</string>
 

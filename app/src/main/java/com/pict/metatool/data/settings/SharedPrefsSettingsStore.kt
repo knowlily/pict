@@ -32,6 +32,8 @@ private const val KEY_RANDOM_SEED = "random_seed_default"
 private const val KEY_THEME_MODE = "theme_mode"
 private const val KEY_GRID_COLUMNS = "grid_columns"
 private const val KEY_NAV_BAR_STYLE = "navbar_style"
+private const val KEY_LIQUID_GLASS = "liquid_glass"
+private const val KEY_DYNAMIC_COLOR = "dynamic_color"
 private const val KEY_NAV_ITEMS = "navbar_items"
 
 /** 最近目录（FR-03）：一条一行，明细见 [RecentFolderCodec]。 */
@@ -51,6 +53,8 @@ internal fun loadSettings(prefs: SharedPreferences): AppSettings {
         themeMode = ThemeMode.fromName(prefs.getString(KEY_THEME_MODE, null)),
         gridColumns = prefs.getInt(KEY_GRID_COLUMNS, defaults.gridColumns),
         navBarStyle = NavBarStyle.fromName(prefs.getString(KEY_NAV_BAR_STYLE, null)),
+        liquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, defaults.liquidGlass),
+        dynamicColor = prefs.getBoolean(KEY_DYNAMIC_COLOR, defaults.dynamicColor),
         // 没存过、或存进去的名字一个都不认识：decode 给空集合，normalized 会把它兜回默认三栏
         navItems = NavItem.decode(prefs.getString(KEY_NAV_ITEMS, null)),
         // 同理：没存过是一张白纸（不是错误），坏行由 codec 自己丢掉，剩下的过规范化
@@ -68,6 +72,8 @@ internal fun saveSettings(prefs: SharedPreferences, settings: AppSettings) {
         .putString(KEY_THEME_MODE, settings.themeMode.name)
         .putInt(KEY_GRID_COLUMNS, settings.gridColumns)
         .putString(KEY_NAV_BAR_STYLE, settings.navBarStyle.name)
+        .putBoolean(KEY_LIQUID_GLASS, settings.liquidGlass)
+        .putBoolean(KEY_DYNAMIC_COLOR, settings.dynamicColor)
         .putString(KEY_NAV_ITEMS, NavItem.encode(settings.navItems))
         .putString(KEY_RECENT_FOLDERS, RecentFolderCodec.encode(settings.recentFolders))
         .apply()

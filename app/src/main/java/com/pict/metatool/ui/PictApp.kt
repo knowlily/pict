@@ -87,6 +87,8 @@ fun PictApp(
         currentRoute != ReportRoute.PATTERN
     val destinations = remember(settings.navItems) { PictDestination.visibleItems(settings.navItems) }
     val floatingBar = topLevel && settings.navBarStyle == NavBarStyle.FLOATING
+    // 玻璃关掉（设置里那个开关）就连背板都不录：离屏绘制一次不便宜，用不上的层不画。
+    val glassOn = floatingBar && settings.liquidGlass
 
     // 正待着的这一页被设置里关掉了（比如在设置页把「设置」关了）：立刻换到还留着的第一个入口。
     // 不然用户会停在一个底栏里没有任何高亮、也点不回去的页面上。
@@ -117,7 +119,7 @@ fun PictApp(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassBackdrop(enabled = floatingBar, layer = backdrop),
+                .glassBackdrop(enabled = glassOn, layer = backdrop),
         ) {
             CompositionLocalProvider(
                 LocalBottomBarInset provides if (floatingBar) FloatingNavBarReservedHeight else 0.dp,
@@ -232,6 +234,7 @@ fun PictApp(
                 currentRoute = currentRoute,
                 onSelect = onSelect,
                 backdrop = backdrop,
+                glass = settings.liquidGlass,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -242,7 +245,7 @@ fun PictApp(
  * 把这一层内容录进离屏图层，再原样画出来。
  *
  * Compose 没法「取某块区域背后的像素」，玻璃底栏想拿底下的内容当背板，只能自己先录一份。
- * 关掉时（贴底样式、二级页面）完全不录，别白白多一次离屏绘制。
+ * 关掉时（贴底样式、二级页面、设置里关了液态玻璃）完全不录，别白白多一次离屏绘制。
  */
 private fun Modifier.glassBackdrop(enabled: Boolean, layer: GraphicsLayer): Modifier =
     if (!enabled) {

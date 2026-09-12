@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -18,11 +19,31 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import com.pict.metatool.R
 import com.pict.metatool.ui.theme.PictSpacing
+import kotlin.math.roundToInt
 
 /**
  * 设置页的零件（docs/06 §3.7）。
@@ -75,6 +96,9 @@ fun SettingsSwitchRow(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
+            // 行自己的圆角跟卡片同一套（shapes.small）：按压/长按的高亮由行自己画，
+            // 不裁就还是直角矩形——圆角卡里蹦出一个方框，长按停在那儿的时候最显眼。
+            .clip(MaterialTheme.shapes.small)
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(vertical = PictSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
@@ -93,7 +117,12 @@ fun SettingsValueRow(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val clickable = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    // 圆角要在 clickable 之前：高亮跟行同一个形状（见 SettingsSwitchRow 的说明）。
+    val clickable = if (onClick == null) {
+        Modifier
+    } else {
+        Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onClick)
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -172,6 +201,7 @@ fun SettingsDangerRow(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(vertical = PictSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
@@ -238,4 +268,143 @@ private fun SettingsRowText(
             )
         }
     }
+}
+
+/**
+ * 被点的那一行的位置（窗口坐标）。
+ *
+ * 点开一项之后弹出的东西要**盖在那一行上**（docs/06 §3.7）：Material 的对话框默认落在
+ * 屏幕正中，横屏下一眼看不出它跟哪一行有关，眼睛还得从刚点的地方挪开去找。
+ * 这个类记住的就是「刚才点的是哪一行、它在哪儿」。
+ */
+class SettingsRowAnchor internal constructor() {
+
+    internal var row: IntRect by mutableStateOf(IntRect.Zero)
+}
+
+/** 建一个锚点，活在本 composable 的 `remember` 里。 */
+@Composable
+fun rememberSettingsRowAnchor(): SettingsRowAnchor = remember { SettingsRowAnchor() }
+
+/** 挂在可点行上：把这一行的窗口位置交给 [anchor]，弹层就对着它落。 */
+fun Modifier.settingsRowAnchor(anchor: SettingsRowAnchor): Modifier =
+    onGloballyPositioned { coordinates ->
+        val bounds = coordinates.boundsInWindow()
+        // 取整：弹层落点要跟行**像素对齐**，差半像素看着就是歪的
+        anchor.row = IntRect(
+            left = bounds.left.roundToInt(),
+            top = bounds.top.roundToInt(),
+            right = bounds.right.roundToInt(),
+            bottom = bounds.bottom.roundToInt(),
+        )
+    }
+
+/**
+ * 就地展开的编辑层：跟 [anchor] 那一行**同宽同位**，落下去正好把它盖住。
+ *
+ * 跟对话框的区别只有落点：内容、按钮、点外面关掉都一样，所以设置页的编辑项不必
+ * 在两种交互之间做选择，只是观感上「这一行展开了」，而不是「屏幕中间冒出一个东西」。
+ *
+ * 整屏 scrim 没有加：这一层的语义是「改这一行」，不是「离开这个页面」，
+ * 压暗整页看着像被打断；点空白处照样关得掉（[PopupProperties.focusable]）。
+ */
+@Composable
+fun SettingsRowPopup(
+    anchor: SettingsRowAnchor,
+    title: String,
+    onDismiss: () -> Unit,
+    onConfirm: (() -> Unit)? = null,
+    confirmLabel: String? = null,
+    confirmEnabled: Boolean = true,
+    confirmColor: Color = Color.Unspecified,
+    content: @Composable ColumnScope.() -> Unit = {},
+) {
+    val row = anchor.row
+    val provider = remember(row) { CoverRowPositionProvider(row) }
+    val width = with(LocalDensity.current) { row.width.toDp() }
+    val defaultConfirmLabel = stringResource(R.string.settings_confirm)
+    val cancelLabel = stringResource(R.string.settings_cancel)
+
+    Popup(
+        popupPositionProvider = provider,
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true),
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            // 跟锚点行同宽：量到锚点之前（宽度为 0）先不限定，免得第一帧闪一下窄条
+            modifier = if (width > 0.dp) Modifier.width(width) else Modifier,
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = PictSpacing.lg,
+                    vertical = PictSpacing.md,
+                ),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                Column(
+                    modifier = Modifier.padding(top = PictSpacing.md),
+                    content = content,
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = PictSpacing.md),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(text = cancelLabel)
+                    }
+
+                    if (onConfirm != null) {
+                        TextButton(onClick = onConfirm, enabled = confirmEnabled) {
+                            Text(text = confirmLabel ?: defaultConfirmLabel, color = confirmColor)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 把 [CoverRowPositionProvider] 的算式交给纯函数，单测不必起设备（NFR-09）。 */
+private class CoverRowPositionProvider(private val row: IntRect) : PopupPositionProvider {
+
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset = anchoredPopupOffset(row, windowSize, popupContentSize)
+}
+
+/**
+ * 弹层左上角该落在哪。
+ *
+ * 跟锚点行的左上角对齐（于是就盖住了那一行）。弹层比剩下的空间高/宽时往里收缩，
+ * 收到装得下为止——宁可盖住上面几行，也不要让「确定」掉到屏幕外面去。
+ *
+ * 还没量到锚点（[row] 还没量出来、宽高都是 0）时退回屏幕正中：跟改动前的对话框同一个落点，
+ * 不至于从屏幕外闪进来。窗口还没量出来时给 (0,0)，交给系统自己决定。
+ */
+internal fun anchoredPopupOffset(row: IntRect, windowSize: IntSize, popupContentSize: IntSize): IntOffset {
+    if (windowSize.width <= 0 || windowSize.height <= 0) return IntOffset.Zero
+
+    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+    val maxY = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
+
+    if (row.width <= 0 || row.height <= 0) return IntOffset(x = maxX / 2, y = maxY / 2)
+
+    return IntOffset(
+        x = row.left.coerceIn(0, maxX),
+        y = row.top.coerceIn(0, maxY),
+    )
 }

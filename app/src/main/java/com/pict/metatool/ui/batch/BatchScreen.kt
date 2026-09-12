@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -634,6 +635,9 @@ private fun PickerRow(value: String, filled: Boolean, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
+            // 高亮跟 Surface 同一个形状：clickable 写在 surface 外面，不裁就是直角矩形，
+            // 长按停住的时候能看见四个角戳在圆角外面。
+            .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick),
     ) {
         Row(
@@ -676,6 +680,8 @@ private fun ClearTargetRow(target: ClearTarget, checked: Boolean, onToggle: () -
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            // 行在圆角卡里，高亮也得是圆角（同设置页各行的做法）
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onToggle),
     ) {
         Checkbox(checked = checked, onCheckedChange = { onToggle() })

@@ -153,6 +153,20 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `液态玻璃默认开着，关掉之后规范化也不会掀回默认`() {
+        assertTrue(AppSettings().liquidGlass)
+        // normalized() 只收后缀/列数/入口/最近目录：关玻璃是用户的明确选择，不能被顺手改回来
+        assertEquals(false, AppSettings(liquidGlass = false).normalized().liquidGlass)
+    }
+
+    @Test
+    fun `动态取色默认开着，关掉之后规范化也不会掀回默认`() {
+        assertTrue(AppSettings().dynamicColor)
+        // 同理：这是「颜色从哪来」的选择，normalized() 管的是后缀/列数/入口/最近目录，别越界
+        assertEquals(false, AppSettings(dynamicColor = false).normalized().dynamicColor)
+    }
+
+    @Test
     fun `底栏样式认不出来的名字回落到悬浮`() {
         assertEquals(NavBarStyle.DOCKED, NavBarStyle.fromName("DOCKED"))
         assertEquals(NavBarStyle.FLOATING, NavBarStyle.fromName("NO_SUCH_STYLE"))

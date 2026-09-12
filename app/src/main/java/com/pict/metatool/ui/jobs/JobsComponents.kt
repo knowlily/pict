@@ -159,6 +159,8 @@ fun JobsRunningRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            // 圆角在 clickable 之前：卡片的这个圆角是它自己画的，高亮不裁就是个直角矩形
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
