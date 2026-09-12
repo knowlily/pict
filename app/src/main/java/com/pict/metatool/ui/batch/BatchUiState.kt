@@ -7,6 +7,8 @@ import com.pict.metatool.domain.batch.ChangeKind
 import com.pict.metatool.domain.batch.ItemPreview
 import com.pict.metatool.domain.model.FieldCatalog
 import com.pict.metatool.domain.preset.Preset
+import com.pict.metatool.domain.preset.PresetSelection
+import com.pict.metatool.domain.preset.UserPresetInput
 
 /**
  * 批量页的两步（docs/06 §3.8 线框）：
@@ -60,6 +62,11 @@ data class PreviewStats(
 data class BatchUiState(
     val targets: List<BatchTarget> = emptyList(),
     val presets: List<Preset> = emptyList(),
+    /** 用户自建预设（`files/presets/`）里读不动的文件问题；折成一行提示，不挡用别的预设。 */
+    val userPresetIssues: List<String> = emptyList(),
+    /** 「自己加一个预设」的表单（null = 没在编辑；与编辑页共用同一张 `UserPresetInput`）。 */
+    val userPresetDraft: UserPresetInput? = null,
+    val userPresetMessage: String? = null,
     val step: BatchStep = BatchStep.EDIT,
     val draft: BatchDraft = BatchDraft(),
     val filter: PreviewFilter = PreviewFilter.ALL,
@@ -76,6 +83,22 @@ data class BatchUiState(
 ) {
 
     val hasTargets: Boolean get() = targets.isNotEmpty()
+
+    /** 已选预设（分栏多选，按套用顺序排好：设备 → 位置 → 时间 → 混合）。 */
+    val pickedPresets: List<Preset>
+        get() = PresetSelection.orderedPresets(PresetSelection.of(draft.presetIds, presets), presets)
+
+    /** 已选摘要，用在「用哪个预设」那一行与任务标签上。 */
+    val pickedLabel: String
+        get() = PresetSelection.label(PresetSelection.of(draft.presetIds, presets), presets)
+
+    /** 自建预设的表单操作（与编辑页同一套语义）。 */
+    fun openUserPresetEditor(input: UserPresetInput): BatchUiState =
+        copy(userPresetDraft = input, userPresetMessage = null)
+
+    fun closeUserPresetEditor(): BatchUiState = copy(userPresetDraft = null, userPresetMessage = null)
+
+    fun withUserPresetMessage(text: String?): BatchUiState = copy(userPresetMessage = text)
 
     val isPreviewing: Boolean get() = progress != null
 

@@ -148,7 +148,7 @@ data class JobReport(
  */
 data class JobReportParams(
     val mode: String,
-    val presetId: String?,
+    val presetIds: List<String>,
     val overwriteExisting: Boolean,
     val seed: Long,
     val clearTargets: List<String>,

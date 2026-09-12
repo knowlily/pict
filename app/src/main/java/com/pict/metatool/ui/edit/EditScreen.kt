@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +56,8 @@ import com.pict.metatool.R
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.settings.AppSettings
+import com.pict.metatool.ui.preset.PresetPickerSheet
+import com.pict.metatool.ui.preset.UserPresetEditorSheet
 
 /**
  * 单文件编辑页（docs/06 §3.3 / docs/07 T2.10）。
@@ -221,11 +224,52 @@ fun EditScreen(
     }
 
     if (state.showPresets) {
-        PresetSheet(
-            state = state,
-            onToggleOverwrite = { viewModel.setPresetOverwrite(it) },
-            onApply = { presetId -> viewModel.applyPreset(presetId) },
+        PresetPickerSheet(
+            title = stringResource(R.string.edit_preset_title),
+            presets = state.presets,
+            selection = state.presetPick,
+            issues = state.userPresetIssues,
+            warnings = state.presetIssues,
+            confirmLabel = stringResource(R.string.preset_pick_apply, state.pickedPresets.size),
+            header = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setPresetOverwrite(!state.presetOverwrite) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = state.presetOverwrite,
+                        onCheckedChange = { viewModel.setPresetOverwrite(it) },
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.edit_preset_overwrite),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.edit_preset_overwrite_note),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            onToggle = { preset -> viewModel.togglePresetPick(preset) },
+            onAddOwn = { kind -> viewModel.addOwnPreset(kind) },
+            onEditOwn = { preset -> viewModel.editOwnPreset(preset.id) },
+            onConfirm = { viewModel.applyPickedPresets() },
             onDismiss = { viewModel.closePresets() },
+        )
+    }
+
+    state.userPresetDraft?.let { draft ->
+        UserPresetEditorSheet(
+            initial = draft,
+            message = state.userPresetMessage,
+            onSave = { input -> viewModel.saveUserPreset(input) },
+            onDelete = { id -> viewModel.deleteUserPreset(id) },
+            onDismiss = { viewModel.dismissUserPresetEditor() },
         )
     }
 

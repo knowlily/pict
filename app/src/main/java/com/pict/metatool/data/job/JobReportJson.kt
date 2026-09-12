@@ -50,7 +50,7 @@ object JobReportJson {
             "params",
             buildJsonObject {
                 put("mode", report.params.mode)
-                putNullable("presetId", report.params.presetId)
+                put("presetIds", buildJsonArray { report.params.presetIds.forEach { add(JsonPrimitive(it)) } })
                 put("overwrite", report.params.overwriteExisting)
                 put("seed", report.params.seed)
                 put(
@@ -99,7 +99,10 @@ object JobReportJson {
             finishedAtMillis = root.longOrNull("finishedAt"),
             params = JobReportParams(
                 mode = params?.str("mode").orEmpty(),
-                presetId = params?.str("presetId"),
+                presetIds = (params?.get("presetIds") as? JsonArray)
+                    ?.mapNotNull { node -> node.jsonPrimitive.contentOrNull }
+                    .orEmpty()
+                    .ifEmpty { listOfNotNull(params?.str("presetId")) },   // 老报告里是单个 presetId
                 overwriteExisting = params?.str("overwrite") == "true",
                 seed = params?.longOrNull("seed") ?: 0L,
                 clearTargets = (params?.get("clearTargets") as? JsonArray)

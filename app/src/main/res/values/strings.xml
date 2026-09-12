@@ -241,6 +241,37 @@
     <string name="edit_preset_issue">预设告警：%1$s</string>
     <string name="edit_preset_empty">没有可用的预设，检查一下安装包里的 presets 资源。</string>
 
+    <!-- 预设分栏多选（T3.x）：设备 / 位置 / 时间 / 混合四栏并列，可同时选；自建预设也在这一层 -->
+    <string name="preset_pick_hint">四栏各挑一个，可以同时选；同一栏再点一下取消。改动先进草稿，点「应用」才写文件。</string>
+    <string name="preset_pick_selected">已选：%1$s</string>
+    <string name="preset_pick_add_own">＋ 加一个%1$s预设</string>
+    <string name="preset_pick_empty_kind">这一类还没有预设，点上面的按钮加一个自己的。</string>
+    <string name="preset_pick_chosen">已选</string>
+    <string name="preset_pick_edit">改</string>
+    <string name="preset_pick_close">关闭</string>
+    <string name="preset_pick_user_issue">自建预设有问题：%1$s</string>
+    <string name="preset_pick_apply">套用到草稿（%1$d）</string>
+
+    <!-- 自己加一个预设 -->
+    <string name="preset_editor_new_title">自己加一个预设</string>
+    <string name="preset_editor_edit_title">改这个预设</string>
+    <string name="preset_editor_note">存在手机里（files/presets），不进安装包；内置预设不受影响。</string>
+    <string name="preset_editor_name">名称</string>
+    <string name="preset_editor_kind">归到哪一栏</string>
+    <string name="preset_editor_desc">说明（可不填）</string>
+    <string name="preset_editor_fields">要写哪些字段</string>
+    <string name="preset_editor_add_row">＋ 加一行字段</string>
+    <string name="preset_editor_pick_field">选字段</string>
+    <string name="preset_editor_back">返回表单</string>
+    <string name="preset_editor_search">搜字段（中文名或 TagKey）</string>
+    <string name="preset_editor_value">值</string>
+    <string name="preset_editor_value_hint">多个值用逗号分开（随机抽一个）；两端都是时间或数字时用 ~ 连成区间</string>
+    <string name="preset_editor_preserved">另有 %1$d 个字段（坐标 / 抖动之类）保持原样</string>
+    <string name="preset_editor_remove_row">删掉这行</string>
+    <string name="preset_editor_save">保存</string>
+    <string name="preset_editor_delete">删除这个预设</string>
+    <string name="preset_editor_cancel">取消</string>
+
     <string name="edit_random_title">随机填充</string>
     <string name="edit_random_hint">按预设声明的取值池 / 区间 / 圆心抽样；同一种子给出同一结果。</string>
     <string name="edit_random_preset">取值预设</string>

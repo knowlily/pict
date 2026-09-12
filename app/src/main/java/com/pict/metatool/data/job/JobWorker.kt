@@ -5,7 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.pict.metatool.core.result.getOrElse
-import com.pict.metatool.data.preset.AssetPresetCatalog
+import com.pict.metatool.data.preset.MergedPresetCatalog
 import com.pict.metatool.domain.job.JobCancellation
 import com.pict.metatool.domain.job.JobReport
 import com.pict.metatool.domain.job.JobReportParams
@@ -51,7 +51,8 @@ class JobWorker(
             ?: return fail("入参里没有任务 id")
         val spec = JobSpecStore(applicationContext).load(jobId)
             ?: return fail("任务定义读不出来：$jobId（可能已被清理）")
-        val catalog = AssetPresetCatalog(applicationContext.assets)
+        // 预设目录与界面同一份（内置 + 用户自建）：任务里套用的必须和用户看到的一样
+        val catalog = MergedPresetCatalog.of(applicationContext)
         val plan = spec.toPlan(catalog).getOrElse { failure ->
             return fail("计划拼不出来：${failure.detail ?: failure.error.code}")
         }

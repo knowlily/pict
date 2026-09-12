@@ -17,7 +17,7 @@ import com.pict.metatool.data.metadata.MetadataWriter
 import com.pict.metatool.data.metadata.PixelHasher
 import com.pict.metatool.data.metadata.exif.ExifMetadataStore
 import com.pict.metatool.data.metadata.imaging.CommonsImagingStore
-import com.pict.metatool.data.preset.AssetPresetCatalog
+import com.pict.metatool.data.preset.MergedPresetCatalog
 import com.pict.metatool.data.source.ImageCopy
 import com.pict.metatool.data.source.ImageSource
 import com.pict.metatool.domain.model.FieldSpec
@@ -25,7 +25,11 @@ import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.plan.EditPlanExecutor
 import com.pict.metatool.domain.preset.Preset
 import com.pict.metatool.domain.preset.PresetCatalog
+import com.pict.metatool.domain.preset.PresetEditor
+import com.pict.metatool.domain.preset.PresetKind
 import com.pict.metatool.domain.preset.PresetResolver
+import com.pict.metatool.domain.preset.UserFieldInput
+import com.pict.metatool.domain.preset.UserPresetInput
 import com.pict.metatool.domain.settings.AppSettings
 import java.util.Random
 import kotlinx.coroutines.CancellationException
@@ -56,6 +60,13 @@ class EditViewModel(
     private val hasher: PixelHasher = BitmapPixelHasher(),
     private val presets: PresetCatalog = PresetCatalog.EMPTY,
     private val presetIssues: List<String> = emptyList(),
+    /**
+     * 用户自建预设的读写口子（`files/presets/`）。
+     *
+     * 默认 [PresetEditor.NONE]：没接线时「自己加一个」会明确报「没有可写的预设目录」，
+     * 而不是假装存下去了（单测默认也走这条）。
+     */
+    private val editor: PresetEditor = PresetEditor.NONE,
     /** 启动时生效的设置（docs/06 §3.7）：默认套用方式、默认种子、导出后缀与校验开关都从这一份取。 */
     private val settings: AppSettings = AppSettings(),
 ) : ViewModel() {
@@ -74,12 +85,17 @@ class EditViewModel(
     private var presetsJob: Job? = null
 
     init {
-        // 预设是打包资源：读一次、缓存进程内；空目录（单测 / 未接线）就走一遍得到空列表。
+        // 预设是打包资源 + 用户目录：读一次、缓存进程内；空目录（单测 / 未接线）就走一遍得到空列表。
         // 读盘与解析放 IO，别卡首屏。
         presetsJob = viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { presets.all() }
-            _state.update { it.withPresets(loaded, presetIssues) }
+            _state.update { it.withPresetCatalog(loaded, presetIssues, userPresetIssues()) }
         }
+    }
+
+    /** 用户目录里读不动的那几个文件（坏 JSON 之类），折成 UI 上的一行提示。 */
+    private suspend fun userPresetIssues(): List<String> = withContext(Dispatchers.IO) {
+        editor.userIssues.map { it.toString() }
     }
 
     /** 载入一张图；同一张已读成功的不重复读。 */
@@ -173,6 +189,76 @@ class EditViewModel(
         val current = _state.value
         val preset = current.presets.firstOrNull { it.id == presetId } ?: return
         fill(preset, keys = null, onlyMissing = !current.presetOverwrite)
+    }
+
+    /** 分栏点选：每栏至多一个，跨栏可同时选（[PresetSelection]）。只改选择，不动草稿。 */
+    fun togglePresetPick(preset: Preset) = update { it.togglePresetPick(preset) }
+
+    /**
+     * 把已选的那几栏一次套进草稿，按**套用顺序**（设备 → 位置 → 时间 → 混合）依次填。
+     *
+     * 顺序不是随手排的：默认「只填缺失」时后面的预设看得见前面刚落下的值，
+     * 所以「机型 + 位置 + 时间」互不冲撞；打开「覆盖已有值」时就是后面的赢。
+     * 每一次 [fill] 都读当前草稿当底，于是三栏叠出来的结果与逐次手点完全一致。
+     */
+    fun applyPickedPresets() {
+        val picked = _state.value.pickedPresets
+        if (picked.isEmpty()) return
+        picked.forEach { preset -> fill(preset, keys = null, onlyMissing = !_state.value.presetOverwrite) }
+    }
+
+    /** 「＋ 加一个预设」：给该栏一张空表单。 */
+    fun addOwnPreset(kind: PresetKind) = update {
+        it.openUserPresetEditor(UserPresetInput(kind = kind, rows = listOf(UserFieldInput(null, ""))))
+    }
+
+    /** 「改」：把自建预设摊回表单（坐标/抖动那类字段原样保留）。 */
+    fun editOwnPreset(presetId: String) = update { state ->
+        state.presets.firstOrNull { it.id == presetId }
+            ?.let { state.openUserPresetEditor(UserPresetInput.from(it)) }
+            ?: state
+    }
+
+    fun dismissUserPresetEditor() = update { it.closeUserPresetEditor() }
+
+    /**
+     * 保存自建预设：先过 [PresetEditor.save]（它会用 [PresetParser] 读回一遍再落盘），
+     * 成功后重读目录、把新预设**顺手选进它那一栏**——加完就能用，不用再找一遍。
+     */
+    fun saveUserPreset(input: UserPresetInput) {
+        viewModelScope.launch {
+            when (val saved = withContext(Dispatchers.IO) { editor.save(input) }) {
+                is PictResult.Failure -> update {
+                    it.withUserPresetMessage("存不下来：${saved.failure.detail ?: saved.code}")
+                }
+
+                is PictResult.Success -> {
+                    val loaded = withContext(Dispatchers.IO) { presets.all() }
+                    _state.update { state ->
+                        state.withPresetCatalog(loaded, presetIssues, userPresetIssues())
+                            .withUserPresetSaved(saved.value)
+                    }
+                }
+            }
+        }
+    }
+
+    /** 删除自建预设（内置的不给删，`PresetEditor.delete` 会挡）。 */
+    fun deleteUserPreset(presetId: String) {
+        viewModelScope.launch {
+            val removed = withContext(Dispatchers.IO) { editor.delete(presetId) }
+            val loaded = withContext(Dispatchers.IO) { presets.all() }
+            _state.update { state ->
+                state.withPresetCatalog(loaded, presetIssues, userPresetIssues())
+                    .let { fresh ->
+                        if (removed) {
+                            fresh.closeUserPresetEditor().withMessage("已删掉这个预设")
+                        } else {
+                            fresh.withUserPresetMessage("这个预设删不掉（内置的不能删）")
+                        }
+                    }
+            }
+        }
     }
 
     /** 随机填充勾选的字段。 */
@@ -468,13 +554,14 @@ class EditViewModel(
             settings: AppSettings = AppSettings(),
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                // 预设随 APK 打包（app/build.gradle.kts 的 syncPresets 任务），这里是唯一一次读取；
-                // 坏文件的问题逐条带到界面上，而不是悄悄吞掉
-                val catalog = AssetPresetCatalog(context.applicationContext.assets)
+                // 预设 = 安装包里的内置那几份 + 用户自己加的那几份（files/presets/）。
+                // 两处坏文件的问题逐条带到界面上，而不是悄悄吞掉
+                val catalog = MergedPresetCatalog.of(context)
                 EditViewModel(
                     resolver = context.applicationContext.contentResolver,
                     presets = catalog,
                     presetIssues = catalog.issues.map { it.toString() },
+                    editor = catalog,
                     settings = settings,
                 )
             }

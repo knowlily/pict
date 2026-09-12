@@ -150,7 +150,8 @@ fun ReportScreen(
                 SummaryLine(label = stringResource(R.string.jobs_report_param_mode), value = params.mode)
                 SummaryLine(
                     label = stringResource(R.string.jobs_report_param_preset),
-                    value = params.presetId ?: stringResource(R.string.jobs_report_param_none),
+                    value = params.presetIds.takeIf { it.isNotEmpty() }?.joinToString(" + ")
+                        ?: stringResource(R.string.jobs_report_param_none),
                 )
                 SummaryLine(
                     label = stringResource(R.string.jobs_report_param_seed),

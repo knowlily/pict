@@ -67,7 +67,9 @@ import com.pict.metatool.domain.batch.ItemPreview
 import com.pict.metatool.domain.format.TagValueFormatter
 import com.pict.metatool.domain.model.FieldCatalog
 import com.pict.metatool.domain.plan.ClearTarget
-import com.pict.metatool.domain.preset.Preset
+import com.pict.metatool.domain.preset.PresetSelection
+import com.pict.metatool.ui.preset.PresetPickerSheet
+import com.pict.metatool.ui.preset.UserPresetEditorSheet
 import com.pict.metatool.ui.theme.PictSpacing
 import kotlinx.coroutines.launch
 
@@ -182,7 +184,7 @@ private fun BatchEditStep(
     viewModel: BatchViewModel,
 ) {
     var pickingPreset by remember { mutableStateOf(false) }
-    val selectedPreset = state.draft.presetId?.let { id -> state.presets.firstOrNull { it.id == id } }
+    val picked = state.pickedPresets
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -240,8 +242,12 @@ private fun BatchEditStep(
             item { SectionTitle(stringResource(R.string.batch_preset_label)) }
             item {
                 PickerRow(
-                    value = selectedPreset?.name ?: stringResource(R.string.batch_preset_empty),
-                    filled = selectedPreset != null,
+                    value = if (picked.isEmpty()) {
+                        stringResource(R.string.batch_preset_empty)
+                    } else {
+                        state.pickedLabel
+                    },
+                    filled = picked.isNotEmpty(),
                     onClick = { pickingPreset = true },
                 )
             }
@@ -294,13 +300,26 @@ private fun BatchEditStep(
 
     if (pickingPreset) {
         PresetPickerSheet(
+            title = stringResource(R.string.batch_preset_label),
             presets = state.presets,
-            selectedId = state.draft.presetId,
-            onSelect = { id ->
-                viewModel.setPreset(id)
-                pickingPreset = false
-            },
+            selection = PresetSelection.of(state.draft.presetIds, state.presets),
+            issues = state.userPresetIssues,
+            confirmLabel = stringResource(R.string.preset_pick_apply, picked.size),
+            onToggle = { preset -> viewModel.togglePreset(preset) },
+            onAddOwn = { kind -> viewModel.addOwnPreset(kind) },
+            onEditOwn = { preset -> viewModel.editOwnPreset(preset.id) },
+            onConfirm = { pickingPreset = false },
             onDismiss = { pickingPreset = false },
+        )
+    }
+
+    state.userPresetDraft?.let { draft ->
+        UserPresetEditorSheet(
+            initial = draft,
+            message = state.userPresetMessage,
+            onSave = { input -> viewModel.saveUserPreset(input) },
+            onDelete = { id -> viewModel.deleteUserPreset(id) },
+            onDismiss = { viewModel.dismissUserPresetEditor() },
         )
     }
 }
@@ -671,58 +690,4 @@ private fun ClearTargetRow(target: ClearTarget, checked: Boolean, onToggle: () -
     }
 }
 
-/** 预设选择：20 个预设用列表比下拉稳当（名字长短差得多，下拉里会截断）。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PresetPickerSheet(
-    presets: List<Preset>,
-    selectedId: String?,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text(
-            text = stringResource(R.string.batch_preset_label),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(
-                start = PictSpacing.screenHorizontal,
-                end = PictSpacing.screenHorizontal,
-                bottom = PictSpacing.sm,
-            ),
-        )
-        LazyColumn(contentPadding = PaddingValues(bottom = PictSpacing.xl)) {
-            items(presets, key = { it.id }) { preset ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(preset.id) }
-                        .padding(
-                            horizontal = PictSpacing.screenHorizontal,
-                            vertical = PictSpacing.md,
-                        ),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = preset.name, style = MaterialTheme.typography.bodyLarge)
-                        preset.description?.let { description ->
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    if (preset.id == selectedId) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
+/** 预设分栏选择在 [com.pict.metatool.ui.preset.PresetPickerSheet]（编辑页与批量页共用同一套）。 */

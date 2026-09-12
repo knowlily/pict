@@ -57,117 +57,12 @@ private fun SectionLabel(text: String) {
     Text(text = text, style = MaterialTheme.typography.labelLarge)
 }
 
-/** 预设快选：整套档案一次填好（设备 / 位置 / 时间 / 混合）。 */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun PresetSheet(
-    state: EditUiState,
-    onToggleOverwrite: (Boolean) -> Unit,
-    onApply: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    // 整屏展开，不停在半屏：这些弹层是「可滚的列表 + 钉在下面的按钮」，
-    // 停在半屏展开的位置时按钮正好落在屏幕外，翻都翻不到（2026-09-11 真机踩到）。
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(text = stringResource(R.string.edit_preset_title), style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = stringResource(R.string.edit_preset_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggleOverwrite(!state.presetOverwrite) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = state.presetOverwrite, onCheckedChange = onToggleOverwrite)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.edit_preset_overwrite),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.edit_preset_overwrite_note),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            state.presetIssues.firstOrNull()?.let { issue ->
-                Text(
-                    text = stringResource(R.string.edit_preset_issue, issue),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
-            if (state.presets.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.edit_preset_empty),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                return@Column
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
-            ) {
-                state.presetsByKind.forEach { (kind, presets) ->
-                    item(key = "kind-${kind.id}") {
-                        Text(
-                            text = kind.label,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                        )
-                    }
-                    items(items = presets, key = { it.id }) { preset ->
-                        PresetRow(preset = preset, onApply = { onApply(preset.id) })
-                        HorizontalDivider()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PresetRow(preset: Preset, onApply: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = preset.name, style = MaterialTheme.typography.bodyMedium)
-            preset.description?.let { description ->
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = stringResource(R.string.edit_preset_keys, preset.keyCount),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
-        }
-        TextButton(onClick = onApply) { Text(text = stringResource(R.string.edit_preset_apply)) }
-    }
-}
+/**
+ * 预设弹层搬去了 [com.pict.metatool.ui.preset.PresetPickerSheet]：那里是**分栏多选**
+ * （设备 / 位置 / 时间 / 混合四栏并列，可同时挑），编辑页和批量页共用同一套；
+ * 「自己加一个预设」的表单在 [com.pict.metatool.ui.preset.UserPresetEditorSheet]。
+ * 这个文件只留随机填充的弹层与 [sheetListMaxHeight]。
+ */
 
 /**
  * 随机填充：挑预设 → 勾字段 → 定种子 → **生成预览** → 确认填入。

@@ -46,7 +46,7 @@ data class BatchJobSpec(
     val label: String,
     val createdAtMillis: Long,
     val mode: BatchMode,
-    val presetId: String?,
+    val presetIds: List<String>,
     val overwriteExisting: Boolean,
     val seed: Long,
     val clearTargets: List<ClearTarget>,
@@ -64,7 +64,7 @@ data class BatchJobSpec(
 
     fun toDraft(): BatchDraft = BatchDraft(
         mode = mode,
-        presetId = presetId,
+        presetIds = presetIds,
         clearTargets = clearTargets.toSet(),
         overwriteExisting = overwriteExisting,
         seed = seed,
@@ -93,7 +93,7 @@ data class BatchJobSpec(
      */
     fun toReportParams(): JobReportParams = JobReportParams(
         mode = mode.name,
-        presetId = presetId,
+        presetIds = presetIds,
         overwriteExisting = overwriteExisting,
         seed = seed,
         clearTargets = clearTargets.map { it.name },
@@ -109,7 +109,7 @@ data class BatchJobSpec(
         put("label", label)
         put("createdAt", createdAtMillis)
         put("mode", mode.name)
-        put("presetId", presetId)
+        put("presetIds", buildJsonArray { presetIds.forEach { add(JsonPrimitive(it)) } })
         put("overwrite", overwriteExisting)
         put("seed", seed)
         put("dryRun", dryRun)
@@ -149,7 +149,7 @@ data class BatchJobSpec(
         /**
          * 由界面上的「目标 + 草稿」攒一份定义。
          *
-         * [presetName] 只为标签好看（「按「iPhone 15」填充 · 32 张」），
+         * [presetNames] 只为标签好看（「套用预设『iPhone 15 + 北京』· 32 张」），
          * 缺席也能攒——标签不该成为排队的门槛。
          */
         fun from(
@@ -158,13 +158,13 @@ data class BatchJobSpec(
             options: JobOptions,
             jobId: String,
             nowMillis: Long,
-            presetName: String? = null,
+            presetNames: List<String> = emptyList(),
         ): BatchJobSpec = BatchJobSpec(
             jobId = jobId,
-            label = labelOf(draft, targets.size, presetName),
+            label = labelOf(draft, targets.size, presetNames),
             createdAtMillis = nowMillis,
             mode = draft.mode,
-            presetId = draft.presetId,
+            presetIds = draft.presetIds,
             overwriteExisting = draft.overwriteExisting,
             seed = draft.seed,
             clearTargets = draft.clearTargets.sortedBy { it.ordinal },
@@ -173,11 +173,13 @@ data class BatchJobSpec(
             items = targets.mapIndexed { index, target -> SpecItem.of(index, target) },
         )
 
-        /** 任务标签（历史列表与通知标题都显示它）。 */
-        fun labelOf(draft: BatchDraft, count: Int, presetName: String? = null): String {
+        /** 任务标签（历史列表与通知标题都显示它）。多栏一起选时按「A + B」连起来。 */
+        fun labelOf(draft: BatchDraft, count: Int, presetNames: List<String> = emptyList()): String {
+            val names = presetNames.filter { it.isNotBlank() }
+            val joined = if (names.isEmpty()) null else names.joinToString(" + ")
             val what = when (draft.mode) {
-                BatchMode.PRESET -> presetName?.let { "套用预设「$it」" } ?: "套用预设"
-                BatchMode.RANDOM -> presetName?.let { "按「$it」重掷随机值" } ?: "随机填充"
+                BatchMode.PRESET -> joined?.let { "套用预设「$it」" } ?: "套用预设"
+                BatchMode.RANDOM -> joined?.let { "按「$it」重掷随机值" } ?: "随机填充"
                 BatchMode.CLEAR -> {
                     val labels = draft.clearTargets.sortedBy { it.ordinal }.map { it.label }
                     val shown = labels.take(2).joinToString("、")
@@ -201,7 +203,10 @@ data class BatchJobSpec(
                 createdAtMillis = root.long("createdAt") ?: 0L,
                 mode = root.str("mode")?.let { name -> BatchMode.entries.firstOrNull { it.name == name } }
                     ?: return null,
-                presetId = root.str("presetId"),
+                presetIds = (root["presetIds"] as? JsonArray)
+                    ?.mapNotNull { node -> node.jsonPrimitive.contentOrNull }
+                    .orEmpty()
+                    .ifEmpty { listOfNotNull(root.str("presetId")) },   // 老定义里是单个 presetId
                 overwriteExisting = root.bool("overwrite") ?: false,
                 seed = root.long("seed") ?: 0L,
                 clearTargets = (root["clear"] as? JsonArray)

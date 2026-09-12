@@ -14,6 +14,8 @@ import com.pict.metatool.domain.plan.EditPlanExecutor
 import com.pict.metatool.domain.preset.Preset
 import com.pict.metatool.domain.preset.PresetKind
 import com.pict.metatool.domain.preset.PresetResolver
+import com.pict.metatool.domain.preset.PresetSelection
+import com.pict.metatool.domain.preset.UserPresetInput
 import com.pict.metatool.domain.settings.AppSettings
 
 /**
@@ -90,11 +92,23 @@ data class EditUiState(
     val presets: List<Preset> = emptyList(),
     /** 预设加载时的问题（坏文件、未登记字段提醒），非空时在弹层里如实展示。 */
     val presetIssues: List<String> = emptyList(),
+    /** 用户目录（`files/presets/`）里读不动的文件问题；与内置资源那份分开显示。 */
+    val userPresetIssues: List<String> = emptyList(),
     val showPresets: Boolean = false,
     val showRandomFill: Boolean = false,
     val showAddField: Boolean = false,
     /** 套用预设是否覆盖已有值；false = 只填缺失（默认更安全）。 */
     val presetOverwrite: Boolean = false,
+    /**
+     * 分栏多选的选择（类别 → 预设 id）：每栏至多一个，跨栏可同时选（[PresetSelection]）。
+     *
+     * 选择本身**不动草稿**——挑好四栏再点「套用到草稿」才写，取消挑选零代价。
+     */
+    val presetPick: Map<PresetKind, String> = emptyMap(),
+    /** 自建预设编辑器开着时的那份内容（null = 没开）。 */
+    val userPresetDraft: UserPresetInput? = null,
+    /** 编辑器里的提示：存不下、校验不过时说明原因，而不是静默失败。 */
+    val userPresetMessage: String? = null,
     val randomFillPresetId: String? = null,
     val randomFillKeys: Set<TagKey> = emptySet(),
     val randomFillSeed: Long = 0L,
@@ -216,11 +230,11 @@ data class EditUiState(
 
     val randomFillReady: Boolean get() = randomFillPreset != null && randomFillKeys.isNotEmpty()
 
-    /** 预设按类别分组，弹层分节展示（设备 / 位置 / 时间 / 混合）。 */
-    val presetsByKind: List<Pair<PresetKind, List<Preset>>>
-        get() = PresetKind.entries.mapNotNull { kind ->
-            presets.filter { it.kind == kind }.takeIf { it.isNotEmpty() }?.let { kind to it }
-        }
+    /** 已选预设（按套用顺序排好）；「套用到草稿」就按这个顺序依次填。 */
+    val pickedPresets: List<Preset> get() = PresetSelection.orderedPresets(presetPick, presets)
+
+    /** 选择摘要：`iPhone 16 Pro + 北京 + 2026 上半年`；空选给提示语。 */
+    val pickedLabel: String get() = PresetSelection.label(presetPick, presets)
 
     val editingSpec: FieldSpec? get() = editing?.let { FieldCatalog.spec(it) }
 
@@ -284,11 +298,45 @@ data class EditUiState(
     fun withPresets(presets: List<Preset>, issues: List<String> = emptyList()): EditUiState =
         copy(presets = presets, presetIssues = issues)
 
+    /** 预设目录（内置 + 自建）整批换掉：三份来源各不相同，一次换完免得中间态不一致。 */
+    fun withPresetCatalog(
+        presets: List<Preset>,
+        issues: List<String>,
+        userIssues: List<String>,
+    ): EditUiState = copy(presets = presets, presetIssues = issues, userPresetIssues = userIssues)
+
     fun openPresets(): EditUiState = copy(showPresets = true)
 
     fun closePresets(): EditUiState = copy(showPresets = false)
 
     fun setPresetOverwrite(overwrite: Boolean): EditUiState = copy(presetOverwrite = overwrite)
+
+    /**
+     * 分栏点选：每栏至多一个，再点一次取消该栏（[PresetSelection.toggle]）。
+     *
+     * 只改选择、不动草稿：用户可以在四栏之间反复比较，确认了再点「套用到草稿」。
+     */
+    fun togglePresetPick(preset: Preset): EditUiState =
+        copy(presetPick = PresetSelection.toggle(presetPick, preset))
+
+    fun clearPresetPick(): EditUiState = copy(presetPick = emptyMap())
+
+    /** 打开自建预设编辑器：新建给一份空表单，改已有的把原内容带进去。 */
+    fun openUserPresetEditor(input: UserPresetInput): EditUiState =
+        copy(userPresetDraft = input, userPresetMessage = null)
+
+    fun closeUserPresetEditor(): EditUiState =
+        copy(userPresetDraft = null, userPresetMessage = null)
+
+    fun withUserPresetMessage(text: String?): EditUiState = copy(userPresetMessage = text)
+
+    /** 保存成功后：关掉编辑器，并把这份预设**直接选进它那一栏**（刚建完就能用）。 */
+    fun withUserPresetSaved(preset: Preset): EditUiState = copy(
+        userPresetDraft = null,
+        userPresetMessage = null,
+        presetPick = presetPick + (preset.kind to preset.id),
+        message = EditMessage("已保存预设「${preset.name}」"),
+    )
 
     fun openAddField(): EditUiState = copy(showAddField = true)
 
