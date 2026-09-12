@@ -44,10 +44,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -368,7 +368,10 @@ private fun SearchPane(
 
 @Composable
 private fun DetailTabRow(selected: DetailTab, onSelect: (DetailTab) -> Unit) {
-    TabRow(selectedTabIndex = selected.ordinal) {
+    // PrimaryTabRow：TabRow 在 material3 1.4 已弃用，官方替代就是它（同类还有 SecondaryTabRow，
+    // 底下带分隔线、指示条走 secondary 色）。换过来之后指示条由 2dp 变 3dp、上圆角，
+    // 颜色仍是 primary——这是 Material 那边给的默认外观变化，不是我们改的设计。
+    PrimaryTabRow(selectedTabIndex = selected.ordinal) {
         DetailTab.entries.forEach { tab ->
             Tab(
                 selected = tab == selected,
