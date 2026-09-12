@@ -21,10 +21,35 @@
     <string name="jobs_history_section">历史记录</string>
     <string name="jobs_history_empty_title">还没有任务记录</string>
     <string name="jobs_history_empty_body">跑完的任务会留下一行：结果、报告、重跑和撤销。单张编辑与导出不进这里。</string>
-    <string name="jobs_roadmap_queue">批量队列：选一批图，一次改完或转完（FR-28）</string>
-    <string name="jobs_roadmap_progress">进度与取消：完成数、当前文件、随时停下（FR-29）</string>
-    <string name="jobs_roadmap_report">报告与撤销：失败清单、导出报告、从备份回退（FR-31 / FR-34）</string>
-    <string name="jobs_stage_note">当前阶段只做单张图片的元数据编辑与导出；批处理接上之后，这一页才会有真实队列与记录。</string>
+
+    <!-- 历史行与动作（T5.8，docs/06 §3.8、docs/01 FR-34） -->
+    <string name="jobs_history_counts">共 %1$d 项 · 成功 %2$d</string>
+    <string name="jobs_history_failed">失败 %1$d</string>
+    <string name="jobs_history_verify_failed">校验未通过 %1$d</string>
+    <string name="jobs_history_skipped">跳过 %1$d</string>
+    <string name="jobs_history_backup_note">留有备份 %1$s（%2$d 个文件）</string>
+    <string name="jobs_history_undone_note">已于 %1$s 撤销</string>
+    <string name="jobs_history_action_report">查看报告</string>
+    <string name="jobs_history_action_rerun">重跑</string>
+    <string name="jobs_history_action_undo">撤销</string>
+    <string name="jobs_history_undo_undone">已经撤过了</string>
+    <string name="jobs_history_undo_not_latest">只有最近一次任务的备份能撤</string>
+    <string name="jobs_history_undo_no_backup">这次没留备份</string>
+    <string name="jobs_history_undo_expired">备份超过 7 天，撤不了了</string>
+    <string name="jobs_history_undo_dry_run">试运行没改过文件</string>
+    <string name="jobs_history_undo_confirm_title">撤销「%1$s」？</string>
+    <string name="jobs_history_undo_confirm_body">会把 %1$d 个文件还原成执行前的样子。备份是一次性的，撤过就不能再撤了。</string>
+    <string name="jobs_history_undo_confirm_ok">撤销</string>
+    <string name="jobs_history_undo_confirm_cancel">再想想</string>
+    <string name="jobs_history_undo_failed">撤销没做成：%1$s</string>
+    <string name="jobs_history_undo_done">已撤销：%1$d 个文件还原成执行前的样子</string>
+    <string name="jobs_history_undo_deleted">已撤销：删掉了这次新建的 %1$d 个文件</string>
+    <string name="jobs_history_undo_partial">撤销做了一半：成了 %1$d 个，%2$d 个没做成（%3$s）</string>
+    <string name="jobs_history_rerun_queued">已重新排队</string>
+    <string name="jobs_history_rerun_gone">原来的设置不在了，重跑不了</string>
+    <string name="jobs_history_rerun_failed">没能重新排队：%1$s</string>
+    <string name="jobs_history_loading">正在读任务记录…</string>
+    <string name="jobs_history_refresh">刷新</string>
 
     <!-- 任务进度（T5.6，docs/06 §3.8、docs/01 FR-29） -->
     <string name="jobs_progress_title">任务进度</string>
@@ -188,6 +213,7 @@
     <string name="error_field_invalid">输入格式不正确</string>
     <string name="error_backup_missing">没有可用的备份</string>
     <string name="error_backup_expired">备份已超过保留期，无法撤销</string>
+    <string name="error_undo_done">这次任务已经撤过了</string>
     <string name="error_oom">图片过大，请降低尺寸上限</string>
     <string name="error_cancel">已取消</string>
     <string name="error_unknown">请导出日志反馈</string>

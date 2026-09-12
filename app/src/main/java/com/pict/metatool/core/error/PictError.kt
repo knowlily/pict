@@ -28,6 +28,7 @@ enum class PictError(
     FIELD_INVALID("E-FIELD-INVALID", R.string.error_field_invalid),
     BACKUP_MISSING("E-BACKUP-MISSING", R.string.error_backup_missing),
     BACKUP_EXPIRED("E-BACKUP-EXPIRED", R.string.error_backup_expired),
+    UNDO_DONE("E-UNDO-DONE", R.string.error_undo_done),
     OOM("E-OOM", R.string.error_oom),
     CANCEL("E-CANCEL", R.string.error_cancel),
     UNKNOWN("E-UNKNOWN", R.string.error_unknown),

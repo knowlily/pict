@@ -41,6 +41,15 @@ data class JobSnapshot(
      * （完整报告是 T5.7）。只留前几条，快照要能一边跑一边写。
      */
     val failures: List<String> = emptyList(),
+
+    /**
+     * 任务进队列的时刻（`Job.createdAtMillis`）。
+     *
+     * 与 [startedAtMillis] 差着一整个排队阶段：任务页的「进行中」组按排队时间倒序，
+     * 排了十分钟才轮到的和刚点下去的，在对列里的位置不一样。老快照里没这个键，
+     * 缺了按 null 处理，界面退回用 [updatedAtMillis] 排。
+     */
+    val createdAtMillis: Long? = null,
 ) {
 
     val isTerminal: Boolean get() = status.isTerminal
@@ -69,6 +78,8 @@ data class JobSnapshot(
         append("\"changedKeys\":").append(changedKeys).append(',')
         append("\"currentName\":").append(currentName?.let(::quote) ?: "null").append(',')
         append("\"dryRun\":").append(dryRun).append(',')
+        // 排队时间：加了这一个键不用升版本，读的一头对缺字段一向当 null
+        append("\"createdAt\":").append(createdAtMillis ?: 0L).append(',')
         append("\"startedAt\":").append(startedAtMillis ?: 0L).append(',')
         append("\"finishedAt\":").append(finishedAtMillis ?: 0L).append(',')
         append("\"updatedAt\":").append(updatedAtMillis).append(',')
@@ -102,6 +113,7 @@ data class JobSnapshot(
                 changedKeys = job.items.sumOf { it.changedKeys.size },
                 currentName = progress.currentName,
                 dryRun = job.options.dryRun,
+                createdAtMillis = job.createdAtMillis,
                 startedAtMillis = job.startedAtMillis,
                 finishedAtMillis = job.finishedAtMillis,
                 updatedAtMillis = nowMillis,
@@ -161,6 +173,7 @@ data class JobSnapshot(
                 changedKeys = int("changedKeys"),
                 currentName = str("currentName"),
                 dryRun = str("dryRun")?.toBooleanStrictOrNull() ?: false,
+                createdAtMillis = longOrNull("createdAt"),
                 startedAtMillis = longOrNull("startedAt"),
                 finishedAtMillis = longOrNull("finishedAt"),
                 updatedAtMillis = str("updatedAt")?.toLongOrNull() ?: 0L,

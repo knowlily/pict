@@ -158,7 +158,12 @@ fun PictApp(
                                 onBatchEdit = { uris -> BatchRoute.build(uris)?.let(navController::navigate) },
                             )
                         }
-                        composable(PictDestination.Jobs.route) { JobsScreen() }
+                        composable(PictDestination.Jobs.route) {
+                            JobsScreen(
+                                onOpenProgress = { jobId -> navController.navigate(JobRoute.build(jobId)) },
+                                onOpenReport = { jobId -> navController.navigate(ReportRoute.build(jobId)) },
+                            )
+                        }
                         composable(PictDestination.Settings.route) {
                             SettingsScreen(settings = settings, onUpdate = onUpdateSettings)
                         }
