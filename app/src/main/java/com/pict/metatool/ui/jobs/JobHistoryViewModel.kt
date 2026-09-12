@@ -14,6 +14,7 @@ import com.pict.metatool.data.job.JobHistoryStore
 import com.pict.metatool.data.job.JobIds
 import com.pict.metatool.data.job.JobProgressHub
 import com.pict.metatool.data.job.JobQueue
+import com.pict.metatool.data.job.JobSnapshotReconciler
 import com.pict.metatool.data.job.JobSpecStore
 import com.pict.metatool.data.job.JobUndoOutcome
 import com.pict.metatool.data.job.JobUndoRunner
@@ -89,6 +90,7 @@ class JobHistoryViewModel(
     private val history: JobHistoryStore,
     private val specs: JobSpecStore,
     private val undos: JobUndoRunner,
+    private val reconciler: JobSnapshotReconciler,
     private val clock: () -> Long = System::currentTimeMillis,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -181,7 +183,12 @@ class JobHistoryViewModel(
     }
 
     private suspend fun load() {
-        val loaded = withContext(Dispatchers.IO) { history.load() }
+        val loaded = withContext(Dispatchers.IO) {
+            // 先对一遍账：被硬杀掉的任务盘上还写着 RUNNING，队列那头却早没它了。
+            // 放在读之前，页面才不会把它当「进行中」摆出来。
+            reconciler.reconcile(clock())
+            history.load()
+        }
         val now = LocalDateTime.ofInstant(Instant.ofEpochMilli(clock()), zone)
         val entries = JobUndoRules.apply(loaded.entries, loaded.stamps, now)
         val grouped = JobHistory.from(entries)
@@ -223,6 +230,7 @@ class JobHistoryViewModel(
                     history = JobHistoryStore(app),
                     specs = JobSpecStore(app),
                     undos = JobUndoRunner(app),
+                    reconciler = JobSnapshotReconciler(app),
                 )
             }
         }

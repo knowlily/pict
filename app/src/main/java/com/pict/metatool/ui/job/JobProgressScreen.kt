@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.job.JobItemStatus
 import com.pict.metatool.domain.job.JobReportItem
+import com.pict.metatool.domain.job.JobStatus
 import com.pict.metatool.ui.theme.PictSpacing
 import java.util.Locale
 
@@ -204,6 +205,10 @@ private fun ProgressHeader(state: JobProgressUiState, modifier: Modifier = Modif
         )
         Text(
             text = when {
+                // 「断了」比「只算不写」「正在处理哪张」都要紧：这张子行说的是这次任务
+                // 此刻是不是还在往前走
+                state.status == JobStatus.INTERRUPTED ->
+                    stringResource(R.string.jobs_progress_state_interrupted)
                 state.dryRun -> stringResource(R.string.jobs_progress_dry_run)
                 state.currentName != null -> stringResource(R.string.jobs_progress_current, state.currentName!!)
                 state.isWaiting -> stringResource(R.string.jobs_progress_waiting)

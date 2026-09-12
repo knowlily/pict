@@ -336,6 +336,7 @@ private fun statusLabelRes(status: JobStatus): Int = when (status) {
     JobStatus.RUNNING -> R.string.jobs_progress_state_running
     JobStatus.CANCELED -> R.string.jobs_progress_state_canceled
     JobStatus.COMPLETED -> R.string.jobs_progress_state_completed
+    JobStatus.INTERRUPTED -> R.string.jobs_progress_state_interrupted
 }
 
 /** 撤不了的那几种情况各自说清楚，别都写成「不可用」。 */

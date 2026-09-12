@@ -126,6 +126,20 @@ class JobHistoryTest {
     }
 
     @Test
+    fun `断了的那次算历史，不该赖在「进行中」`() {
+        val history = JobHistory.from(
+            listOf(
+                entry("running", status = JobStatus.RUNNING, createdAtMillis = 1_000L),
+                entry("killed", status = JobStatus.INTERRUPTED, createdAtMillis = 9_000L),
+            ),
+        )
+
+        assertEquals(listOf("running"), history.running.map { it.jobId })
+        assertEquals(listOf("killed"), history.finished.map { it.jobId })
+        assertFalse(history.finished.first().isRunning)
+    }
+
+    @Test
     fun `落定与要看一眼的项分开数`() {
         val entry = entry("job-1", failed = 1, verifyFailed = 2, skipped = 1)
 

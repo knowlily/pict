@@ -68,9 +68,18 @@ enum class JobStatus(val label: String) {
     RUNNING("进行中"),
     CANCELED("已取消"),
     COMPLETED("已完成"),
+
+    /**
+     * 跑着跑着进程没了（被系统回收、强杀、崩溃），终于没能收尾。
+     *
+     * 与 [CANCELED] 分开记：那是「有人按了停」，这是「没人按，它自己断了」——历史行
+     * 说「已取消」会把责任扣到用户头上。域层自己不产生它（被叫停一律走 [CANCELED]），
+     * 由数据层拿队列那头的说法对账时写入（docs/08 §3「处理中杀进程 → 重启」）。
+     */
+    INTERRUPTED("已中断"),
     ;
 
-    val isTerminal: Boolean get() = this == CANCELED || this == COMPLETED
+    val isTerminal: Boolean get() = this == CANCELED || this == COMPLETED || this == INTERRUPTED
 }
 
 /**

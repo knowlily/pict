@@ -29,6 +29,7 @@ data class JobNotificationContent(
                 JobStatus.COMPLETED -> texts.done
                 JobStatus.PENDING -> texts.queued
                 JobStatus.RUNNING -> texts.running.format(snapshot.finished, snapshot.total)
+                JobStatus.INTERRUPTED -> texts.interrupted
             }
             val parts = buildList {
                 add(texts.succeeded.format(snapshot.succeeded))
@@ -59,6 +60,7 @@ data class JobNotificationTexts(
     val running: String = "已处理 %1\$d / %2\$d",
     val done: String = "已完成",
     val canceled: String = "已取消",
+    val interrupted: String = "已中断",
     val queued: String = "排队中",
     val succeeded: String = "成功 %1\$d",
     val failed: String = "失败 %1\$d",

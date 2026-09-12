@@ -105,6 +105,7 @@ class JobNotifier(private val context: Context) {
             running = get(R.string.job_notify_running, defaults.running),
             done = get(R.string.job_notify_done, defaults.done),
             canceled = get(R.string.job_notify_canceled, defaults.canceled),
+            interrupted = get(R.string.job_notify_interrupted, defaults.interrupted),
             queued = get(R.string.job_notify_queued, defaults.queued),
             succeeded = get(R.string.job_notify_succeeded, defaults.succeeded),
             failed = get(R.string.job_notify_failed, defaults.failed),
