@@ -1,7 +1,9 @@
 package com.pict.metatool.ui.navigation
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -135,5 +137,17 @@ class NavBarSwipeTest {
     fun `只有一项、或者还没量出宽度时不偏移`() {
         assertEquals(0f, navSwipeFollowOffsetPx(0, 1, dragXPx = 200f, slotPx = 300f), 0.01f)
         assertEquals(0f, navSwipeFollowOffsetPx(0, 3, dragXPx = 200f, slotPx = 0f), 0.01f)
+    }
+
+    @Test
+    fun `滑过来的那一格直接落位，点按才走弹簧`() {
+        // 拖到第 3 格松手：人已经在那一页上了，胶囊得直接在那儿，不能再滑过去
+        assertTrue(navPillLandsBySwipe(swipeLandedIndex = 2, selectedIndex = 2))
+        // 点按切到别的页：没有手指位置可落，交给弹簧
+        assertFalse(navPillLandsBySwipe(swipeLandedIndex = 1, selectedIndex = 2))
+        // 刚进应用，还没滑过
+        assertFalse(navPillLandsBySwipe(swipeLandedIndex = null, selectedIndex = 0))
+        // 拖了但没够格数（没换页）：下一把点按照旧走弹簧
+        assertFalse(navPillLandsBySwipe(swipeLandedIndex = 0, selectedIndex = 1))
     }
 }

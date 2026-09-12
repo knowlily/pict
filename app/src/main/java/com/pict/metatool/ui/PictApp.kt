@@ -1,10 +1,13 @@
 package com.pict.metatool.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -52,6 +55,7 @@ import com.pict.metatool.ui.navigation.glassNeedsBackdrop
 import com.pict.metatool.ui.navigation.navBarSwipe
 import com.pict.metatool.ui.report.ReportScreen
 import com.pict.metatool.ui.settings.SettingsScreen
+import com.pict.metatool.ui.theme.pictPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -138,6 +142,9 @@ fun PictApp(
                                 .indexOfFirst { it.route == currentRoute }
                                 .coerceAtLeast(0)
                             NavigationBar(
+                                // 贴底这条也吃同一份取色来源：默认容器色是中性的 surfaceContainer，
+                                // 换了壁纸它不动，切样式就会「悬浮的跟着变、贴底的没变」
+                                containerColor = MaterialTheme.pictPalette.barTint,
                                 modifier = Modifier.navBarSwipe(
                                     itemCount = destinations.size,
                                     currentIndex = dockedIndex,
@@ -166,7 +173,12 @@ fun PictApp(
                         startDestination = PictDestination.Library.route,
                         modifier = Modifier.padding(innerPadding),
                     ) {
-                        composable(PictDestination.Library.route) {
+                        // 底栏这三页之间直接换，不播过渡：拖到底放手，人就该已经在那一页上了
+                        composable(
+                            route = PictDestination.Library.route,
+                            enterTransition = { EnterTransition.None },
+                            exitTransition = { ExitTransition.None },
+                        ) {
                             LibraryScreen(
                                 columns = settings.gridColumns,
                                 onOpen = { uri -> navController.navigate(DetailRoute.build(uri)) },
@@ -174,13 +186,21 @@ fun PictApp(
                                 onBatchEdit = { uris -> BatchRoute.build(uris)?.let(navController::navigate) },
                             )
                         }
-                        composable(PictDestination.Jobs.route) {
+                        composable(
+                            route = PictDestination.Jobs.route,
+                            enterTransition = { EnterTransition.None },
+                            exitTransition = { ExitTransition.None },
+                        ) {
                             JobsScreen(
                                 onOpenProgress = { jobId -> navController.navigate(JobRoute.build(jobId)) },
                                 onOpenReport = { jobId -> navController.navigate(ReportRoute.build(jobId)) },
                             )
                         }
-                        composable(PictDestination.Settings.route) {
+                        composable(
+                            route = PictDestination.Settings.route,
+                            enterTransition = { EnterTransition.None },
+                            exitTransition = { ExitTransition.None },
+                        ) {
                             SettingsScreen(settings = settings, onUpdate = onUpdateSettings)
                         }
                         composable(DetailRoute.PATTERN) { entry ->

@@ -11,10 +11,10 @@
     <string name="jobs_title">任务</string>
     <string name="jobs_running_section">进行中</string>
     <string name="jobs_running_empty_title">没有正在跑的任务</string>
-    <string name="jobs_running_empty_body">批量改元数据、批量转格式的批次会在这里排队，带进度、暂停和取消。</string>
+    <string name="jobs_running_empty_body">批量改元数据的任务会在这里排队，能看进度，也能取消。</string>
     <string name="jobs_history_section">历史记录</string>
     <string name="jobs_history_empty_title">还没有任务记录</string>
-    <string name="jobs_history_empty_body">跑完的任务会留下一行：结果、报告、重跑和撤销。单张编辑与导出不进这里。</string>
+    <string name="jobs_history_empty_body">跑完的任务在这里留一行：结果、报告、重跑、撤销。单张编辑不算。</string>
 
     <!-- 历史行与动作（T5.8，docs/06 §3.8、docs/01 FR-34） -->
     <string name="jobs_history_counts">共 %1$d 项 · 成功 %2$d</string>
@@ -32,7 +32,7 @@
     <string name="jobs_history_undo_expired">备份超过 7 天，撤不了了</string>
     <string name="jobs_history_undo_dry_run">试运行没改过文件</string>
     <string name="jobs_history_undo_confirm_title">撤销「%1$s」？</string>
-    <string name="jobs_history_undo_confirm_body">会把 %1$d 个文件还原成执行前的样子。备份是一次性的，撤过就不能再撤了。</string>
+    <string name="jobs_history_undo_confirm_body">把 %1$d 个文件还原成执行前的样子。备份只有一份，撤过就不能再撤。</string>
     <string name="jobs_history_undo_confirm_ok">撤销</string>
     <string name="jobs_history_undo_confirm_cancel">再想想</string>
     <string name="jobs_history_undo_failed">撤销没做成：%1$s</string>
@@ -62,7 +62,7 @@
     <string name="jobs_progress_canceled_note">已请求取消，手上的那一张会写完再停。</string>
     <string name="jobs_progress_report">查看报告</string>
     <string name="jobs_progress_items_title">逐项状态</string>
-    <string name="jobs_progress_item_no_detail">这个任务没有留下逐项明细；进行中的进度可以在通知栏里看。</string>
+    <string name="jobs_progress_item_no_detail">没有留下逐项明细；进行中的进度看通知栏。</string>
     <string name="jobs_progress_dry_run">试运行：没有改文件</string>
 
     <!-- 任务报告（T5.7，docs/01 FR-31） -->
@@ -75,7 +75,7 @@
     <string name="jobs_report_param_mode">模式</string>
     <string name="jobs_report_param_preset">预设</string>
     <string name="jobs_report_param_seed">随机种子</string>
-    <string name="jobs_report_param_overwrite">覆盖已有文件</string>
+    <string name="jobs_report_param_overwrite">覆盖已有值</string>
     <string name="jobs_report_param_clear">清空字段</string>
     <string name="jobs_report_param_concurrency">并发</string>
     <string name="jobs_report_param_retries">重试上限</string>
@@ -115,8 +115,8 @@
     <string name="library_thumb_desc_selected">%1$s，已选中</string>
     <string name="library_thumb_failed">缩略图加载失败</string>
     <string name="library_message_import_empty">没有可用的图片，换一批再试试。</string>
-    <string name="library_message_import_failed">这个位置读不到，可能是授权被撤销了，重新选一次文件夹。</string>
-    <string name="library_message_scan_truncated">已到单次上限 %1$d 张，先处理这批，剩下的再导一次。</string>
+    <string name="library_message_import_failed">这个位置读不到，可能授权被撤销了，重新选一次文件夹。</string>
+    <string name="library_message_scan_truncated">到单次上限 %1$d 张了，先处理这批，剩下的再导一次。</string>
     <string name="library_recent_title">最近目录</string>
     <string name="library_message_folder_lost">这个目录的授权已失效，重新选一次它就好。</string>
 
@@ -130,12 +130,12 @@
     <string name="detail_retry">重试</string>
     <string name="detail_error_detail">技术细节：%1$s</string>
     <string name="detail_empty_title">没有读到元数据</string>
-    <string name="detail_empty_body">这张图可能是截图或清理过的文件，EXIF、XMP、GPS 都是空的。</string>
+    <string name="detail_empty_body">可能是截图或清理过的文件，EXIF、XMP、GPS 都是空的。</string>
     <string name="detail_search_open">搜索字段</string>
     <string name="detail_search_close">退出搜索</string>
     <string name="detail_search_hint">搜索字段名或值…</string>
     <string name="detail_search_idle_title">搜点什么</string>
-    <string name="detail_search_idle_body">输入字段名（如「光圈」）、标签名（如 FNumber）或值（如 f/1.78）。</string>
+    <string name="detail_search_idle_body">输入字段名、标签名（FNumber）或值（f/1.78）。</string>
     <string name="detail_search_none_title">没有匹配的字段</string>
     <string name="detail_search_none_body">「%1$s」在这张图的元数据里没有命中。</string>
     <string name="detail_preview_desc">图片预览</string>
@@ -171,7 +171,7 @@
     <string name="edit_search_hint">搜索字段名或值…</string>
     <string name="edit_search_none">「%1$s」没有命中，也没有可添加的字段</string>
     <string name="edit_search_add">添加这个字段</string>
-    <string name="edit_search_add_more">字段目录里还有 %1$d 个能加的字段</string>
+    <string name="edit_search_add_more">还有 %1$d 个字段能加进来</string>
     <string name="edit_dirty_bar">有 %1$d 项未保存</string>
     <string name="edit_action_revert_all">全部撤销</string>
     <string name="edit_row_dirty">已修改</string>
@@ -184,7 +184,7 @@
     <string name="edit_sheet_restore">恢复原值</string>
     <string name="edit_sheet_cancel">取消</string>
     <string name="edit_sheet_confirm">确定</string>
-    <string name="edit_readonly_format">%1$s 不能原地写元数据，先另存成 JPEG/PNG 再改</string>
+    <string name="edit_readonly_format">%1$s 不支持直接写入，先导出成 JPEG 或 PNG 再改</string>
     <string name="edit_loading">正在读取元数据…</string>
     <string name="edit_retry">重试</string>
     <string name="edit_discard_title">有 %1$d 项未保存</string>
@@ -209,7 +209,7 @@
     <string name="error_undo_done">这次任务已经撤过了</string>
     <string name="error_oom">图片过大，请降低尺寸上限</string>
     <string name="error_cancel">已取消</string>
-    <string name="error_unknown">遇到未分类的错误，重试一次；还不行就导出任务报告看细节</string>
+    <string name="error_unknown">出了没预料到的错，重试一次；还不行就看任务报告</string>
 
     <!-- 单项终态（docs/01 §5） -->
     <string name="item_status_success">成功</string>
@@ -225,13 +225,13 @@
 
     <string name="edit_preset_title">套用预设</string>
     <string name="edit_preset_overwrite">覆盖已有值</string>
-    <string name="edit_preset_overwrite_note">关闭时只填原文件没有的字段，已有值原样保留（更安全）</string>
+    <string name="edit_preset_overwrite_note">关掉时只补原文件缺的字段，已有的值原样留着</string>
     <string name="edit_preset_keys">%1$d 个字段</string>
     <string name="edit_preset_keys_named">%1$s（%2$d 项）</string>
-    <string name="edit_preset_issue">预设告警：%1$s</string>
+    <string name="edit_preset_issue">这套预设有问题：%1$s</string>
 
     <!-- 预设分栏多选（T3.x）：设备 / 位置 / 时间 / 混合四栏并列，可同时选；自建预设也在这一层 -->
-    <string name="preset_pick_hint">四栏各挑一个，可以同时选；同一栏再点一下取消。改动先进草稿，点「应用」才写文件。</string>
+    <string name="preset_pick_hint">每栏挑一个，再点一下取消。点「应用」才写进文件。</string>
     <string name="preset_pick_selected">已选：%1$s</string>
     <string name="preset_pick_add_own">＋ 加一个%1$s预设</string>
     <string name="preset_pick_empty_kind">这一类还没有预设，点上面的按钮加一个自己的。</string>
@@ -244,7 +244,7 @@
     <!-- 自己加一个预设 -->
     <string name="preset_editor_new_title">自己加一个预设</string>
     <string name="preset_editor_edit_title">改这个预设</string>
-    <string name="preset_editor_note">保存在应用数据里，卸载或清除数据时会一起删掉；内置预设不受影响。</string>
+    <string name="preset_editor_note">存在应用数据里，卸载或清数据会一起删掉；内置预设不受影响。</string>
     <string name="preset_editor_name">名称</string>
     <string name="preset_editor_kind">归到哪一栏</string>
     <string name="preset_editor_desc">说明（可不填）</string>
@@ -254,7 +254,7 @@
     <string name="preset_editor_back">返回表单</string>
     <string name="preset_editor_search">搜字段（中文名或标签名）</string>
     <string name="preset_editor_value">值</string>
-    <string name="preset_editor_value_hint">多个值用逗号分开（随机抽一个）；两端都是时间或数字时用 ~ 连成区间</string>
+    <string name="preset_editor_value_hint">多个值用逗号分开，随机抽一个；两端是时间或数字时用 ~ 连成区间</string>
     <string name="preset_editor_preserved">另有 %1$d 个字段（坐标 / 抖动之类）保持原样</string>
     <string name="preset_editor_remove_row">删掉这行</string>
     <string name="preset_editor_save">保存</string>
@@ -262,7 +262,7 @@
     <string name="preset_editor_cancel">取消</string>
 
     <string name="edit_random_title">随机填充</string>
-    <string name="edit_random_hint">按预设里的取值池、区间和圆心抽样；同一个种子每次都给出同样的结果。</string>
+    <string name="edit_random_hint">按预设的取值池和区间抽；同一个种子结果不变。</string>
     <string name="edit_random_preset">取值预设</string>
     <string name="edit_random_fields">填充哪些字段</string>
     <string name="edit_random_fixed_note">固定值字段（如厂商、机型）会照写，不参与抽样。</string>
@@ -277,7 +277,7 @@
     <string name="edit_random_fill">确认填入</string>
 
     <string name="edit_add_title">添加字段</string>
-    <string name="edit_add_hint">这是字段目录里可写、但原文件还没有的字段，点一行加进去。</string>
+    <string name="edit_add_hint">这些字段能写，但原文件里还没有；点一行加进去。</string>
     <string name="edit_add_search_hint">搜索字段名或键，如 海拔 / GPS:GPSAltitude</string>
     <string name="edit_add_empty">没有可补的字段了。</string>
 
@@ -287,15 +287,15 @@
     <string name="settings_export_suffix">导出文件名后缀</string>
     <string name="settings_export_suffix_none">不加后缀</string>
     <string name="settings_export_suffix_sample">示例：%1$s</string>
-    <string name="settings_export_suffix_empty_note">留空就是不加后缀；目标目录里已有同名文件时，由系统自动加「(1)」区分。</string>
+    <string name="settings_export_suffix_empty_note">留空不加后缀；目标目录有同名文件时，系统自动加「(1)」。</string>
     <string name="settings_verify_export">导出后自动校验</string>
-    <string name="settings_verify_export_hint">把写入结果读回来逐项比对字段与像素；关掉可以少读一次文件</string>
+    <string name="settings_verify_export_hint">写完再读一遍，逐项核对有没有真的写进去；关掉快一些</string>
 
     <string name="settings_section_preset">预设与随机填充</string>
     <string name="settings_preset_overwrite">套用预设时覆盖已有值</string>
-    <string name="settings_preset_overwrite_hint">关：只填原文件缺的字段（更安全）；开：连已有的值一起改写</string>
+    <string name="settings_preset_overwrite_hint">关：只补原文件缺的字段；开：连已有的值一起改写</string>
     <string name="settings_random_seed">随机填充默认种子</string>
-    <string name="settings_random_seed_hint">固定种子，让同一张图的「随机」结果可复现</string>
+    <string name="settings_random_seed_hint">填同一个种子，同一张图每次抽到的值都一样</string>
     <string name="settings_random_seed_dialog_title">随机填充默认种子</string>
     <string name="settings_random_seed_invalid">种子得是整数，可以是负数。</string>
 
@@ -314,12 +314,12 @@
     <string name="settings_navbar_style_docked">贴底</string>
     <!-- 玻璃开关：只在悬浮样式下看得到，所以文案里把前提写明 -->
     <string name="settings_navbar_glass">液态玻璃</string>
-    <string name="settings_navbar_glass_hint">关掉就是一层实心底栏，不透光也不模糊背景；悬浮样式才有玻璃效果。背景模糊要 Android 12，边沿折射要 Android 13，更老的机器只有半透明</string>
+    <string name="settings_navbar_glass_hint">关掉是一层实心底栏，不透视背景；只有悬浮样式有玻璃效果</string>
     <string name="settings_dynamic_color">动态取色</string>
-    <string name="settings_dynamic_color_hint">颜色跟着壁纸走（Material You），换张壁纸整套配色跟着换</string>
-    <string name="settings_dynamic_color_unsupported">需要 Android 12 及以上；这台机器取不到壁纸配色，先用应用自带的配色</string>
+    <string name="settings_dynamic_color_hint">颜色跟着壁纸走，换张壁纸整套配色跟着换</string>
+    <string name="settings_dynamic_color_unsupported">需要 Android 12 及以上；这台机器取不到壁纸配色，只能用自带配色</string>
     <string name="settings_backdrop">背景色</string>
-    <string name="settings_backdrop_locked">动态取色开着的时候底色跟着壁纸走；先关掉它才能自己挑</string>
+    <string name="settings_backdrop_locked">动态取色开着时背景色跟着壁纸走，先关掉才能自己挑</string>
     <string name="settings_backdrop_current">当前：%1$s</string>
     <string name="backdrop_auto">自动</string>
     <string name="backdrop_cloud">云白</string>
@@ -329,18 +329,18 @@
     <string name="backdrop_lilac">藕荷</string>
     <string name="backdrop_moss">苔绿</string>
     <string name="backdrop_blush">淡粉</string>
-    <string name="settings_navbar_items_hint">至少留一个；关掉正待着的这一页，会自动换到还留着的页</string>
+    <string name="settings_navbar_items_hint">至少留一个；关掉正在看的这页，会自动换到还留着的页</string>
     <string name="settings_navbar_min_note">底栏至少保留一个入口</string>
 
     <string name="settings_section_about">隐私与关于</string>
     <string name="settings_version">版本</string>
     <string name="settings_version_value">%1$s（构建 %2$d）</string>
     <string name="settings_offline_title">离线处理</string>
-    <string name="settings_offline_body">应用不申请网络权限，图片与元数据都在本机处理：不上传、不统计、不留日志。</string>
+    <string name="settings_offline_body">不申请网络权限，图片和元数据都在本机处理：不上传、不统计、不留日志。</string>
     <string name="settings_reset">恢复默认设置</string>
     <string name="settings_reset_hint">只重置这一页的选项，不动任何图片</string>
     <string name="settings_reset_title">恢复默认设置？</string>
-    <string name="settings_reset_body">导出后缀、导出校验、预设套用方式、默认种子、主题、图库列数、底栏样式与入口都会回到初始值。</string>
+    <string name="settings_reset_body">这一页上的选项都会回到初始值，图片一张都不动。</string>
     <string name="settings_reset_done">已恢复默认设置</string>
 
     <string name="settings_edit_title">修改%1$s</string>
@@ -354,10 +354,10 @@
     <string name="batch_preset_label">用哪个预设</string>
     <string name="batch_preset_empty">选一个预设</string>
     <string name="batch_overwrite">覆盖已有值</string>
-    <string name="batch_overwrite_hint">关掉时只填原文件里没有的字段；打开则连已有的值一起改</string>
+    <string name="batch_overwrite_hint">关掉只填原文件里没有的字段；打开连已有的值一起改</string>
     <string name="batch_clear_label">要清掉哪几组</string>
-    <string name="batch_clear_hint">缩略图与 ICC 是段级清除，不进字段统计</string>
-    <string name="batch_random_hint">按预设里的池 / 区间 / 圆心重掷；每张图的种子按序号错开，一批不会填成同一张</string>
+    <string name="batch_clear_hint">缩略图和 ICC 是整段删掉的，不计入上面的字段数</string>
+    <string name="batch_random_hint">按预设的取值池重抽；种子按序号错开，一批不会填成同一张</string>
     <string name="batch_preview_action">预览将要发生的变化</string>
     <string name="batch_preview_progress">已算 %1$d / %2$d 张</string>
     <string name="batch_preview_title">改动预览</string>
@@ -367,7 +367,7 @@
     <string name="batch_stat_unchanged">无变化 %1$d</string>
     <string name="batch_stat_blocked">不支持 %1$d</string>
     <string name="batch_stat_changes">字段变更 %1$d 处</string>
-    <string name="batch_stat_segments">段级清除 %1$d 处</string>
+    <string name="batch_stat_segments">整段删掉 %1$d 处</string>
     <string name="batch_stat_kinds">新增 %1$d · 修改 %2$d · 清除 %3$d</string>
     <string name="batch_stat_top_keys">改动最多的字段：%1$s</string>
     <string name="batch_stat_skips">没填上的原因：%1$s</string>
@@ -375,11 +375,11 @@
     <string name="batch_item_noop">计划对它没有可改的字段</string>
     <string name="batch_item_kept">%1$d 个字段已有值被保留</string>
     <string name="batch_item_skipped">%1$d 个字段没能填（%2$s）</string>
-    <string name="batch_item_segments">另有 %1$d 处段级清除</string>
+    <string name="batch_item_segments">另有 %1$d 处整段删掉</string>
     <string name="batch_execute">开始执行</string>
-    <string name="batch_execute_pending">已交给后台队列；通知栏能看进度，也能取消。</string>
-    <string name="batch_execute_queued">已交给后台队列：%1$d 张 · 通知栏可看进度，也可以取消</string>
-    <string name="batch_execute_queued_action">已在队列里</string>
+    <string name="batch_execute_pending">已排队开跑；通知栏能看进度，也能取消。</string>
+    <string name="batch_execute_queued">已排队：%1$d 张 · 通知栏可看进度，也可以取消</string>
+    <string name="batch_execute_queued_action">已排队</string>
     <string name="batch_execute_queue_failed">排不上队：%1$s</string>
 
     <!-- 批量任务通知（T5.3，data/job/JobNotifier） -->

@@ -116,7 +116,8 @@ fun navSwipeCommitDistancePx(slotPx: Float, minPx: Float): Float =
  * 在底栏上左右滑动切页（FR-35 续，见 docs/06 §2）。
  *
  * 挂在整条底栏上，**格子自己不动**：拖动期间只有选中胶囊跟着手指走，松手才真的切页
- * （切页会换页面，「跟手」跟到一半就把页面换掉会闪）。
+ * （切页会换页面，「跟手」跟到一半就把页面换掉会闪）。松手那一刻偏移归零、新格子同时生效，
+ * 胶囊因此直接落在手指松开的地方——落地那一下不播动画，见 [navPillLandsBySwipe]。
  *
  * 两个必须这么写的点：
  * 1. 按下**不消费**——不然格子上的点按（`selectable`）直接失效，滑动做出来了、点击没了。
@@ -128,7 +129,7 @@ fun navSwipeCommitDistancePx(slotPx: Float, minPx: Float): Float =
  *
  * @param itemCount 底栏上实际有几项，≤ 1 时整段手势都不挂
  * @param currentIndex 当前选中项下标
- * @param onSwipeTo 切到这一项
+ * @param onSwipeTo 切到这一项（回调方顺手把它记成「滑过来的那一格」，落位才不走动画）
  * @param onDragOffsetChange 拖动中的水平偏移（像素，右为正），松手/取消时一定会收到一次 0
  */
 @Composable
@@ -179,3 +180,16 @@ fun Modifier.navBarSwipe(
         }
     }
 }
+
+/**
+ * 这一格是不是「滑过来的」，胶囊要不要直接落上去（FR-35 续）。
+ *
+ * 滑动落位不走动画：拖到哪儿放手，人就应该已经在那一页上，胶囊直接按在这一格，
+ * 别再从旧格子滑过去——用户要的是「直接到」，不是「看完这段动画才到」。
+ * 点按切页没有手指位置可落，仍然交给弹簧：底栏是频繁点的地方，一点惯性更像液体。
+ *
+ * @param swipeLandedIndex 上一把滑到的格子；还没滑过是 null
+ * @param selectedIndex 当前真正选中的格子
+ */
+fun navPillLandsBySwipe(swipeLandedIndex: Int?, selectedIndex: Int): Boolean =
+    swipeLandedIndex != null && swipeLandedIndex == selectedIndex

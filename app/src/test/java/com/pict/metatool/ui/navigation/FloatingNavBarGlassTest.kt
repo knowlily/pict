@@ -49,8 +49,8 @@ class FloatingNavBarGlassTest {
 
     @Test
     fun `承载色：能糊就透光，糊不动压回去保住文字可读`() {
-        assertEquals(0.52f, glassTintAlpha(GlassEffectPlan.LENS), 0f)
-        assertEquals(0.52f, glassTintAlpha(GlassEffectPlan.BLUR), 0f)
+        assertEquals(0.62f, glassTintAlpha(GlassEffectPlan.LENS), 0f)
+        assertEquals(0.62f, glassTintAlpha(GlassEffectPlan.BLUR), 0f)
         val degraded = glassTintAlpha(GlassEffectPlan.TINT_ONLY)
         assertEquals(0.9f, degraded, 0f)
         assertTrue(degraded > glassTintAlpha(GlassEffectPlan.LENS))

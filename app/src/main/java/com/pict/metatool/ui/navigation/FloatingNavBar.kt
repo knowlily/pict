@@ -2,6 +2,7 @@ package com.pict.metatool.ui.navigation
 
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +42,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.luminance
+import com.pict.metatool.ui.theme.pictPalette
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -67,17 +69,17 @@ import kotlin.math.roundToInt
 private val BarCornerRadius = 28.dp
 
 /** 背板模糊半径（库的 `blur`，真糊一份背板）。 */
-private val BarBlurRadius = 28.dp
+private val BarBlurRadius = 44.dp
 
 /** 边沿折射的高度与位移：库里「液态」的那部分，AGSL 把边缘附近的背板掰弯（API 33+）。 */
-private val BarRefractionHeight = 24.dp
-private val BarRefractionShift = 16.dp
+private val BarRefractionHeight = 36.dp
+private val BarRefractionShift = 26.dp
 
 /** 玻璃自己的投影（库的 `shadow`），撑出一点「厚度」。 */
-private val BarShadowRadius = 16.dp
+private val BarShadowRadius = 24.dp
 
 /** 糊不动时自己画的投影高度。 */
-private val BarShadowElevation = 12.dp
+private val BarShadowElevation = 18.dp
 
 /** 降级路径上的高光：主描边粗细、内圈高光离外沿的距离。 */
 private val BarSpecularWidth = 1.5.dp
@@ -104,9 +106,9 @@ private val PillRefractionShift = 12.dp
  * 更低（minSdk 26）糊不动，退化成自绘的半透明板 + 高光（降级，不是等价实现）；
  * [glass] = false 时连背板都不录（`PictApp` 那头一起关掉），只剩实心底 + 描边。
  *
- * 选中项不再是一块纯色圆角：它是第二层玻璃（[LiquidNavPill]），跟着选中项滑过去，
- * 按下去时折射从边缘化开。动效走 [PictMotion.quick] 与一根带点回弹的弹簧——
- * 底栏是高频点击的地方，位移要短。
+ * 选中项不再是一块纯色圆角：它是第二层玻璃（[LiquidNavPill]），跟着选中项过去，
+ * 按下去时折射从边缘化开。点按切页走 [PictMotion.quick] 与一根带点回弹的弹簧；
+ * 在栏上滑过来的那一把**不走动画**——松手就在目标格上（见 [navPillLandsBySwipe]）。
  *
  * 无障碍：单项最小高度 56 dp 满足触摸目标；语义角色是 Tab，
  * selectable 自带「已选中」播报，图标与文字同用一份文案。
@@ -132,9 +134,10 @@ fun FloatingNavBar(
 
     val colorScheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(BarCornerRadius)
-    val tint = colorScheme.surface.copy(alpha = glassTintAlpha(plan))
-    // 镜面高光固定用白：深色下是灰白的一层，浅色下是近白的一层，两边都只是「亮一点」。
-    val sheen = Color.White
+    val tint = MaterialTheme.pictPalette.barTint.copy(alpha = glassTintAlpha(plan))
+    // 镜面高光也跟着取色来源带一点色相（以前是纯白——纯白在浅色主题下就是一条灰边，
+    // 而且不管换什么壁纸都一样）。斜切的那几层明暗关系不变，只是从白变成「带色相的白」。
+    val sheen = MaterialTheme.pictPalette.barSheen
     val rim = colorScheme.outlineVariant
 
     // 底栏自己画的那层（图标 + 文字）也录一份，选中胶囊才能在它上面再折一层（玻璃叠玻璃）。
@@ -155,6 +158,8 @@ fun FloatingNavBar(
     val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
     // 在底栏上左右滑时，选中胶囊跟着手指走的位移（像素，右为正）。松手/取消一定归零。
     var swipeOffsetPx by remember { mutableFloatStateOf(0f) }
+    // 上一把滑到了哪一格：等于当前选中项，就说明这一格是滑过来的，胶囊直接落上去、不播滑过去的动画。
+    var swipeLandedIndex by remember { mutableStateOf<Int?>(null) }
 
     Box(
         modifier = modifier
@@ -170,11 +175,12 @@ fun FloatingNavBar(
                             vibrancy()
                             blur(blurRadiusPx)
                             if (plan == GlassEffectPlan.LENS) {
-                                lens(refractionHeightPx, refractionShiftPx)
+                                // 边上再散一点色（chromaticAberration）：光在厚玻璃边缘掰一下会散出颜色
+                                lens(refractionHeightPx, refractionShiftPx, chromaticAberration = true)
                             }
                         },
                         shadow = {
-                            Shadow(radius = BarShadowRadius, color = Color.Black.copy(alpha = 0.12f))
+                            Shadow(radius = BarShadowRadius, color = Color.Black.copy(alpha = 0.2f))
                         },
                         onDrawSurface = { drawRect(tint) },
                     )
@@ -200,7 +206,7 @@ fun FloatingNavBar(
                             // 1) 顶部镜面高光：从顶上最亮，往下半屏渐隐
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    0f to sheen.copy(alpha = 0.34f),
+                                    0f to sheen.copy(alpha = 0.42f),
                                     0.55f to Color.Transparent,
                                 ),
                             )
@@ -208,15 +214,15 @@ fun FloatingNavBar(
                             drawRect(
                                 brush = Brush.verticalGradient(
                                     0.72f to Color.Transparent,
-                                    1f to sheen.copy(alpha = 0.12f),
+                                    1f to sheen.copy(alpha = 0.16f),
                                 ),
                             )
                             // 3) 主描边：左上亮、右下淡
                             drawRoundRect(
                                 brush = Brush.linearGradient(
-                                    0f to sheen.copy(alpha = 0.5f),
-                                    0.45f to sheen.copy(alpha = 0.12f),
-                                    1f to sheen.copy(alpha = 0.04f),
+                                    0f to sheen.copy(alpha = 0.58f),
+                                    0.45f to sheen.copy(alpha = 0.16f),
+                                    1f to sheen.copy(alpha = 0.06f),
                                 ),
                                 cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
                                 style = Stroke(width = hairlinePx),
@@ -225,7 +231,7 @@ fun FloatingNavBar(
                             val innerInsetPx = BarInnerRimInset.toPx()
                             drawRoundRect(
                                 brush = Brush.verticalGradient(
-                                    0f to sheen.copy(alpha = 0.16f),
+                                    0f to sheen.copy(alpha = 0.22f),
                                     1f to Color.Transparent,
                                 ),
                                 topLeft = Offset(innerInsetPx, innerInsetPx),
@@ -246,7 +252,10 @@ fun FloatingNavBar(
                     Modifier.navBarSwipe(
                         itemCount = items.size,
                         currentIndex = selectedIndex,
-                        onSwipeTo = { index -> items.getOrNull(index)?.let(onSelect) },
+                        onSwipeTo = { index ->
+                            swipeLandedIndex = index
+                            items.getOrNull(index)?.let(onSelect)
+                        },
                         onDragOffsetChange = { swipeOffsetPx = it },
                     )
                 } else {
@@ -286,6 +295,7 @@ fun FloatingNavBar(
                     selectedIndex = selectedIndex,
                     pressProgress = pressProgress,
                     swipeOffsetPx = swipeOffsetPx,
+                    swipeLandedIndex = swipeLandedIndex,
                 )
             }
         }
@@ -293,7 +303,7 @@ fun FloatingNavBar(
 }
 
 /**
- * 跟着选中项滑过去的那团玻璃。
+ * 跟着选中项过去的那团玻璃。
  *
  * 库的用法是「玻璃叠玻璃」：底栏的背板（页面内容）加上底栏自己画的内容（图标、文字）合成一份，
  * 胶囊再把这份背板折一遍——静止时不掰像素（`lens` 的 refractionHeight 归零，库自己会 return），
@@ -308,29 +318,43 @@ private fun LiquidNavPill(
     selectedIndex: Int,
     pressProgress: Float,
     swipeOffsetPx: Float,
+    swipeLandedIndex: Int?,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val gapPx = with(density) { PictSpacing.xs.toPx() }
     val itemWidthPx = (innerSize.width - gapPx * (count - 1)) / count
-    // 拖动中胶囊跟着手指走（夹在底栏里，到边就停），松手 swipeOffsetPx 归零、position 走弹簧滑到新格子：
-    // 两条来源分开算——拖动要「直接」（手指在哪它就在哪），落位才「液体」（带点回弹滑过去）
+    // 拖动中胶囊跟着手指走（夹在底栏里，到边就停），松手 swipeOffsetPx 归零、position 落到新格子：
+    // 拖动要「直接」（手指在哪它就在哪）；落位分两种——滑过来的这一把直接落格（松手就在那儿），
+    // 点按才「液体」（带点回弹滑过去）
     val followPx = navSwipeFollowOffsetPx(
         currentIndex = selectedIndex,
         itemCount = count,
         dragXPx = swipeOffsetPx,
         slotPx = itemWidthPx + gapPx,
     )
-    val position by animateFloatAsState(
-        targetValue = selectedIndex.toFloat(),
-        // 滑过去带一点回弹：像液体追上去，而不是直着平移
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 420f),
-        label = "navPillPosition",
-    )
+    val landedBySwipe = navPillLandsBySwipe(swipeLandedIndex, selectedIndex)
+    val animatedSlots = remember { Animatable(selectedIndex.toFloat()) }
+    // 滑动落位：不等弹簧，这一帧就用目标格（松手的那一刻它就在那儿了）；
+    // 动画值在背后悄悄跟上，下一次点按才有对的起点。
+    val position = if (landedBySwipe) selectedIndex.toFloat() else animatedSlots.value
+    LaunchedEffect(selectedIndex, landedBySwipe) {
+        if (landedBySwipe) {
+            animatedSlots.snapTo(selectedIndex.toFloat())
+        } else {
+            // 点按切页带一点回弹：像液体追上去，而不是直着平移
+            animatedSlots.animateTo(
+                targetValue = selectedIndex.toFloat(),
+                animationSpec = spring(dampingRatio = 0.72f, stiffness = 420f),
+            )
+        }
+    }
     val pillWidth = with(density) { itemWidthPx.toDp() }
     val pillHeight = with(density) { innerSize.height.toDp() }
-    val darkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val pillTint = if (darkSurface) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f)
+    // 选中胶囊的底色跟着取色来源走：以前是纯白 / 纯黑一个不透明度，怎么换壁纸底栏都一个样。
+    // 深浅由 PictTheme 那一处判定（palette 里已经算好），这里不再自己看亮度——
+    // 同一个判断写在两处，改了主题分支就会「底栏按深色算、别处按浅色算」。
+    val pillTint = MaterialTheme.pictPalette.navPill
 
     Box(
         modifier = modifier
@@ -346,17 +370,17 @@ private fun LiquidNavPill(
                         chromaticAberration = true,
                     )
                 },
-                highlight = { Highlight.Default.copy(alpha = 0.3f + 0.6f * pressProgress) },
+                highlight = { Highlight.Default.copy(alpha = 0.42f + 0.58f * pressProgress) },
                 shadow = {
                     Shadow(
                         radius = BarShadowRadius * (0.5f + pressProgress),
-                        color = Color.Black.copy(alpha = 0.08f + 0.12f * pressProgress),
+                        color = Color.Black.copy(alpha = 0.12f + 0.16f * pressProgress),
                     )
                 },
                 innerShadow = {
                     InnerShadow(
                         radius = 8.dp + 10.dp * pressProgress,
-                        color = Color.Black.copy(alpha = 0.2f + 0.2f * pressProgress),
+                        color = Color.Black.copy(alpha = 0.26f + 0.22f * pressProgress),
                     )
                 },
                 layerBlock = {

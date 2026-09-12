@@ -50,7 +50,7 @@ internal fun glassEffectPlan(
 internal fun glassTintAlpha(plan: GlassEffectPlan): Float = when (plan) {
     GlassEffectPlan.OFF -> 1f
     GlassEffectPlan.TINT_ONLY -> 0.9f
-    GlassEffectPlan.BLUR, GlassEffectPlan.LENS -> 0.52f
+    GlassEffectPlan.BLUR, GlassEffectPlan.LENS -> 0.62f
 }
 
 /** 值不值得为这块玻璃离屏录一份背板：糊得动（含折射）才录，糊不动录了也白花显存。 */

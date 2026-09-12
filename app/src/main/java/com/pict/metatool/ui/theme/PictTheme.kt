@@ -9,7 +9,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -43,7 +45,9 @@ private val LightColors = lightColorScheme(
     outlineVariant = LightOutlineVariant,
 )
 
-private val DarkColors = darkColorScheme(
+// internal 而不是 private：PictColors.kt 里 LocalPictPalette 的兜底值要用它
+// （预览 / 没套主题的场合，取品牌深色那一套，而不是再造一个 M3 默认紫）
+internal val DarkColors = darkColorScheme(
     primary = BluePrimary,
     onPrimary = BlueOnPrimary,
     primaryContainer = BlueOnPrimaryContainer,
@@ -90,6 +94,12 @@ private val DarkColors = darkColorScheme(
  *   `background` 这一个角色：卡片表面、强调色、状态色都还是各自那一套，挑个底色不会顺带把
  *   「导出成功/失败」的颜色改掉。动态取色开着时底色跟着壁纸走，调用方传 `null`——
  *   判断留在 `MainActivity`，主题这一层不偷看设置。
+ *
+ * 取色来源铺到哪些地方（FR-38 续）：**容器也得跟着走**。以前换来源只换了背景与强调色，
+ * 而容器（区块底、卡片、弹层、底栏玻璃的承载色）落在中性的容器角色、写死的白与黑上，
+ * 于是实测「同一个页面只翻那个开关，整屏只有 0.46% 的像素变了」——用户看到的就是
+ * 「只有背景变色」。现在容器统一朝取色来源的强调色偏一档（[tintedContainers]），
+ * 底栏玻璃那三个颜色由 [pictPalette] 推出来、经 [LocalPictPalette] 往下传。
  */
 @Composable
 fun PictTheme(
@@ -108,7 +118,11 @@ fun PictTheme(
         else -> LightColors
     }
 
-    val colorScheme = if (backdrop == null) baseColors else baseColors.copy(background = Color(backdrop))
+    // 先按自选底色换掉 background，再把容器角色朝取色来源偏一档（见文件头那段）
+    val colorScheme = tintedContainers(
+        if (backdrop == null) baseColors else baseColors.copy(background = Color(backdrop))
+    )
+    val palette = remember(colorScheme, darkTheme) { pictPalette(colorScheme, darkTheme) }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -122,10 +136,13 @@ fun PictTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = PictTypography,
-        shapes = PictShapes,
-        content = content,
-    )
+    // 底栏玻璃那几个颜色不落在任何配色角色上，用 CompositionLocal 往下递
+    CompositionLocalProvider(LocalPictPalette provides palette) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = PictTypography,
+            shapes = PictShapes,
+            content = content,
+        )
+    }
 }
