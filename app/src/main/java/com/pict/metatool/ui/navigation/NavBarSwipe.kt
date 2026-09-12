@@ -23,40 +23,68 @@ private val NavSwipeFlickVelocity = 800.dp
 private const val NavSwipeCommitSlotRatio = 0.35f
 
 /**
+ * 这一把该走几格（右为正，0 = 不动）。
+ *
+ * 位移够阈值就按位移换算：**拖过半格进一格**（1.4 格算 1 格、1.6 格算 2 格），
+ * 够阈值至少给一格——不这么兜底的话，「刚过阈值但半格不到」的拖动会算成 0 格，人会以为失灵。
+ * 位移不够再看甩：甩够快给一格（接住「短促轻扫」，那一下位移本来就短）。
+ */
+fun navSwipeSteps(
+    dragXPx: Float,
+    velocityXPxPerSec: Float,
+    slotPx: Float,
+    commitDistancePx: Float,
+    flickVelocityPxPerSec: Float,
+): Int {
+    if (slotPx <= 0f) return 0
+    if (abs(dragXPx) >= commitDistancePx) {
+        val slots = max(1, (abs(dragXPx) / slotPx + 0.5f).toInt())
+        return if (dragXPx > 0f) slots else -slots
+    }
+    if (abs(velocityXPxPerSec) >= flickVelocityPxPerSec) {
+        return if (velocityXPxPerSec > 0f) 1 else -1
+    }
+    return 0
+}
+
+/**
  * 在底栏上左右滑动切页时要切到哪一项（docs/06 §2）。
  *
- * 读法是**直接操纵**：手指往右拖，选中胶囊跟着往右走，松手就切到右边那一项。
+ * 读法是**直接操纵**：手指往右拖，选中胶囊跟着往右走，松手就落到右边那一项。
  * 反过来那种「左滑 = 下一页」的翻页读法在这儿会自相矛盾——胶囊在拖动过程中是跟着手指走的，
  * 判定方向一翻，手指往右、胶囊往左，看着就像坏了。真要翻成翻页读法，把两个入参取负即可，
  * 但**必须同时把胶囊的跟随方向一起翻**，不然两半对着走。
  *
- * 一次滑动只走一格：连拖两格看着像「跳页」，而底栏只有三格，一格一格挪反而更快。
+ * **一把拖多远就走几格**（[navSwipeSteps]）：位移换算成格数，再夹在当前栏内。
+ * 「从最左边那格一把拖到最右边那格」＝ 两格距离，直接落到最后一项；拖过头就停在最后一格，
+ * 不会翻出去。第一版一次只走一格，从最左拖到最右得松手两回、手感像「拖不过去」——那是坏体验，
+ * 2026-09-13 修掉。
  *
  * @param currentIndex 当前选中项下标
  * @param itemCount 底栏上实际有几项（设置里关掉的入口不在其中）
  * @param dragXPx 这一把的水平位移，右为正
  * @param velocityXPxPerSec 松手瞬间的水平速度，右为正
+ * @param slotPx 一格有多宽（格子宽 + 间距），位移按它换算成格数
  * @param commitDistancePx 拖到多远算数（[navSwipeCommitDistancePx]）
  * @param flickVelocityPxPerSec 甩多快算数
- * @return 该切到的下标；没拖够也没甩够、或者已经贴着边没有下一项，都返回 null（退回原位，什么都不做）
+ * @return 该切到的下标；没拖够也没甩够、或者贴着边往外的方向，都返回 null（退回原位，什么都不做）
  */
 fun navSwipeTarget(
     currentIndex: Int,
     itemCount: Int,
     dragXPx: Float,
     velocityXPxPerSec: Float,
+    slotPx: Float,
     commitDistancePx: Float,
     flickVelocityPxPerSec: Float,
 ): Int? {
     if (itemCount <= 1) return null
     if (currentIndex !in 0 until itemCount) return null
-    val farEnough = abs(dragXPx) >= commitDistancePx
-    val fastEnough = abs(velocityXPxPerSec) >= flickVelocityPxPerSec
-    if (!farEnough && !fastEnough) return null
-    // 两个都够时以位移为准：那是用户眼睁睁看着胶囊挪到的地方，比末尾那一甩更算「他想去哪」
-    val direction = if (farEnough) dragXPx else velocityXPxPerSec
-    val step = if (direction > 0f) 1 else -1
-    return (currentIndex + step).takeIf { it in 0 until itemCount }
+    val steps = navSwipeSteps(dragXPx, velocityXPxPerSec, slotPx, commitDistancePx, flickVelocityPxPerSec)
+    if (steps == 0) return null
+    val target = (currentIndex + steps).coerceIn(0, itemCount - 1)
+    // 夹完回到原地 = 贴着边往外的方向，什么都不做（不是「往上顶一格」）
+    return target.takeIf { it != currentIndex }
 }
 
 /**
@@ -145,7 +173,7 @@ fun Modifier.navBarSwipe(
             // 先归位再切页：切页会让手势块以后重建，别把偏移留在那儿（胶囊会歪着停住）
             latestOnDrag(0f)
             if (dragging) {
-                navSwipeTarget(latestIndex, itemCount, total, velocityX, commitPx, flickPx)
+                navSwipeTarget(latestIndex, itemCount, total, velocityX, slotPx, commitPx, flickPx)
                     ?.let { latestOnSwipeTo(it) }
             }
         }
