@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -152,6 +153,8 @@ fun FloatingNavBar(
 
     var innerSize by remember { mutableStateOf(IntSize.Zero) }
     val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    // 在底栏上左右滑时，选中胶囊跟着手指走的位移（像素，右为正）。松手/取消一定归零。
+    var swipeOffsetPx by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = modifier
@@ -236,6 +239,19 @@ fun FloatingNavBar(
                             drawContent()
                         }
                 },
+            )
+            .then(
+                // 在底栏上左右滑就切页（FR-35 续）：格子照旧点，滑动只是多一条路
+                if (items.size > 1) {
+                    Modifier.navBarSwipe(
+                        itemCount = items.size,
+                        currentIndex = selectedIndex,
+                        onSwipeTo = { index -> items.getOrNull(index)?.let(onSelect) },
+                        onDragOffsetChange = { swipeOffsetPx = it },
+                    )
+                } else {
+                    Modifier
+                },
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -269,6 +285,7 @@ fun FloatingNavBar(
                     count = items.size,
                     selectedIndex = selectedIndex,
                     pressProgress = pressProgress,
+                    swipeOffsetPx = swipeOffsetPx,
                 )
             }
         }
@@ -290,11 +307,20 @@ private fun LiquidNavPill(
     count: Int,
     selectedIndex: Int,
     pressProgress: Float,
+    swipeOffsetPx: Float,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val gapPx = with(density) { PictSpacing.xs.toPx() }
     val itemWidthPx = (innerSize.width - gapPx * (count - 1)) / count
+    // 拖动中胶囊跟着手指走（夹在底栏里，到边就停），松手 swipeOffsetPx 归零、position 走弹簧滑到新格子：
+    // 两条来源分开算——拖动要「直接」（手指在哪它就在哪），落位才「液体」（带点回弹滑过去）
+    val followPx = navSwipeFollowOffsetPx(
+        currentIndex = selectedIndex,
+        itemCount = count,
+        dragXPx = swipeOffsetPx,
+        slotPx = itemWidthPx + gapPx,
+    )
     val position by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
         // 滑过去带一点回弹：像液体追上去，而不是直着平移
@@ -308,7 +334,7 @@ private fun LiquidNavPill(
 
     Box(
         modifier = modifier
-            .offset { IntOffset(x = (position * (itemWidthPx + gapPx)).roundToInt(), y = 0) }
+            .offset { IntOffset(x = (position * (itemWidthPx + gapPx) + followPx).roundToInt(), y = 0) }
             .size(width = pillWidth, height = pillHeight)
             .drawBackdrop(
                 backdrop = backdrop,

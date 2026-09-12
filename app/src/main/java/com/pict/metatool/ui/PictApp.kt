@@ -49,6 +49,7 @@ import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.navigation.ReportRoute
 import com.pict.metatool.ui.navigation.glassEffectPlan
 import com.pict.metatool.ui.navigation.glassNeedsBackdrop
+import com.pict.metatool.ui.navigation.navBarSwipe
 import com.pict.metatool.ui.report.ReportScreen
 import com.pict.metatool.ui.settings.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -131,7 +132,18 @@ fun PictApp(
                     bottomBar = {
                         // 悬浮样式自己浮在内容上，这里只给贴底样式留位。
                         if (topLevel && !floatingBar) {
-                            NavigationBar {
+                            // 贴底这条也支持在栏上左右滑切页（FR-35 续）：两种样式一个手势，
+                            // 不然换个样式滑动就失灵，用户只会觉得「时灵时不灵」
+                            val dockedIndex = destinations
+                                .indexOfFirst { it.route == currentRoute }
+                                .coerceAtLeast(0)
+                            NavigationBar(
+                                modifier = Modifier.navBarSwipe(
+                                    itemCount = destinations.size,
+                                    currentIndex = dockedIndex,
+                                    onSwipeTo = { index -> destinations.getOrNull(index)?.let(onSelect) },
+                                ),
+                            ) {
                                 destinations.forEach { destination ->
                                     NavigationBarItem(
                                         selected = currentRoute == destination.route,
