@@ -18,10 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -30,6 +26,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.pict.metatool.data.batch.SafBatchTargets
 import com.pict.metatool.domain.batch.BatchTarget
 import com.pict.metatool.domain.settings.AppSettings
@@ -49,6 +47,8 @@ import com.pict.metatool.ui.navigation.FloatingNavBarReservedHeight
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.navigation.PictDestination
 import com.pict.metatool.ui.navigation.ReportRoute
+import com.pict.metatool.ui.navigation.glassEffectPlan
+import com.pict.metatool.ui.navigation.glassNeedsBackdrop
 import com.pict.metatool.ui.report.ReportScreen
 import com.pict.metatool.ui.settings.SettingsScreen
 import kotlinx.coroutines.Dispatchers
@@ -112,14 +112,16 @@ fun PictApp(
         }
     }
 
-    // 玻璃底栏要拿「它底下那层内容」当背板去糊，所以内容得先录进一张离屏图层（见 glassBackdrop）。
-    val backdrop = rememberGraphicsLayer()
+    // 玻璃底栏要拿「它底下那层内容」当背板去糊，所以内容得先录进一张离屏图层（库的 layerBackdrop）。
+    val backdrop = rememberLayerBackdrop()
+    // 只在真糊得动的时候录：API < 31 上 RenderEffect 不生效，录了也白多一次离屏绘制（见 GlassEffectPlan）。
+    val backdropNeeded = glassNeedsBackdrop(glassEffectPlan(enabled = glassOn))
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassBackdrop(enabled = glassOn, layer = backdrop),
+                .then(if (backdropNeeded) Modifier.layerBackdrop(backdrop) else Modifier),
         ) {
             CompositionLocalProvider(
                 LocalBottomBarInset provides if (floatingBar) FloatingNavBarReservedHeight else 0.dp,
@@ -241,18 +243,3 @@ fun PictApp(
     }
 }
 
-/**
- * 把这一层内容录进离屏图层，再原样画出来。
- *
- * Compose 没法「取某块区域背后的像素」，玻璃底栏想拿底下的内容当背板，只能自己先录一份。
- * 关掉时（贴底样式、二级页面、设置里关了液态玻璃）完全不录，别白白多一次离屏绘制。
- */
-private fun Modifier.glassBackdrop(enabled: Boolean, layer: GraphicsLayer): Modifier =
-    if (!enabled) {
-        this
-    } else {
-        drawWithContent {
-            layer.record { this@drawWithContent.drawContent() }
-            drawLayer(layer)
-        }
-    }

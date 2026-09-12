@@ -92,6 +92,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+    // 液态玻璃（FR-35）：底栏那层真模糊 + 边沿折射交给库。自己画要写 AGSL 着色器，
+    // 而且背板（底下那份内容）还得自己离屏录一份，不如用现成的。
+    implementation(libs.kyant.backdrop)
 
     // 元数据读取/写入（docs/03 §4）
     implementation(libs.androidx.exifinterface)

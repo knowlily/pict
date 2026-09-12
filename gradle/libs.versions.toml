@@ -27,6 +27,9 @@ turbine = "1.2.1"
 robolectric = "4.16.1"
 # 图标库已停止更新，1.7.8 为最后一版；material3 1.4.0 不再传递依赖它
 materialIcons = "1.7.8"
+# 液态玻璃（FR-35）：Kyant0 的 Backdrop 库，真 RenderEffect 模糊 + AGSL 边沿折射。
+# 只有 JitPack 有制品，且 1.0.0-rc01 之后的新 tag 在 JitPack 上全都构建失败（见 settings.gradle.kts 注释）
+kyantBackdrop = "1.0.0-rc01"
 
 [libraries]
 # Compose（版本由 BOM 统一管理）
@@ -39,6 +42,9 @@ androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4
 androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "materialIcons" }
+
+# 液态玻璃（FR-35）：com.kyant.backdrop，Apache-2.0，源码 github.com/Kyant0/AndroidLiquidGlass
+kyant-backdrop = { module = "com.github.Kyant0:AndroidLiquidGlass", version.ref = "kyantBackdrop" }
 
 # AndroidX 基础
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }

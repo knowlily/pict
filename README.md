@@ -34,6 +34,7 @@ Android 端**批量图片元数据编辑 + 格式转换**工具。全程本地�
 ## 技术栈（拟定）
 
 Kotlin · Jetpack Compose Material 3 · Navigation Compose · Hilt · Coroutines/Flow · WorkManager · Room（自定义预设）
+界面：Kyant0 Backdrop（`com.github.Kyant0:AndroidLiquidGlass`，底栏液态玻璃，Apache-2.0，走 JitPack）
 元数据：AndroidX ExifInterface 1.4.x · metadata-extractor · Adobe XMPCore · Apache Commons Imaging
 编解码：ImageDecoder / Bitmap.compress / AndroidX HeifWriter / 自研 BMP 编码器
 
