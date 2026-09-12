@@ -18,6 +18,8 @@ import com.pict.metatool.domain.preset.UserPresetInput
  * 不能每开一次都去解析一遍用户目录；但写完之后又必须立刻看到新的那份。
  *
  * 同名冲突口径：内置优先（内置 id 是仓库里钉住的，用户预设不该能顶掉它）。
+ * 显示顺序跟冲突口径相反：**自建排在各栏前面**（自己刚加的一眼就能看到），内置跟在后头；
+ * 内置多的栏（设备 19 张、位置 10 张）里，自建若排尾就得横滑一屏才找得到。
  * 用户目录里坏掉的文件进 [userIssues]，只折成一行提示，不影响其余预设使用。
  */
 class MergedPresetCatalog(
@@ -29,7 +31,7 @@ class MergedPresetCatalog(
 
     private fun user(): UserPresetStore.Loaded = cached ?: store.load().also { cached = it }
 
-    override fun all(): List<Preset> = builtin.all() + user().presets
+    override fun all(): List<Preset> = user().presets + builtin.all()
 
     override fun byId(id: String): Preset? =
         builtin.byId(id) ?: user().presets.firstOrNull { it.id == id }

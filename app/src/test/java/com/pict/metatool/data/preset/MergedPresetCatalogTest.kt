@@ -58,12 +58,12 @@ class MergedPresetCatalogTest {
     )
 
     @Test
-    fun `内置在前、自建在后，四栏都能查到`() {
+    fun `自建在前、内置在后，四栏都能查到`() {
         val catalog = catalog()
         catalog.save(input("自建机型"))
 
         val ids = catalog.all().map { it.id }
-        assertEquals(listOf("device.iphone-16-pro", "location.beijing", "user.preset"), ids)
+        assertEquals(listOf("user.preset", "device.iphone-16-pro", "location.beijing"), ids)
         assertEquals("自建机型", catalog.byId("user.preset")?.name)
     }
 
