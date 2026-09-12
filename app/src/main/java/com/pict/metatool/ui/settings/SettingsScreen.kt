@@ -74,7 +74,13 @@ fun SettingsScreen(
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text(text = stringResource(R.string.settings_title)) }) },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            // 悬浮底栏浮在底部：提示条得让开胶囊那段高，否则玻璃把它压住
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
+            )
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier

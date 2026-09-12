@@ -167,7 +167,13 @@ fun LibraryScreen(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(PictSpacing.lg),
+                .padding(
+                    start = PictSpacing.lg,
+                    end = PictSpacing.lg,
+                    top = PictSpacing.lg,
+                    // 提示条也是贴底的：悬浮底栏在的时候得挪到胶囊上面，不然玻璃下的提示看不见
+                    bottom = LocalBottomBarInset.current + PictSpacing.lg,
+                ),
         )
     }
 }
@@ -334,7 +340,13 @@ private fun LibraryEmptyState(
     onOpenRecentFolder: (RecentFolder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            // 悬浮底栏浮在内容上：空状态整块贴底，不给自己留底就会被玻璃压住——
+            // 两个导入按钮正好落在胶囊那一段（真机 1920×1080：按钮 y975–1045、胶囊 y954–1052）
+            .padding(bottom = LocalBottomBarInset.current),
+    ) {
         PlaceholderPane(
             icon = Icons.Filled.Home,
             title = stringResource(R.string.library_empty_title),
