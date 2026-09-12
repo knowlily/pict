@@ -34,7 +34,7 @@ class AssetPresetCatalog(
     override fun byId(id: String): Preset? = loaded.presets.firstOrNull { it.id == id }
 
     /** 加载期的问题（含解析告警），点分路径 + 文件名，便于直接去改 JSON。 */
-    val issues: List<PresetIssue> get() = loaded.issues
+    override val issues: List<PresetIssue> get() = loaded.issues
 
     data class Loaded(val presets: List<Preset>, val issues: List<PresetIssue>)
 

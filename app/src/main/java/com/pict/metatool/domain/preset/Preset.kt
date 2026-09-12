@@ -223,6 +223,14 @@ interface PresetCatalog {
 
     fun byId(id: String): Preset?
 
+    /**
+     * 加载期的问题（内置资源坏文件、解析告警）。
+     *
+     * 用户自建那份的问题在 [PresetEditor.userIssues]：两者来源不同、出现时机也不同
+     * （一个随安装包定死，一个用户随时会加），混在一个列表里就没法分别显示。
+     */
+    val issues: List<PresetIssue> get() = emptyList()
+
     companion object {
         /** 空目录：任何 id 都解析不到，用于不放预设的场景与单测默认值。 */
         val EMPTY: PresetCatalog = object : PresetCatalog {
