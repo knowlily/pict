@@ -88,3 +88,4 @@ cd /d/githubs/pict && export JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-17
 - 每个任务完成后**单次提交**，中文 commit message，主题形如 `feat(<层>): <做了什么> (T<id>)`。
 - 提交前相关单测须绿（XML 实证），工作区不得残留诊断文件。
 - 任务完成 → 按需更新 `README.md` 的当前状态与相关数字；本项目不要求把改动同步进 `docs/`。**本文件只在出现新规则或新坑时改**。
+- **`docs/` 只存在于本地工作副本**：不入库、不推远端（已写入 `.git/info/exclude`，`git status` 不会再看到它）。文档里引用 `docs/NN §x` 的注解对本地有效，公开仓库不提供这些文件。
