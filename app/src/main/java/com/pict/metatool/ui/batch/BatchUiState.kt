@@ -80,6 +80,15 @@ data class BatchUiState(
     val queuedJobId: String? = null,
     /** 排队那一刻的张数。排队之后 targets 可能被重建，文案要留住当时那个数。 */
     val queuedCount: Int = 0,
+    /**
+     * 「排上队就跳去看进度」的一次性信号（非 null = 还没跳过去）。
+     *
+     * 跟 [queuedJobId] 分开，是因为两者的寿命不一样：那个是**状态**（按钮锁着、
+     * 文案写着「已排队 N 张」），要留到用户改草稿；这个是**事件**，界面跳过去就收回去。
+     * 合成一个字段的话，从进度页返回批量页时它还是非 null，那一跳会重放——
+     * 返回键按下去立刻被弹回进度页，看起来就是「退不出去」。
+     */
+    val openJobId: String? = null,
 ) {
 
     val hasTargets: Boolean get() = targets.isNotEmpty()
@@ -99,6 +108,16 @@ data class BatchUiState(
     fun closeUserPresetEditor(): BatchUiState = copy(userPresetDraft = null, userPresetMessage = null)
 
     fun withUserPresetMessage(text: String?): BatchUiState = copy(userPresetMessage = text)
+
+    /** 排上队：任务 id 与张数记下来（按钮要锁住），同时挂上「该跳进度页了」的一次性信号。 */
+    fun queued(jobId: String, count: Int, text: String?): BatchUiState =
+        copy(queuedJobId = jobId, queuedCount = count, openJobId = jobId, message = text)
+
+    /**
+     * 界面已经跳过去了，把一次性信号收回去；排队状态本身一个都不动
+     * （[isQueued]、[canExecute] 照旧——那要等用户改草稿才解锁）。
+     */
+    fun consumeOpenJob(): BatchUiState = copy(openJobId = null)
 
     val isPreviewing: Boolean get() = progress != null
 

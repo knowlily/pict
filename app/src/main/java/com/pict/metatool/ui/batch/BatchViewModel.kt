@@ -212,6 +212,16 @@ class BatchViewModel(
     }
 
     /**
+     * 进度页那一跳收工（T5.6）：界面跳过去之后立刻把一次性信号收回去。
+     *
+     * 不收的话，从进度页返回批量页时那一跳的 `LaunchedEffect` 会重放，
+     * 返回键按下去就被弹回进度页——用户报的「无法返回」就是这个。
+     */
+    fun consumeOpenJob() {
+        _state.update { it.consumeOpenJob() }
+    }
+
+    /**
      * 算这一批的改动（FR-32：只读）。
      *
      * 草稿拼不出计划时直接给提示，不启动协程——失败原因来自 `PictResult.detail`，
@@ -279,10 +289,10 @@ class BatchViewModel(
 
             JobQueue.enqueue(appContext, jobId)
             _state.update {
-                it.copy(
-                    queuedJobId = jobId,
-                    queuedCount = spec.items.size,
-                    message = appContext.getString(R.string.batch_execute_pending),
+                it.queued(
+                    jobId = jobId,
+                    count = spec.items.size,
+                    text = appContext.getString(R.string.batch_execute_pending),
                 )
             }
         }

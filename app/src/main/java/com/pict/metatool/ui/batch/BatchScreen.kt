@@ -122,9 +122,14 @@ fun BatchScreen(
         viewModel.consumeMessage()
     }
 
-    // 排上队就进进度页：这是「开始执行」之后的必然动作，别让用户自己去任务页找
-    LaunchedEffect(state.queuedJobId) {
-        state.queuedJobId?.let(onOpenJob)
+    // 排上队就进进度页：这是「开始执行」之后的必然动作，别让用户自己去任务页找。
+    // 看的是 `openJobId` 这个**一次性**信号，不是 `queuedJobId`：排队状态要一直留着
+    // （按钮锁着、文案写着「已排队 N 张」），拿它当 key 的话，从进度页返回时这一跳会重放，
+    // 返回键按下去就被弹回进度页，退不出去。所以跳之前先把信号收回来。
+    LaunchedEffect(state.openJobId) {
+        val jobId = state.openJobId ?: return@LaunchedEffect
+        viewModel.consumeOpenJob()
+        onOpenJob(jobId)
     }
 
     // 预览是页内的第二步，返回键先退到「改一改」，再退才是离开这一页。
