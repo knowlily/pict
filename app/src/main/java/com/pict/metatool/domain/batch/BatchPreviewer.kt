@@ -32,6 +32,14 @@ import com.pict.metatool.domain.preset.PresetResolver.Applied
 class BatchPreviewer(
     private val reader: BatchSourceReader,
     private val catalog: PresetCatalog,
+    /**
+     * 这一批是不是原地覆写（`JobOptions.writesInPlace`）。
+     *
+     * 另存模式（false）下**只读来源不再是被拦的理由**：改的是旁边新建的副本，源文件只读不影响。
+     * 默认 `true` 是给测试与老调用方的保守值 —— 应用里 [BatchViewModel] 一律显式传设置值，
+     * 别让「忘了传」变成预览骗人。
+     */
+    private val writesInPlace: Boolean = true,
 ) {
 
     /**
@@ -58,9 +66,11 @@ class BatchPreviewer(
 
     /** 预览单个目标；被拦下时也返回结果（[ItemPreview.blocked] 非空），不抛异常。 */
     suspend fun previewOne(plan: EditPlan, target: BatchTarget): ItemPreview {
-        // 来源本身只读（相册选择器给的 URI 常常如此）：格式再合适也写不回去。
+        // 来源本身只读（相册选择器给的 URI 常常如此）：**只在地模式**才是拦停理由 ——
+        // 那时改的就是这个文件本身，写不回去只能收工。另存模式改的是旁边新建的副本，
+        // 只读的源照样读得出来、照样能把改好的存在旁边，所以这一关不拦。
         // 得跟「格式不支持」分开报，不然用户拿着一个好好写得了的 PNG 被劝去重编码。
-        if (!target.writable) {
+        if (writesInPlace && !target.writable) {
             return blocked(
                 target,
                 PictError.STORAGE_READONLY,
@@ -119,8 +129,12 @@ class BatchPreviewer(
     }
 
     /** 「写不了」的统一说法：带格式名，界面上的「不支持」那一列要能看出是哪种格式不答应。 */
-    private fun unsupportedReason(target: BatchTarget): String =
+    private fun unsupportedReason(target: BatchTarget): String = if (writesInPlace) {
         "${target.format.label} 不支持原地写元数据（需重编码或导出副本）"
+    } else {
+        // 另存模式下还说「原地」会把人绕进去 —— 这时压根没打算碰原文件
+        "${target.format.label} 不支持写元数据（另存副本也改不了，得重编码）"
+    }
 
     private fun fromApplied(target: BatchTarget, source: MetadataSet, applied: Applied): ItemPreview =
         ItemPreview(

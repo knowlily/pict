@@ -27,10 +27,30 @@ object BatchItemRules {
      *
      * 判序与 `BatchPreviewer` 一致：**先看授权，再看格式**。只读却报「格式不支持」
      * 会把用户引到错的方向去（换格式没用，该重新授权）。
+     *
+     * [writesInPlace] 决定「授权」这一关要不要看：另存模式（false）只往源文件的旁边
+     * 写一个新文件，源文件全程不开写通道 —— 只读授权照样能另存，于是这一关不拦。
+     * 「格式有没有写通道」两档都要看：副本也存不下写不进去的键。
+     *
+     * 默认给 `true`（＝按老口径拦）是**保守方向**：调用方忘了传的时候宁可多拦几项，
+     * 也不要拿着「以为能写」的判断去动用户的文件。应用里的唯一调用点显式传实际模式。
      */
-    fun blockBeforeRead(writable: Boolean, format: ImageFormatHint, hasWriter: Boolean): ItemResult.Unsupported? = when {
-        !writable -> ItemResult.Unsupported("来源是只读授权，写不了：${format.label}")
-        !hasWriter -> ItemResult.Unsupported("${format.label} 不支持原地写元数据")
+    fun blockBeforeRead(
+        writable: Boolean,
+        format: ImageFormatHint,
+        hasWriter: Boolean,
+        writesInPlace: Boolean = true,
+    ): ItemResult.Unsupported? = when {
+        writesInPlace && !writable -> ItemResult.Unsupported("来源是只读授权，写不了：${format.label}")
+        !hasWriter -> ItemResult.Unsupported(
+            // 「原地」两个字只在真会动源文件的时候才说：另存模式下提「原地」，
+            // 用户会以为源文件被弄坏了——其实压根没碰它
+            if (writesInPlace) {
+                "${format.label} 不支持原地写元数据"
+            } else {
+                "${format.label} 不支持写元数据（另存副本也改不了，得重编码）"
+            },
+        )
         else -> null
     }
 
@@ -50,4 +70,31 @@ object BatchItemRules {
 
     /** dry-run 的收尾：只报「将会变哪些键」，一个字节都不落盘（FR-32）。 */
     fun dryRunResult(changedKeys: Set<TagKey>): ItemResult = ItemResult.Done(changedKeys = changedKeys)
+
+    /**
+     * 另存模式的收尾：判定与 [resultOf] **完全一致**（同一份 FR-33 口径，不做第二套），
+     * 只是把「落到哪个新文件」一并带上——报告要能告诉用户副本在哪儿，
+     * 否则「改好了但不知道存哪去了」比失败还让人着急。
+     *
+     * 校验未通过时也把副本名字写进 detail：文件已经建出来了，用户得知道去哪儿看（或删），
+     * 别让一个可能是半成品的新文件无声无息躺在相册里。
+     */
+    fun resultOfCopy(
+        changedKeys: Set<TagKey>,
+        report: MetadataVerifyReport?,
+        outputUri: String,
+        copyName: String,
+    ): ItemResult = when (val base = resultOf(changedKeys, report)) {
+        is ItemResult.Done -> base.copy(
+            outputUri = outputUri,
+            note = noteOf("另存成 $copyName", base.note),
+        )
+
+        is ItemResult.VerifyFailed -> base.copy(detail = noteOf(base.detail, "副本已留在 $copyName"))
+        else -> base
+    }
+
+    /** 把几句话连成一句（丢掉空的、去重后按顺序连）；一句都没有就是 null。 */
+    private fun noteOf(vararg parts: String?): String? =
+        parts.filterNotNull().filter { it.isNotBlank() }.distinct().joinToString("；").ifBlank { null }
 }

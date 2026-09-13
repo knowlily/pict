@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -56,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pict.metatool.R
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
+import com.pict.metatool.domain.naming.ExportNaming
 import com.pict.metatool.domain.settings.AppSettings
 import com.pict.metatool.ui.preset.PresetPickerSheet
 import com.pict.metatool.ui.preset.UserPresetEditorSheet
@@ -99,6 +101,14 @@ fun EditScreen(
         ),
     ) { target -> target?.let(viewModel::exportTo) }
 
+    // 落点不是原图时点「另存」＝保存本身（docs/05 §6）：把同一个「新建文档」对话框拉起来，
+    // 改好的内容随 exportTo 落到用户挑的新文件里。先消信号再拉起，免得重组时重复弹。
+    LaunchedEffect(state.saveAsFallback) {
+        if (!state.saveAsFallback) return@LaunchedEffect
+        viewModel.consumeSaveAsFallback()
+        exportLauncher.launch(ExportNaming.suggest(state.fileName, settings.exportSuffix))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,26 +128,42 @@ fun EditScreen(
                             contentDescription = stringResource(R.string.edit_preview_open),
                         )
                     }
-                    TextButton(
-                        onClick = { exportLauncher.launch(ExportNaming.suggest(state.fileName, settings.exportSuffix)) },
-                        enabled = state.canExport,
-                    ) {
-                        Text(
-                            text = stringResource(
-                                if (state.isExporting) R.string.edit_export_running else R.string.edit_export,
-                            ),
-                        )
+                    // 「导出」与「另存」在默认设置下是同一件事（都写副本），合成一个按钮；
+                    // 只有打开「直接改动原文件」之后才有区别——那时「导出」才是「另存一份、草稿留着」。
+                    if (!state.appliesBySaveAs) {
+                        TextButton(
+                            onClick = {
+                                exportLauncher.launch(ExportNaming.suggest(state.fileName, settings.exportSuffix))
+                            },
+                            enabled = state.canExport,
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    if (state.isExporting) {
+                                        R.string.edit_export_running
+                                    } else {
+                                        R.string.edit_export
+                                    },
+                                ),
+                            )
+                        }
                     }
                     Button(
                         onClick = { viewModel.apply() },
                         enabled = state.canApply,
                         modifier = Modifier.padding(end = 8.dp),
                     ) {
+                        // 落点不是原图时按钮就说「另存」，别承诺「已改好」
                         Text(
-                            text = if (state.isDirty) {
-                                stringResource(R.string.edit_apply, state.dirtyCount)
-                            } else {
-                                stringResource(R.string.edit_apply_idle)
+                            text = when {
+                                state.appliesBySaveAs && state.isDirty ->
+                                    stringResource(R.string.edit_save_as, state.dirtyCount)
+
+                                state.appliesBySaveAs -> stringResource(R.string.edit_save_as_idle)
+
+                                state.isDirty -> stringResource(R.string.edit_apply, state.dirtyCount)
+
+                                else -> stringResource(R.string.edit_apply_idle)
                             },
                         )
                     }
@@ -154,12 +180,18 @@ fun EditScreen(
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             SearchField(query = state.query, onQueryChange = viewModel::onQueryChange)
 
-            if (state.metadata != null && state.canWriteInPlace) {
+            if (state.metadata != null && state.hasInPlaceWriter) {
                 EditToolsRow(
                     onPresets = { viewModel.openPresets() },
                     onRandomFill = { viewModel.openRandomFill() },
                     onAddField = { viewModel.openAddField() },
                 )
+            }
+
+            // 不改原图时先把话说在前面：来源只读（相册选择器那种）与「设置里不让直接改原文件」
+            // 是两条不同的原因，分开说，别让人以为关掉的是权限。
+            if (state.showsSaveAsReason) {
+                SourceSaveAsBanner(readOnly = state.saveAsReasonIsReadOnly)
             }
 
             val formatName = state.source?.format?.name.orEmpty()
@@ -173,7 +205,7 @@ fun EditScreen(
                     onRetry = { viewModel.retry() },
                 )
 
-                !state.canWriteInPlace -> NoticeBlock(
+                !state.hasInPlaceWriter -> NoticeBlock(
                     text = stringResource(R.string.edit_readonly_format, formatName),
                 )
 
@@ -557,6 +589,45 @@ private fun NoticeBlock(text: String, textAlign: TextAlign = TextAlign.Start) {
         textAlign = textAlign,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
     )
+}
+
+/**
+ * 「不改原图」的说明条。
+ *
+ * 两种原因共用这一条，文案分开：
+ * - [readOnly] = true：相册选择器那条路（docs/05 §6），来源只有读权限；
+ * - [readOnly] = false：设置里「直接改动原文件」关着（默认），来源可写也不写。
+ *
+ * 不塞进 [NoticeBlock]：那个块会把字段列表整个顶掉，而这两种情况**照样能改**——
+ * 只是落点变成新文件，所以用一条横幅贴在上面，列表该显示还显示。
+ */
+@Composable
+private fun SourceSaveAsBanner(readOnly: Boolean) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (readOnly) Icons.Filled.Lock else Icons.Filled.Edit,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = stringResource(
+                    if (readOnly) R.string.edit_readonly_source else R.string.edit_inplace_off_source,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable

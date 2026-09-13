@@ -84,8 +84,31 @@ data class EditUiState(
     val confirmDiscard: Boolean = false,
     val message: EditMessage? = null,
     val verifySummary: String? = null,
-    /** 该格式能否原地写（HEIF 为 false，UI 提示「需重编码」）。 */
-    val canWriteInPlace: Boolean = true,
+    /**
+     * 源 URI 是否给了写授权（载入时用 `UriAccess.isWritable` 探的快照，docs/05 §5.1）。
+     *
+     * 相册选择器给的 `content://media/picker/...` **只有读权限**，写必抛 `SecurityException`；
+     * 这类来源按 docs/05 §6 降级成另存，不硬写。
+     */
+    val sourceWritable: Boolean = true,
+    /** 该**格式**有没有原地写通道（HEIF/RAW 为 false，UI 提示「需重编码」）。 */
+    val hasInPlaceWriter: Boolean = true,
+    /**
+     * 设置里允不允许直接改动原文件（[com.pict.metatool.domain.settings.AppSettings.inPlaceEditing]）。
+     *
+     * 默认 false：关着的时候**任何**来源都不写原文件，落点一律是新文件——不管是相册选择器
+     * 给的只读 URI，还是文件管理器给的可写 URI。来源能不能写（[sourceWritable]）与
+     * 「准不准写」（这一项）是两件事，分开存才能各自如实显示原因。
+     */
+    val inPlaceAllowed: Boolean = false,
+    /**
+     * 「这一单改走另存」的一次性信号：点「应用」时源不可写就置位，
+     * 由 UI 拉起 SAF 的新建文档对话框。
+     *
+     * 放在状态里而不是直接回调，是因为 `CreateDocument` 必须由 Activity 的
+     * launcher 发起，ViewModel 够不到。
+     */
+    val saveAsFallback: Boolean = false,
 
     // ---------- 预设与随机填充（docs/06 §3.3、docs/07 T3.7/T3.9） ----------
     /** 可用的预设（内置来自 assets，见 `AssetPresetCatalog`）。 */
@@ -133,7 +156,37 @@ data class EditUiState(
 
     val isDirty: Boolean get() = dirtyCount > 0
 
-    val canApply: Boolean get() = isDirty && !isApplying && !isLoading && canWriteInPlace
+    /** 能不能原地写：授权、格式、设置三关都得过，缺一即 false。 */
+    val canWriteInPlace: Boolean get() = sourceWritable && hasInPlaceWriter && inPlaceAllowed
+
+    /**
+     * 应用按钮是否该写成「另存」——落点不是原图时别承诺「改好了」。
+     *
+     * 三种情况都算：[sourceWritable] 假（相册选择器那种只读来源）、
+     * [hasInPlaceWriter] 假（HEIF 这类不能原地写的格式）、[inPlaceAllowed] 假
+     * （设置里「直接改动原文件」关着，这是默认）。
+     */
+    val appliesBySaveAs: Boolean get() = !canWriteInPlace
+
+    /**
+     * 要不要在编辑页顶部解释「为什么不改原图」。
+     *
+     * 格式本身不能原地写时另有一条块状提示（[com.pict.metatool.R.string.edit_readonly_format]），
+     * 这里只管「授权」与「设置」两关，不重复解释同一件事。
+     */
+    val showsSaveAsReason: Boolean get() = metadata != null && hasInPlaceWriter && !canWriteInPlace
+
+    /** 上面那条提示的原因是不是「来源只读」（假 = 设置里「直接改动原文件」关着）。 */
+    val saveAsReasonIsReadOnly: Boolean get() = !sourceWritable
+
+    /**
+     * 能不能落盘（原地覆盖，或源只读时的另存）。
+     *
+     * 刻意只看 [hasInPlaceWriter]：源不可写**不是**「不能应用」，那种情况按
+     * docs/05 §6 降级另存，按钮换文案继续可用。格式不行则拦在这里——
+     * 写不出元数据的副本等于「改动没落进去」，先另存成能写的格式才不是误导。
+     */
+    val canApply: Boolean get() = isDirty && !isApplying && !isLoading && hasInPlaceWriter
 
     /**
      * 能不能导出副本。
@@ -270,6 +323,7 @@ data class EditUiState(
         inputError = null,
         message = null,
         verifySummary = null,
+        saveAsFallback = false,
     )
 
     fun withLoaded(
@@ -484,6 +538,27 @@ data class EditUiState(
     )
 
     /**
+     * 另存成功后的收尾：草稿与 [withApplied] 一样收干净，但**基线换成副本里那份**的值。
+     *
+     * 为什么不能照搬 [withApplied] 的「只清草稿」：源文件只读，一个字节都没变，行上的展示值
+     * 在草稿清空后会回落成源值——用户刚把改动存进新文件，回头却看见旧值摆在那儿，像是被丢了。
+     * 基线跟着副本走，界面上留着的就是刚写进新文件的那批值。
+     */
+    fun withSavedAsCopy(
+        baseline: MetadataSet,
+        origins: Map<TagKey, List<String>>,
+        verifySummary: String?,
+    ): EditUiState = copy(
+        isExporting = false,
+        metadata = baseline,
+        origins = origins,
+        draft = EditDraft.EMPTY,
+        showPreview = false,
+        verifySummary = verifySummary,
+        saveAsFallback = false,
+    )
+
+    /**
      * 导出开始 / 结束。
      *
      * 与「应用」的一处关键差别：导出结束**不清草稿**。导出的那份副本不是当前编辑对象，
@@ -497,6 +572,11 @@ data class EditUiState(
         copy(message = EditMessage(text, isError))
 
     fun consumeMessage(): EditUiState = copy(message = null)
+
+    /** 记下「这一单走另存」，等 UI 把对话框拉起来（用完就 [consumeSaveAsFallback]）。 */
+    fun withSaveAsFallback(): EditUiState = copy(saveAsFallback = true)
+
+    fun consumeSaveAsFallback(): EditUiState = copy(saveAsFallback = false)
 
     /** 一行字段：展示值、原始值、可编辑性与未保存态。 */
     private fun row(key: TagKey, set: MetadataSet): EditFieldRow {

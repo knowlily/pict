@@ -120,6 +120,18 @@ data class AppSettings(
     val exportSuffix: String = DEFAULT_EXPORT_SUFFIX,
     /** 导出副本写完之后，是否把文件读回来逐项校验（关掉能少读一次文件）。 */
     val verifyAfterExport: Boolean = DEFAULT_VERIFY_AFTER_EXPORT,
+    /**
+     * 允不允许**直接改动原文件**（原地写）。
+     *
+     * 默认**关**：不管图是从哪儿导进来的（相册选择器、文件管理器、文件夹导入），
+     * 改动一律写成新文件，原图一个字节都不动。理由是把「改坏了」的代价降到零——
+     * 不改原件就不需要先备份、也不需要解释备份在哪。
+     *
+     * 打开之后，可写来源的编辑页顶栏会多出「应用」，点它就地覆盖原文件（改前自动备份）。
+     * 关着的时候顶栏只有一个「另存」：`导出` 与 `另存` 合并成同一个动作（都是写副本），
+     * 摆两个做同一件事的按钮只会让人猜它们有什么区别。
+     */
+    val inPlaceEditing: Boolean = DEFAULT_IN_PLACE_EDITING,
     /** 套用预设时是否覆盖已有值；false（默认）= 只填原图缺的字段。 */
     val presetOverwriteDefault: Boolean = DEFAULT_PRESET_OVERWRITE,
     /** 随机填充的默认种子：同一张图 + 同一颗种子给出同一批结果（T3.6）。 */
@@ -198,6 +210,14 @@ data class AppSettings(
 
         const val DEFAULT_VERIFY_AFTER_EXPORT: Boolean = true
 
+        /**
+         * 默认**不**直接改动原文件。
+         *
+         * 这条默认值是有意的：改原图是不可逆的（哪怕有备份，用户也得先知道备份在哪），
+         * 而写成副本永远安全。想就地改的人去设置里打开，一次开关换长期习惯。
+         */
+        const val DEFAULT_IN_PLACE_EDITING: Boolean = false
+
         const val DEFAULT_PRESET_OVERWRITE: Boolean = false
 
         const val DEFAULT_RANDOM_SEED: Long = 20260101L
@@ -231,7 +251,7 @@ data class AppSettings(
 
         /**
          * 后缀长度上限：够写「-已编辑-备份」这类，又不会把文件名顶到 Provider 的截断线
-         * （[com.pict.metatool.ui.edit.ExportNaming.MAX_LENGTH] 那个 100 字符）。
+         * （[com.pict.metatool.domain.naming.ExportNaming.MAX_LENGTH] 那个 100 字符）。
          */
         const val MAX_SUFFIX_LENGTH: Int = 32
 

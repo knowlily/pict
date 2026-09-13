@@ -20,6 +20,7 @@ import com.pict.metatool.data.metadata.imaging.CommonsImagingStore
 import com.pict.metatool.data.preset.MergedPresetCatalog
 import com.pict.metatool.data.source.ImageCopy
 import com.pict.metatool.data.source.ImageSource
+import com.pict.metatool.data.source.UriAccess
 import com.pict.metatool.domain.model.FieldSpec
 import com.pict.metatool.domain.model.TagKey
 import com.pict.metatool.domain.plan.EditPlanExecutor
@@ -106,12 +107,21 @@ class EditViewModel(
         _state.value = _state.value.withLoading(uri)
         loadJob = viewModelScope.launch {
             try {
-                val source = withContext(Dispatchers.IO) { ImageSource.from(resolver, Uri.parse(uri)) }
+                val parsed = Uri.parse(uri)
+                val source = withContext(Dispatchers.IO) { ImageSource.from(resolver, parsed) }
+                val hasWriter = writers.any { writer -> writer.canWrite(source.info) }
+                // 授权与格式分开探：相册选择器给的 URI 天生只读，看格式看不出来（docs/05 §5.1）
+                val writable = withContext(Dispatchers.IO) { UriAccess.isWritable(resolver, parsed) }
                 val read = withContext(Dispatchers.IO) { reader.read(resolver, source) }
                 when (read) {
                     is PictResult.Success -> _state.update {
                         it.withLoaded(source.info, read.value.set, read.value.origins)
-                            .copy(canWriteInPlace = writers.any { writer -> writer.canWrite(source.info) })
+                            .copy(
+                                sourceWritable = writable,
+                                hasInPlaceWriter = hasWriter,
+                                // 设置里「直接改动原文件」关着时（默认），可写来源也一律走另存
+                                inPlaceAllowed = settings.inPlaceEditing,
+                            )
                     }
 
                     is PictResult.Failure -> _state.update { it.withError(read.error, read.failure.detail) }
@@ -156,6 +166,9 @@ class EditViewModel(
     fun closePreview() = update { it.closePreview() }
 
     fun consumeMessage() = update { it.consumeMessage() }
+
+    /** 另存对话框已拉起（或已取消），把一次性信号收回去。 */
+    fun consumeSaveAsFallback() = update { it.consumeSaveAsFallback() }
 
     // ---------- 预设 / 随机填充 / 添加字段（docs/07 T3.7、T3.9） ----------
 
@@ -328,6 +341,22 @@ class EditViewModel(
         val info = current.source ?: return
         val before = current.metadata ?: return
         val uri = current.uri?.let(Uri::parse) ?: return
+
+        // 落点不是原图（相册选择器的只读来源，或设置里关着「直接改动原文件」）→ 不试着硬写：
+        // 按 docs/05 §6 降级另存，由 UI 拉起新建文档对话框，改好的内容落在新文件里。
+        if (!current.canWriteInPlace) {
+            _state.update {
+                it.withSaveAsFallback().withMessage(
+                    if (!current.sourceWritable) {
+                        "这张图只有读权限，改不了原图——已改为另存，挑个位置就好"
+                    } else {
+                        "当前不直接改原图——已改为另存，挑个位置就好"
+                    },
+                )
+            }
+            return
+        }
+
         val source = ImageSource(uri = uri, info = info)
 
         val target = when (val folded = EditPlanExecutor.execute(current.draft.toPlan(dryRun = true), before)) {
@@ -358,9 +387,22 @@ class EditViewModel(
                 }.getOrNull()
                 val written = withContext(Dispatchers.IO) { writer.write(resolver, source, target) }
                 when (written) {
-                    is PictResult.Failure -> _state.update {
-                        it.withError(written.error, written.failure.detail)
-                            .withMessage("写入失败：${written.failure.detail ?: written.error.code}", isError = true)
+                    is PictResult.Failure -> {
+                        // 事前探着可写、真写却被系统拦下（授权刚被撤销之类）：同样降级另存，
+                        // 别让「已改为另存」变成空话，也别让改好的内容白丢。
+                        _state.update {
+                            if (written.error == PictError.STORAGE_READONLY) {
+                                it.copy(isApplying = false)
+                                    .withSaveAsFallback()
+                                    .withMessage("这个位置写不进去了，已改为另存", isError = true)
+                            } else {
+                                it.withError(written.error, written.failure.detail)
+                                    .withMessage(
+                                        "写入失败：${written.failure.detail ?: written.error.code}",
+                                        isError = true,
+                                    )
+                            }
+                        }
                     }
 
                     is PictResult.Success -> onWritten(source, before, target, written.value, fingerprintBefore)
@@ -433,6 +475,9 @@ class EditViewModel(
         val before = current.metadata ?: return
         val uri = current.uri?.let(Uri::parse) ?: return
         val source = ImageSource(uri = uri, info = info)
+        // 落点不是原图时，「另存」就是保存本身（按钮也是这么标的）：写成了就该跟「应用」一样把草稿收干净。
+        // 只有「直接改动原文件」打开、源也可写时正好相反——原图还没动，草稿得留着让用户接着决定「应用」还是「放弃」。
+        val saveAs = current.appliesBySaveAs
 
         // 先干跑：草稿本身不合法就别去建文件，省得在用户目录里留个半成品
         current.planned?.failureOrNull()?.let { failure ->
@@ -502,8 +547,10 @@ class EditViewModel(
                         if (!settings.verifyAfterExport) {
                             // 设置里关了校验：如实说「没读回来」，不拿一个像通过的字样糊过去
                             _state.update {
-                                it.withExportFinished().withMessage(
-                                    "已导出「${copy.displayName}」：${written.value.summary()}；按设置跳过了读回校验",
+                                settleExport(it, saveAs, target, current.origins, null).withMessage(
+                                    "已${if (saveAs) "另存" else "导出"}「${copy.displayName}」：" +
+                                        "${written.value.summary()}；按设置跳过了读回校验" +
+                                        if (saveAs) SAVED_AS_DONE else "",
                                 )
                             }
                             return@launch
@@ -523,10 +570,19 @@ class EditViewModel(
                         }
                         val verifyText = report?.summary() ?: "读回失败，无法校验"
                         val failed = report?.isLossless == false
+                        // 校验没过就不收草稿：改动还没可靠地落在纸上，留着让用户换个落点再试
+                        val settled = saveAs && !failed
                         _state.update {
-                            it.withExportFinished().withMessage(
-                                text = "已导出「${copy.displayName}」：${written.value.summary()}；$verifyText" +
-                                    if (failed) "（输出文件可能有问题）" else "",
+                            settleExport(
+                                it,
+                                settled,
+                                after?.set ?: target,
+                                after?.origins ?: current.origins,
+                                verifyText,
+                            ).withMessage(
+                                text = "已${if (saveAs) "另存" else "导出"}「${copy.displayName}」：" +
+                                    "${written.value.summary()}；$verifyText" +
+                                    if (failed) "（输出文件可能有问题）" else if (settled) SAVED_AS_DONE else "",
                                 isError = failed,
                             )
                         }
@@ -544,9 +600,31 @@ class EditViewModel(
         }
     }
 
+    /**
+     * 导出/另存的收尾。
+     *
+     * [asSave] 为真（源只读，「另存」就是保存本身）时按 [EditUiState.withSavedAsCopy] 收：
+     * 草稿清空、基线换成副本里那份读回的集合，底栏「有 N 项未保存」随之消失。
+     * 为假（源可写，用户点的是「导出副本」）时只收掉导出状态，草稿原地留着——原图还没写。
+     */
+    private fun settleExport(
+        state: EditUiState,
+        asSave: Boolean,
+        baseline: com.pict.metatool.domain.model.MetadataSet,
+        origins: Map<com.pict.metatool.domain.model.TagKey, List<String>>,
+        verifySummary: String?,
+    ): EditUiState = if (asSave) {
+        state.withSavedAsCopy(baseline, origins, verifySummary)
+    } else {
+        state.withExportFinished()
+    }
+
     private inline fun update(block: (EditUiState) -> EditUiState) = _state.update(block)
 
     companion object {
+
+        /** 另存成功的收尾提示：草稿被清空得说一声，底栏忽然消失会让人以为改动丢了。 */
+        private const val SAVED_AS_DONE = "（已存进新文件，草稿清空）"
 
         /** 无 DI 框架时的手工装配，与详情页一致（用 applicationContext 的 resolver）。 */
         fun factory(

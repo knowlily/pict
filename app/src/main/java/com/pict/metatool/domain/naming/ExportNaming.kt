@@ -1,4 +1,4 @@
-package com.pict.metatool.ui.edit
+package com.pict.metatool.domain.naming
 
 import com.pict.metatool.domain.settings.AppSettings
 
@@ -8,6 +8,10 @@ import com.pict.metatool.domain.settings.AppSettings
  * 纯字符串处理，不碰 Android：SAF 的 `CreateDocument` 只接受一个建议名，
  * 取错名（少了扩展名、跟原名撞了、长到 Provider 直接截断）都只有上了设备才发现，
  * 所以规则放这里单测锁住。
+ *
+ * 放 `domain` 而不是编辑页：**单图页与批量页用的是同一个命名规则**——批量把副本建在源文件旁边，
+ * 名字必须跟用户从编辑页导出时看到的一样（`photo.jpg` → `photo-edited.jpg`），
+ * 两处各写一套迟早会长歪。撞名编号见 [CopyNaming.unique]。
  *
  * 约定：
  * - 保留原扩展名，主名后加后缀（默认 `-edited`，可在设置里改，见 [suggest] 的 `suffix`）：

@@ -10,6 +10,7 @@ import com.pict.metatool.domain.plan.ClearTarget
 import com.pict.metatool.domain.plan.EditOperation
 import com.pict.metatool.domain.preset.PresetTestSupport
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -75,12 +76,25 @@ class BatchJobSpecTest {
                 overwriteExisting = true,
                 seed = 11L,
             ),
-            options = JobOptions(concurrency = 3, maxRetries = 1, dryRun = true),
+            options = JobOptions(concurrency = 3, maxRetries = 1, dryRun = true, writesInPlace = true),
         )
 
         val restored = BatchJobSpec.fromJson(original.toJson())
 
         assertEquals(original, restored)
+    }
+
+    @Test
+    fun `升级前排下的队没有落点字段，读回来按另存算——默认站安全那一边`() {
+        // 老定义里没这个键（那时只有原地覆写这一种活法）：把键摘掉，模拟升级前存下的定义
+        val current = spec(options = JobOptions(writesInPlace = true)).toJson()
+        val legacy = current.replace(Regex(",\\s*\"writesInPlace\"\\s*:\\s*(true|false)"), "")
+
+        assertFalse("手术得摘对地方，不然这条测试白测", legacy.contains("writesInPlace"))
+        val restored = BatchJobSpec.fromJson(legacy)
+
+        assertNotNull(restored)
+        assertFalse(restored!!.options.writesInPlace)
     }
 
     @Test
@@ -123,6 +137,15 @@ class BatchJobSpecTest {
         val plan = (built.toPlan(catalog) as PictResult.Success).value
 
         assertTrue(plan.dryRun)
+        // 默认是另存（[JobOptions.writesInPlace] 默认 false）：源文件不开写通道，
+        // 也就没有「覆写前备份」这回事，计划里这个标志得跟着一起假
+        assertFalse(plan.backupBeforeOverwrite)
+    }
+
+    @Test
+    fun `打开直接改动原文件，计划才带覆写前备份的标志`() {
+        val plan = (spec(options = JobOptions(writesInPlace = true)).toPlan(catalog) as PictResult.Success).value
+
         assertTrue(plan.backupBeforeOverwrite)
         assertEquals(1, plan.operations.size)
         val op = plan.operations.single() as EditOperation.ApplyPreset

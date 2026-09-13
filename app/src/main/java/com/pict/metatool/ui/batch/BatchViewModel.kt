@@ -14,6 +14,7 @@ import com.pict.metatool.data.job.JobIds
 import com.pict.metatool.data.job.JobQueue
 import com.pict.metatool.data.job.JobSpecStore
 import com.pict.metatool.data.preset.MergedPresetCatalog
+import com.pict.metatool.data.settings.SharedPrefsSettingsStore
 import com.pict.metatool.domain.batch.BatchDraft
 import com.pict.metatool.domain.batch.BatchMode
 import com.pict.metatool.domain.batch.BatchPreviewer
@@ -61,6 +62,16 @@ class BatchViewModel(
     /** 时钟与 id 可注入：排队这件事本身能单测，不必等真时间。 */
     private val clock: () -> Long = System::currentTimeMillis,
     private val newJobId: (Long) -> String = { JobIds.newId(it) },
+    /**
+     * 这一批的落点：`true` = 原地覆写源文件，`false` = 另存成新文件（默认，见 [JobOptions.writesInPlace]）。
+     *
+     * 构造时读一次设置里那个开关，整轮流程共用同一个值 —— 预览、干活、报告必须说同一件事，
+     * 最不能出的岔子是「预览说另存、真跑起来却把原图覆写了」。代价是：进了这页之后再去设置里
+     * 改开关，这一轮不跟着变（想换得重进一次），这是刻意换来的「一轮内自洽」。
+     *
+     * 默认 false 与设置默认一致；装配在 [factory] 里完成。
+     */
+    private val writesInPlace: Boolean = false,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -223,7 +234,7 @@ class BatchViewModel(
 
         viewModelScope.launch {
             val preview = withContext(Dispatchers.IO) {
-                BatchPreviewer(reader, catalog).preview(plan, current.targets) { done, total, _ ->
+                BatchPreviewer(reader, catalog, writesInPlace = writesInPlace).preview(plan, current.targets) { done, total, _ ->
                     _state.update { it.copy(progress = done to total) }
                 }
             }
@@ -251,7 +262,7 @@ class BatchViewModel(
         val spec = BatchJobSpec.from(
             draft = current.draft,
             targets = current.targets,
-            options = JobOptions(),
+            options = JobOptions(writesInPlace = writesInPlace),
             jobId = jobId,
             nowMillis = now,
             presetNames = current.draft.presetIds
@@ -308,6 +319,8 @@ class BatchViewModel(
                         reader = SafBatchSourceReader(app.contentResolver),
                         catalog = catalog,
                         editor = catalog,
+                        // 「默认另存」：设置里那个开关在这里定下来，预览与排队共用同一个值
+                        writesInPlace = SharedPrefsSettingsStore(app).settings.value.inPlaceEditing,
                     )
                 }
             }

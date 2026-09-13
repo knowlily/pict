@@ -322,4 +322,39 @@ class BatchPreviewerTest {
         assertEquals(PictError.ENCODE_UNSUPPORTED, item.blocked)
         assertTrue("格式已确认写不了，没必要再读一遍", reader.readCounts.isEmpty())
     }
+
+    // ---------- 默认另存（writesInPlace = false）：只读不再拦，格式照样拦 ----------
+
+    @Test
+    fun `另存模式下只读来源不拦，照读照算变更`() = runBlocking {
+        // 相册选择器给的 URI 常常只读；另存改的是旁边新建的那份副本，只读的源照样读得出
+        val readOnly = BatchTarget.of("content://pict/ro.png", "ro.png", ImageFormatHint.PNG, writable = false)
+        val reader = reader(readOnly to sourceOf("ro.png", make to TagValue.Text("Canon")), writable = setOf(readOnly.uri))
+        val previewer = BatchPreviewer(reader, catalog, writesInPlace = false)
+
+        val item = previewer.previewOne(presetPlan(overwrite = true), readOnly)
+
+        assertNull("另存不碰源文件，只读不该拦", item.blocked)
+        assertTrue("读不出来就算不出变更，这条等于白过", reader.readCounts.isNotEmpty())
+        assertTrue(item.changes.isNotEmpty())
+    }
+
+    @Test
+    fun `另存模式下写不了的目标照样拦，理由里不提「原地」`() = runBlocking {
+        // 假读取器的「能不能写」就是 writable 集合（见 InMemorySourceReader.canWriteTo），
+        // 真的读取器问的是格式。这一关两种模式下都得拦：另存出来的副本还是同一个格式
+        val reader = reader(heic to sourceOf("b.heic"), writable = emptySet())
+
+        val copyMode = BatchPreviewer(reader, catalog, writesInPlace = false).previewOne(presetPlan(), heic)
+
+        assertEquals(PictError.ENCODE_UNSUPPORTED, copyMode.blocked)
+        assertFalse(
+            "另存模式压根没打算动源文件，理由里说「原地」会让人以为源文件被弄坏了",
+            copyMode.blockedDetail.orEmpty().contains("原地"),
+        )
+
+        // 原地模式的同一条理由得说清「原地」：那时真的会去动源文件
+        val inPlace = BatchPreviewer(reader, catalog, writesInPlace = true).previewOne(presetPlan(), heic)
+        assertTrue(inPlace.blockedDetail.orEmpty().contains("原地"))
+    }
 }

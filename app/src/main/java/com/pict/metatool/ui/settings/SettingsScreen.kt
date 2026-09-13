@@ -34,7 +34,7 @@ import com.pict.metatool.domain.settings.Backdrop
 import com.pict.metatool.domain.settings.NavBarStyle
 import com.pict.metatool.domain.settings.NavItem
 import com.pict.metatool.domain.settings.ThemeMode
-import com.pict.metatool.ui.edit.ExportNaming
+import com.pict.metatool.domain.naming.ExportNaming
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.theme.PictSpacing
 import com.pict.metatool.ui.theme.supportsDynamicColor
@@ -107,6 +107,14 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_section_output),
                 anchor = suffixAnchor,
             ) {
+                // 先说「改原图还是写副本」：这一项决定下面那些导出设置什么时候用得上
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_in_place_editing),
+                    subtitle = stringResource(R.string.settings_in_place_editing_hint),
+                    checked = settings.inPlaceEditing,
+                    onCheckedChange = { on -> onUpdate { it.copy(inPlaceEditing = on) } },
+                )
+
                 SettingsValueRow(
                     title = stringResource(R.string.settings_export_suffix),
                     value = settings.exportSuffix.ifEmpty {

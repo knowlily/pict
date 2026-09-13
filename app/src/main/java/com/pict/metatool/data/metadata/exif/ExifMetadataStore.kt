@@ -85,7 +85,7 @@ class ExifMetadataStore : MetadataStore, MetadataWriter {
         } catch (e: IOException) {
             failureOf(PictError.META_WRITE, writeFailureDetail(e), e)
         } catch (e: SecurityException) {
-            failureOf(PictError.STORAGE_READONLY, "URI 没有写权限或授权已失效，请重新选择图片", e)
+            failureOf(PictError.STORAGE_READONLY, "这个来源只读，写不进去", e)
         }
     }
 

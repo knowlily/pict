@@ -156,6 +156,8 @@
     <string name="edit_back">返回</string>
     <string name="edit_apply">应用 %1$d 项</string>
     <string name="edit_apply_idle">应用</string>
+    <string name="edit_save_as">另存 %1$d 项</string>
+    <string name="edit_save_as_idle">另存</string>
     <string name="edit_export">导出</string>
     <string name="edit_export_running">导出中…</string>
     <string name="edit_preview_open">预览改动</string>
@@ -185,6 +187,9 @@
     <string name="edit_sheet_cancel">取消</string>
     <string name="edit_sheet_confirm">确定</string>
     <string name="edit_readonly_format">%1$s 不支持直接写入，先导出成 JPEG 或 PNG 再改</string>
+    <string name="edit_readonly_source">这张图只有读权限，改不了原图；点「另存」会把改动存成新图片</string>
+    <!-- 「直接改动原文件」关着时的横幅（来源可写也一样走另存） -->
+    <string name="edit_inplace_off_source">当前不直接改原图；点「另存」会把改动存成新图片</string>
     <string name="edit_loading">正在读取元数据…</string>
     <string name="edit_retry">重试</string>
     <string name="edit_discard_title">有 %1$d 项未保存</string>
@@ -288,6 +293,8 @@
     <string name="settings_export_suffix_none">不加后缀</string>
     <string name="settings_export_suffix_sample">示例：%1$s</string>
     <string name="settings_export_suffix_empty_note">留空不加后缀；目标目录有同名文件时，系统自动加「(1)」。</string>
+    <string name="settings_in_place_editing">直接改动原文件</string>
+    <string name="settings_in_place_editing_hint">关（默认）：改动一律另存成新图片，原图不动；开：可写来源能就地覆盖原图，改前自动备份</string>
     <string name="settings_verify_export">导出后自动校验</string>
     <string name="settings_verify_export_hint">写完再读一遍，逐项核对有没有真的写进去；关掉快一些</string>
 

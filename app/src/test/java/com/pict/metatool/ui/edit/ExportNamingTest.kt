@@ -1,5 +1,6 @@
 package com.pict.metatool.ui.edit
 
+import com.pict.metatool.domain.naming.ExportNaming
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

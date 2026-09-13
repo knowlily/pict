@@ -75,7 +75,8 @@ data class BatchJobSpec(
      * 于是「预览说要改 11 处，执行就真改 11 处」不是巧合，是同一份计算。
      */
     fun toPlan(catalog: PresetCatalog): PictResult<EditPlan> =
-        toDraft().toPlan(catalog, dryRun = dryRun, backupBeforeOverwrite = true)
+        // 只有原地覆写才需要「动手前留备份」；另存模式下源文件根本不开写通道
+        toDraft().toPlan(catalog, dryRun = dryRun, backupBeforeOverwrite = options.writesInPlace)
 
     fun toJob(): Job = Job(
         id = jobId,
@@ -120,6 +121,7 @@ data class BatchJobSpec(
                 put("concurrency", options.concurrency)
                 put("maxRetries", options.maxRetries)
                 put("dryRun", options.dryRun)
+                put("writesInPlace", options.writesInPlace)
             },
         )
         put(
@@ -226,6 +228,9 @@ data class BatchJobSpec(
                 concurrency = node.long("concurrency")?.toInt() ?: defaults.concurrency,
                 maxRetries = node.long("maxRetries")?.toInt() ?: defaults.maxRetries,
                 dryRun = node.bool("dryRun") ?: defaults.dryRun,
+                // 老定义里没有这一位：缺省走**另存**（保守方向——宁可多留一份新文件，
+                // 也不拿一个升级前写下的「原地覆写」把用户的原图改了）
+                writesInPlace = node.bool("writesInPlace") ?: defaults.writesInPlace,
             ).normalized()
         }
 

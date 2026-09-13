@@ -5,7 +5,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.pict.metatool.core.result.getOrElse
+import com.pict.metatool.data.batch.SafBatchCopies
 import com.pict.metatool.data.preset.MergedPresetCatalog
+import com.pict.metatool.data.settings.SharedPrefsSettingsStore
 import com.pict.metatool.domain.job.JobCancellation
 import com.pict.metatool.domain.job.JobReport
 import com.pict.metatool.domain.job.JobReportParams
@@ -72,6 +74,11 @@ class JobWorker(
             snapshots.save(JobSnapshot.of(job, now()))
         }
 
+        // 「默认另存」：跑之前先把落点定下来 —— 排队那一刻写下的模式说了算，
+        // 中途在设置页改主意不会让已经排队的任务换一种活法
+        val inPlace = spec.options.writesInPlace
+        val settings = SharedPrefsSettingsStore(applicationContext).settings.value
+
         val runner = JobRunner(
             worker = BatchItemWorker(
                 resolver = applicationContext.contentResolver,
@@ -79,8 +86,16 @@ class JobWorker(
                 indices = spec.indices,
                 writableByIds = spec.writableByIds,
                 catalog = catalog,
-                // FR-34：覆写前备份。一次任务一个时间戳目录，整批的副本收在同一个地方
-                backup = SafItemBackupGuard(applicationContext.contentResolver),
+                // FR-34：覆写前备份。**只在地模式要留**：另存模式下原图连写通道都不开，
+                // 备份出来只是一份谁也不会去看的重复文件，白占用户的存储空间
+                backup = if (inPlace) SafItemBackupGuard(applicationContext.contentResolver) else null,
+                // 另存模式：每一项先在源文件旁边建一个新文件，改的是那份新文件
+                copies = if (inPlace) {
+                    null
+                } else {
+                    SafBatchCopies(applicationContext.contentResolver, settings.exportSuffix)
+                },
+                writesInPlace = inPlace,
             ),
         )
 

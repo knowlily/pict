@@ -225,10 +225,109 @@ class EditUiStateTest {
             .openEditor(makeKey)
             .withInput("Pear")
             .commitEditor()
-            .copy(canWriteInPlace = false)
+            .copy(hasInPlaceWriter = false)
 
         assertTrue(state.isDirty)
         assertFalse(state.canApply)
+    }
+
+    @Test
+    fun `源只读仍可应用但改走另存`() {
+        // 相册选择器给的 URI 只有读权限：原图写不了，但**不是不能改**——按 docs/05 §6 降级另存。
+        // 这里把设置开着（inPlaceAllowed = true），单独把「来源只读」这一关拎出来测。
+        val state = loaded("EXIF:Make" to TagValue.Text("Apple"))
+            .openEditor(makeKey)
+            .withInput("Pear")
+            .commitEditor()
+            .copy(sourceWritable = false, inPlaceAllowed = true)
+
+        assertTrue(state.isDirty)
+        assertFalse(state.canWriteInPlace)
+        assertTrue(state.appliesBySaveAs)
+        assertTrue(state.canApply)
+        assertTrue(state.canExport)
+        assertTrue(state.showsSaveAsReason)
+        assertTrue(state.saveAsReasonIsReadOnly)
+    }
+
+    @Test
+    fun `关着不直接改原文件时可写来源也走另存`() {
+        // 设置里「直接改动原文件」默认关：来源明明可写（文件管理器那种），也不写它。
+        val state = loaded("EXIF:Make" to TagValue.Text("Apple"))
+            .openEditor(makeKey)
+            .withInput("Pear")
+            .commitEditor()
+            .copy(sourceWritable = true, inPlaceAllowed = false)
+
+        assertTrue(state.isDirty)
+        assertFalse(state.canWriteInPlace)
+        assertTrue(state.appliesBySaveAs)
+        // 照样能落盘：落点换成新文件而已
+        assertTrue(state.canApply)
+        assertTrue(state.showsSaveAsReason)
+        // 原因不是权限，别把横幅写成「这张图只有读权限」
+        assertFalse(state.saveAsReasonIsReadOnly)
+    }
+
+    @Test
+    fun `打开直接改动后可写来源照旧原地应用`() {
+        val state = loaded("EXIF:Make" to TagValue.Text("Apple"))
+            .openEditor(makeKey)
+            .withInput("Pear")
+            .commitEditor()
+            .copy(sourceWritable = true, inPlaceAllowed = true)
+
+        assertTrue(state.canWriteInPlace)
+        assertFalse(state.appliesBySaveAs)
+        assertTrue(state.canApply)
+        assertFalse(state.showsSaveAsReason)
+    }
+
+    @Test
+    fun `格式不能原地写时不给横幅`() {
+        // HEIF 那条路已经有一块「先另存成 JPEG/PNG」的提示，横幅再来一条是重复解释。
+        val state = loaded("EXIF:Make" to TagValue.Text("Apple"))
+            .copy(hasInPlaceWriter = false, sourceWritable = true, inPlaceAllowed = false)
+
+        assertFalse(state.showsSaveAsReason)
+        assertFalse(state.canWriteInPlace)
+    }
+
+    @Test
+    fun `另存信号一次性消费`() {
+        assertFalse(EditUiState().saveAsFallback)
+        val pending = EditUiState().withSaveAsFallback()
+        assertTrue(pending.saveAsFallback)
+        assertFalse(pending.consumeSaveAsFallback().saveAsFallback)
+    }
+
+    @Test
+    fun `另存成功后草稿清空且基线换成副本里的值`() {
+        // 源只读时「另存」就是保存本身：存成了就不该还挂着「有 N 项未保存」。
+        // 基线也得跟着副本走——只清草稿的话，行上会回落成源值，看着像改动被丢了。
+        val edited = loaded("EXIF:Make" to TagValue.Text("Apple"))
+            .openEditor(makeKey)
+            .withInput("Pear")
+            .commitEditor()
+            .copy(sourceWritable = false)
+
+        assertTrue(edited.isDirty)
+        assertTrue(rowsOf(edited, makeKey).dirty)
+
+        val saved = edited.withSavedAsCopy(
+            MetadataSet(source, mapOf(makeKey to TagValue.Text("Pear"))),
+            emptyMap(),
+            "写入 1 项；匹配 1 项",
+        )
+
+        assertFalse(saved.isDirty)
+        assertEquals(0, saved.dirtyCount)
+        assertFalse(saved.saveAsFallback)
+        assertFalse(saved.showPreview)
+        assertEquals(TagValue.Text("Pear"), saved.metadata?.get(makeKey))
+        assertEquals("写入 1 项；匹配 1 项", saved.verifySummary)
+        assertFalse(rowsOf(saved, makeKey).dirty)
+        assertTrue(rowsOf(saved, makeKey).display.contains("Pear"))
     }
 
     @Test

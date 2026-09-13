@@ -95,6 +95,16 @@ data class JobOptions(
     val maxRetries: Int = DEFAULT_MAX_RETRIES,
     /** 只预览不落盘（FR-32）：任何文件与临时文件都不得被创建或修改。 */
     val dryRun: Boolean = false,
+    /**
+     * 改动落到哪儿：`true` = 原地覆写源文件（动手前留备份），`false` = **另存成新文件**、源文件一个字节不动。
+     *
+     * 默认 `false`，与设置里「直接改动原文件」的默认同源（[com.pict.metatool.domain.settings.AppSettings.inPlaceEditing]）：
+     * 改原图不可逆，批量一次几十上百张，写错的代价不是「重来」而是「没了」。
+     *
+     * 这一位是**任务定义的一部分**（[com.pict.metatool.data.job.BatchJobSpec] 会把它写进盘上的 JSON）：
+     * 任务按**排队那一刻**的模式跑完，中途在设置里改了主意，不会把已经排好的队变成另一种行为。
+     */
+    val writesInPlace: Boolean = false,
 ) {
 
     fun normalized(): JobOptions = copy(

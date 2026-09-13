@@ -27,6 +27,7 @@ private const val PREFS_FILE = "pict_settings"
 
 private const val KEY_EXPORT_SUFFIX = "export_suffix"
 private const val KEY_VERIFY_AFTER_EXPORT = "verify_after_export"
+private const val KEY_IN_PLACE_EDITING = "in_place_editing"
 private const val KEY_PRESET_OVERWRITE = "preset_overwrite_default"
 private const val KEY_RANDOM_SEED = "random_seed_default"
 private const val KEY_THEME_MODE = "theme_mode"
@@ -49,6 +50,7 @@ internal fun loadSettings(prefs: SharedPreferences): AppSettings {
     return AppSettings(
         exportSuffix = prefs.getString(KEY_EXPORT_SUFFIX, null) ?: defaults.exportSuffix,
         verifyAfterExport = prefs.getBoolean(KEY_VERIFY_AFTER_EXPORT, defaults.verifyAfterExport),
+        inPlaceEditing = prefs.getBoolean(KEY_IN_PLACE_EDITING, defaults.inPlaceEditing),
         presetOverwriteDefault = prefs.getBoolean(KEY_PRESET_OVERWRITE, defaults.presetOverwriteDefault),
         randomSeedDefault = prefs.getLong(KEY_RANDOM_SEED, defaults.randomSeedDefault),
         themeMode = ThemeMode.fromName(prefs.getString(KEY_THEME_MODE, null)),
@@ -69,6 +71,7 @@ internal fun saveSettings(prefs: SharedPreferences, settings: AppSettings) {
     prefs.edit()
         .putString(KEY_EXPORT_SUFFIX, settings.exportSuffix)
         .putBoolean(KEY_VERIFY_AFTER_EXPORT, settings.verifyAfterExport)
+        .putBoolean(KEY_IN_PLACE_EDITING, settings.inPlaceEditing)
         .putBoolean(KEY_PRESET_OVERWRITE, settings.presetOverwriteDefault)
         .putLong(KEY_RANDOM_SEED, settings.randomSeedDefault)
         .putString(KEY_THEME_MODE, settings.themeMode.name)
