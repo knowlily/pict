@@ -126,3 +126,7 @@ tools/verify-with-exiftool.sh --allow-missing   # CI 上没装 exiftool 时：�
 脚本干两件事：跑 `ExiftoolGoldStandardTest`（把编辑计划折叠 → 真写通道落盘 → **由 exiftool 独立读回**，
 对目标字段、其余字段、像素、缩略图四项取证），再用 exiftool 把每个用例的断言逐条复核一遍。
 产物留在 `app/build/goldstandard/out/`：改后的图、`*.exiftool.json` 转储、`*.changed.txt` 改动清单、`*.gaps.txt` 缺口。
+
+## 许可
+
+[Apache-2.0](LICENSE) © 2026 knowlily
