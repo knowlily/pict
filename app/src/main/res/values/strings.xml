@@ -296,7 +296,6 @@
     <string name="settings_in_place_editing">直接改动原文件</string>
     <string name="settings_in_place_editing_hint">关（默认）：改动一律另存成新图片，原图不动；开：可写来源能就地覆盖原图，改前自动备份</string>
     <string name="settings_verify_export">导出后自动校验</string>
-    <string name="settings_verify_export_hint">写完再读一遍，逐项核对有没有真的写进去；关掉快一些</string>
 
     <string name="settings_section_preset">预设与随机填充</string>
     <string name="settings_preset_overwrite">套用预设时覆盖已有值</string>
@@ -312,18 +311,15 @@
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_grid_columns">图库列数</string>
-    <string name="settings_grid_columns_hint">图库每行显示几张缩略图</string>
 
     <string name="settings_section_navbar">底栏</string>
     <string name="settings_navbar_style">底栏样式</string>
-    <string name="settings_navbar_style_hint">悬浮是浮在内容上的胶囊，贴底是传统的通栏</string>
     <string name="settings_navbar_style_floating">悬浮</string>
     <string name="settings_navbar_style_docked">贴底</string>
     <!-- 玻璃开关：只在悬浮样式下看得到，所以文案里把前提写明 -->
     <string name="settings_navbar_glass">液态玻璃</string>
     <string name="settings_navbar_glass_hint">关掉是一层实心底栏，不透视背景；只有悬浮样式有玻璃效果</string>
     <string name="settings_dynamic_color">动态取色</string>
-    <string name="settings_dynamic_color_hint">颜色跟着壁纸走，换张壁纸整套配色跟着换</string>
     <string name="settings_dynamic_color_unsupported">需要 Android 12 及以上；这台机器取不到壁纸配色，只能用自带配色</string>
     <string name="settings_backdrop">背景色</string>
     <string name="settings_backdrop_locked">动态取色开着时背景色跟着壁纸走，先关掉才能自己挑</string>
@@ -410,7 +406,6 @@
     <!-- 设置 → 预设管理（docs/03 §7） -->
     <string name="settings_preset_manage">预设管理</string>
     <string name="settings_preset_manage_value">管理</string>
-    <string name="settings_preset_manage_hint">看内置和自己加的预设，自建的可以删</string>
     <string name="preset_manage_title">预设管理</string>
     <string name="preset_manage_back">返回</string>
     <string name="preset_manage_counts">内置 %1$d · 自建 %2$d</string>
@@ -425,6 +420,10 @@
     <string name="preset_manage_user_issue">自建预设有问题：%1$s</string>
     <string name="preset_manage_empty">一份预设都没读出来，内置预设应该跟着安装包一起进来——重装一次试试。</string>
     <string name="preset_manage_delete">删除</string>
+    <string name="preset_manage_edit">编辑</string>
+    <string name="preset_manage_add">添加预设</string>
+    <string name="preset_manage_saved_new">已存下「%1$s」</string>
+    <string name="preset_manage_saved_edit">已更新「%1$s」</string>
     <string name="preset_manage_delete_title">删掉这份自建预设？</string>
     <string name="preset_manage_delete_body">「%1$s」会被删掉，内置预设不受影响。</string>
     <string name="preset_manage_cancel">取消</string>

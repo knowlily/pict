@@ -319,4 +319,129 @@ class PresetManageViewModelTest {
         assertEquals(0, state.userCount)
         assertFalse(state.groups.isNotEmpty())
     }
+
+    // —— 「在这一页上就能加 / 改自己的预设」（用户原话：「在预设里面就可以添加自己的预设」）——
+    // 表单本身是编辑页、批量页那份弹层，这里钉的是管理页这一头的接线：开表、填表、
+    // 存完关弹层给回执、存不下就留在弹层里报原因、内置的不给改。
+
+    @Test
+    fun `加一份自己的：开一张空表，默认归设备那一类`() {
+        val viewModel = viewModel()
+
+        viewModel.addPreset()
+
+        val draft = requireNotNull(viewModel.state.value.editor)
+        assertTrue(draft.isNew)
+        assertNull(draft.id)
+        assertEquals(PresetKind.DEVICE, draft.kind)
+        assertEquals(1, draft.rows.size)
+        // 那行是空的，不能被当成「填好了一行」
+        assertTrue(draft.filledRows().isEmpty())
+    }
+
+    @Test
+    fun `改一份自建的：盘上那份填回表单`() {
+        val catalog = catalog()
+        catalog.save(input("我的机型", "OnePlus"))
+        val user = requireNotNull(catalog.byId("user.preset"))
+        val viewModel = PresetManageViewModel(catalog)
+
+        viewModel.editPreset(user)
+
+        val draft = requireNotNull(viewModel.state.value.editor)
+        assertEquals("user.preset", draft.id)
+        assertFalse(draft.isNew)
+        assertEquals("我的机型", draft.name)
+        assertEquals(listOf(make), draft.rows.mapNotNull { it.key })
+    }
+
+    @Test
+    fun `内置的不给改：点了也不开表`() {
+        val catalog = catalog()
+        val viewModel = PresetManageViewModel(catalog)
+
+        viewModel.editPreset(requireNotNull(catalog.byId("device.iphone-16-pro")))
+
+        assertNull(viewModel.state.value.editor)
+    }
+
+    @Test
+    fun `关掉弹层：那张表和上面的原因一起清掉`() {
+        val viewModel = viewModel()
+        viewModel.addPreset()
+
+        viewModel.dismissEditor()
+
+        assertNull(viewModel.state.value.editor)
+        assertNull(viewModel.state.value.editorMessage)
+    }
+
+    @Test
+    fun `存下来：列表里立刻多一份、弹层关上，回执说是新的`() {
+        val catalog = catalog()
+        val viewModel = PresetManageViewModel(catalog)
+        viewModel.addPreset()
+
+        viewModel.applySaveResult(catalog.save(input("我的机型", "OnePlus")), wasNew = true)
+
+        val state = viewModel.state.value
+        assertNull("存下了就该把弹层收掉", state.editor)
+        assertEquals(1, state.userCount)
+        assertEquals("新加的那份排在设备那一栏的最前面", "user.preset", state.groups.first().presets.first().id)
+        val event = state.event
+        assertTrue("存完得给一条回执", event is PresetManageEvent.Saved)
+        assertEquals("我的机型", (event as PresetManageEvent.Saved).name)
+        assertTrue(event.isNew)
+    }
+
+    @Test
+    fun `改完存回去：份数不变，名字换成新的`() {
+        val catalog = catalog()
+        catalog.save(input("我的机型", "OnePlus"))
+        val viewModel = PresetManageViewModel(catalog)
+        viewModel.editPreset(requireNotNull(catalog.byId("user.preset")))
+        val edited = requireNotNull(viewModel.state.value.editor).copy(name = "改过的名字")
+
+        viewModel.applySaveResult(catalog.save(edited), wasNew = false)
+
+        val state = viewModel.state.value
+        assertEquals("改的是同一份，份数不该变", 1, state.userCount)
+        assertEquals("改过的名字", state.groups.first().presets.first().name)
+        assertFalse((state.event as PresetManageEvent.Saved).isNew)
+    }
+
+    @Test
+    fun `存不下来：留在弹层里报原因，目录没动`() {
+        val catalog = catalog()
+        val viewModel = PresetManageViewModel(catalog)
+        viewModel.addPreset()
+
+        // 名字空着、一个字段都没填：落盘前读不回来，这就是失败
+        viewModel.applySaveResult(catalog.save(UserPresetInput(rows = emptyList())), wasNew = true)
+
+        val state = viewModel.state.value
+        assertNotNull("弹层不能关：关了用户刚填的那些就没了", state.editor)
+        assertNotNull("得把原因摆出来", state.editorMessage)
+        assertEquals(0, state.userCount)
+        assertNull(state.event)
+    }
+
+    @Test
+    fun `弹层里那条删除：先收弹层，再走这一页的确认框`() {
+        val catalog = catalog()
+        catalog.save(input("我的机型", "OnePlus"))
+        val viewModel = PresetManageViewModel(catalog)
+        viewModel.editPreset(requireNotNull(catalog.byId("user.preset")))
+
+        viewModel.askDeleteById("user.preset")
+
+        val state = viewModel.state.value
+        assertNull("别留着弹层，两条删除路径会打架", state.editor)
+        assertEquals("user.preset", state.pendingDelete?.id)
+
+        // 内置的 id 递进来也不弹确认框
+        viewModel.dismissDelete()
+        viewModel.askDeleteById("device.iphone-16-pro")
+        assertNull(viewModel.state.value.pendingDelete)
+    }
 }

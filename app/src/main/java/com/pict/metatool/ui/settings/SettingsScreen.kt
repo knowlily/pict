@@ -104,11 +104,16 @@ fun SettingsScreen(
                 .padding(bottom = LocalBottomBarInset.current + PictSpacing.aboveBottomBar),
             verticalArrangement = Arrangement.spacedBy(PictSpacing.xl),
         ) {
+            // 说明文字只留三类：为什么是灰的、当前是哪个值、这个开关到底改了什么。
+            // 复述标题的那种（「图库每行显示几张缩略图」「写完再读一遍，逐项核对…」）删掉——
+            // 用户原话「删除不必要的设置的详细说明」。设置页是最后要来回翻的地方，
+            // 每行都挂一句解释，扫起来反而更慢。
             SettingsSection(
                 title = stringResource(R.string.settings_section_output),
                 anchor = suffixAnchor,
             ) {
-                // 先说「改原图还是写副本」：这一项决定下面那些导出设置什么时候用得上
+                // 先说「改原图还是写副本」：这一项决定下面那些导出设置什么时候用得上，
+                // 而且它带着「原图不动 / 改前自动备份」的承诺，这句留着
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_in_place_editing),
                     subtitle = stringResource(R.string.settings_in_place_editing_hint),
@@ -121,6 +126,7 @@ fun SettingsScreen(
                     value = settings.exportSuffix.ifEmpty {
                         stringResource(R.string.settings_export_suffix_none)
                     },
+                    // 示例文件名是「这一项到底改了什么」的直观答案，留着
                     subtitle = stringResource(
                         R.string.settings_export_suffix_sample,
                         ExportNaming.suggest(SAMPLE_FILE_NAME, settings.exportSuffix),
@@ -130,7 +136,6 @@ fun SettingsScreen(
 
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_verify_export),
-                    subtitle = stringResource(R.string.settings_verify_export_hint),
                     checked = settings.verifyAfterExport,
                     onCheckedChange = { on -> onUpdate { it.copy(verifyAfterExport = on) } },
                 )
@@ -143,7 +148,6 @@ fun SettingsScreen(
                 SettingsValueRow(
                     title = stringResource(R.string.settings_preset_manage),
                     value = stringResource(R.string.settings_preset_manage_value),
-                    subtitle = stringResource(R.string.settings_preset_manage_hint),
                     onClick = onOpenPresets,
                 )
 
@@ -171,16 +175,16 @@ fun SettingsScreen(
                     onSelect = { mode -> onUpdate { it.copy(themeMode = mode) } },
                 )
 
-                // 取色来源（FR-38）：只在系统给得出壁纸调色板时可点，旧机器上是灰的并写明原因
+                // 取色来源（FR-38）：只在系统给得出壁纸调色板时可点，旧机器上是灰的并写明原因。
+                // 「颜色跟着壁纸走」那句说明删了，「取不到壁纸配色」这句必须留——
+                // 灰着一行却不说为什么，比没有这一行还让人困惑
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
-                    subtitle = stringResource(
-                        if (dynamicColorSupported) {
-                            R.string.settings_dynamic_color_hint
-                        } else {
-                            R.string.settings_dynamic_color_unsupported
-                        },
-                    ),
+                    subtitle = if (dynamicColorSupported) {
+                        null
+                    } else {
+                        stringResource(R.string.settings_dynamic_color_unsupported)
+                    },
                     checked = settings.dynamicColor && dynamicColorSupported,
                     enabled = dynamicColorSupported,
                     onCheckedChange = { on -> onUpdate { it.copy(dynamicColor = on) } },
@@ -206,7 +210,6 @@ fun SettingsScreen(
 
                 SettingsChoiceRow(
                     title = stringResource(R.string.settings_grid_columns),
-                    subtitle = stringResource(R.string.settings_grid_columns_hint),
                     options = GRID_COLUMN_OPTIONS,
                     selected = settings.gridColumns,
                     label = { it.toString() },
@@ -217,7 +220,6 @@ fun SettingsScreen(
             SettingsSection(title = stringResource(R.string.settings_section_navbar)) {
                 SettingsChoiceRow(
                     title = stringResource(R.string.settings_navbar_style),
-                    subtitle = stringResource(R.string.settings_navbar_style_hint),
                     options = NavBarStyle.entries,
                     selected = settings.navBarStyle,
                     label = { style -> navBarStyleLabels.getValue(style) },
@@ -225,6 +227,7 @@ fun SettingsScreen(
                 )
 
                 // 玻璃开关紧跟在样式后面：样式管底栏长什么样，这一项管那层玻璃要不要。
+                // 说明留着——「只有悬浮样式有玻璃」这句不说，贴底时开了没反应会当成坏了
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_navbar_glass),
                     subtitle = stringResource(R.string.settings_navbar_glass_hint),

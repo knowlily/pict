@@ -7,6 +7,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 
 /**
  * 取色来源铺到哪儿（FR-38 续，docs/06 §2）。
@@ -53,11 +54,101 @@ private const val ContainerHighestTint = 0.13f
 /** `surfaceBright` / `surfaceDim`：背景的亮暗两个极端，轻微带一点色相就够。 */
 private const val SurfaceEdgeTint = 0.06f
 
-/** 底栏玻璃承载色的偏移量。它还要乘上 `glassTintAlpha`（0.62），所以这里给得比别处大。 */
+/**
+ * 底栏玻璃承载色的偏移量。它还要乘上 `glassTintAlpha`（0.62），所以这里给得比别处大。
+ */
 private const val BarTint = 0.22f
 
 /** 玻璃高光偏多少：纯白在浅色主题下就是一条灰边，带一点色相才像「这块玻璃」。 */
 private const val SheenTint = 0.22f
+
+/**
+ * 自选底色（FR-38 续）当主题色用时，哪些角色跟着换个色相。
+ *
+ * 起因还是实测的一句反馈：「更换主题色的时候，界面所有都要变色」。当时底色的做法是
+ * **只换 `background` 一个角色**，理由是「挑个底色不该顺带把导出失败的红改掉」——
+ * 道理没错，但活只干了一半：实测同一个页面只把底色从「自动」挑成「薄荷」，
+ * 除了页面底那一片，卡片、区块底、底栏玻璃、选中胶囊全还是品牌蓝那一套
+ * （容器朝 `primary` 偏，而 `primary` 没动），用户看到的就是「只有背景变色」。
+ *
+ * 所以现在把选定的底色当成**取色来源本身**：[backdropThemedScheme] 拿底色的色相，
+ * 把强调那一族角色整体转过去，再走一遍 [tintedContainers]。
+ * 换一个底色 = 换一整套配色，跟动态取色是同一套机制、同一个收口点。
+ */
+internal fun backdropThemedScheme(scheme: ColorScheme, backdrop: Color): ColorScheme {
+    val hue = hueOf(backdrop)
+    // 强调那一族跟着底色走：图标、开关、按钮、选中胶囊、各种 chip 一并对上色相，
+    // 不然「底是绿的、开关还是蓝的」，两个色系摆在一起更像没做完。
+    val rotated = scheme.copy(
+        primary = repaintToHue(scheme.primary, hue),
+        primaryContainer = repaintToHue(scheme.primaryContainer, hue),
+        secondary = repaintToHue(scheme.secondary, hue),
+        secondaryContainer = repaintToHue(scheme.secondaryContainer, hue),
+        tertiary = repaintToHue(scheme.tertiary, hue),
+        tertiaryContainer = repaintToHue(scheme.tertiaryContainer, hue),
+        // 底色自己就是背景那一个角色，原样用（深色主题下已经在 `backdropArgbFor` 里压暗过）
+        background = backdrop,
+    )
+    return tintedContainers(rotated)
+}
+
+/**
+ * 色相 0..360（灰返回 0）。只用来取「往哪边转」，所以不做色彩空间的讲究，
+ * 按 sRGB 三通道算的 HSL 就够——它跟 `Color.hsl` 是同一套定义，转回去不会有偏差。
+ */
+internal fun hueOf(color: Color): Float {
+    val max = maxOf(color.red, color.green, color.blue)
+    val min = minOf(color.red, color.green, color.blue)
+    val delta = max - min
+    if (delta == 0f) return 0f
+    val hue = when (max) {
+        color.red -> ((color.green - color.blue) / delta + if (color.green < color.blue) 6f else 0f)
+        color.green -> (color.blue - color.red) / delta + 2f
+        else -> (color.red - color.green) / delta + 4f
+    } * 60f
+    return (hue % 360f + 360f) % 360f
+}
+
+/**
+ * 把 [color] 换成 [hue] 这个色相，**亮度按 WCAG 相对亮度对齐**，饱和度和明度关系照旧。
+ *
+ * 为什么不直接 `Color.hsl(hue, 原饱和度, 原明度)`：HSL 的明度不是亮度。同样是
+ * 明度 0.5、饱和度 1，黄色比蓝色亮好几倍——直接换色相会把「白字压强调色」这种搭配
+ * 从 4.5:1 拽到 2:1 以下（沙底、苔底那两个暖色相就会走到这一步）。
+ * 所以这里二分找明度，让换完之后的相对亮度跟原色对齐（[BisectionSteps] 次足够到 1e-6）。
+ *
+ * 饱和度**不跟底色走**：它管的是强调色够不够醒目，动它会把「选中」这种状态弄糊。
+ *
+ * 中性色（饱和度低于 [NeutralSaturation]）原样返回：没有色相可换，硬转只是换个灰。
+ */
+internal fun repaintToHue(color: Color, hue: Float): Color {
+    val saturation = saturationOf(color)
+    if (saturation < NeutralSaturation) return color
+    val target = color.luminance()
+    var low = 0f
+    var high = 1f
+    repeat(BisectionSteps) {
+        val mid = (low + high) / 2f
+        if (Color.hsl(hue, saturation, mid).luminance() < target) low = mid else high = mid
+    }
+    return Color.hsl(hue, saturation, (low + high) / 2f)
+}
+
+/** HSL 的饱和度（灰返回 0）。 */
+internal fun saturationOf(color: Color): Float {
+    val max = maxOf(color.red, color.green, color.blue)
+    val min = minOf(color.red, color.green, color.blue)
+    val lightness = (max + min) / 2f
+    val delta = max - min
+    if (delta == 0f) return 0f
+    return if (lightness > 0.5f) delta / (2f - max - min) else delta / (max + min)
+}
+
+/** 低于这个饱和度就当没有色相（品牌灰、`surface` 那一族）。 */
+private const val NeutralSaturation = 0.02f
+
+/** 二分找亮度的次数：20 次就到 1e-6，这里给宽一点，反正是一次性算的。 */
+private const val BisectionSteps = 24
 
 /** 选中胶囊那类「强调色容器」的偏移量：面积小，得比区块底更明确才认得出——
  *  真机截图给视觉看时，18% 那版被指出「选中胶囊像一层灰膜」，所以加大；

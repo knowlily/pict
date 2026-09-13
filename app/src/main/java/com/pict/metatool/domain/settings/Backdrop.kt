@@ -9,8 +9,10 @@ import kotlin.math.roundToInt
  * 全是**低饱和的浅底**，浅色主题下直接用；深色主题下由 [backdropArgbFor] 按同一色相压暗，
  * 一份色号两种主题都能用（省得维护两张表，也免得挑一个深底把字吃掉）。
  *
- * 底色**只管 `background` 这一个角色**：卡片表面、强调色、状态色都还是各自那一套，
- * 挑个底色不会顺带把「导出成功/失败」的颜色改掉。
+ * 底色是**整套配色的取色来源**（`ui/theme/PictColors.kt` 的 `backdropThemedScheme`）：
+ * 一是 `background` 这个角色用它；二是强调那一族（图标、开关、按钮、选中胶囊、chip）
+ * 转到它的色相上，容器再朝新的强调色偏一档。状态色（导出成功/失败的红）与文字色不动——
+ * 那两样跟「挑了哪个底色」无关，动了只会掉对比度。
  */
 enum class Backdrop(val argb: Long) {
 

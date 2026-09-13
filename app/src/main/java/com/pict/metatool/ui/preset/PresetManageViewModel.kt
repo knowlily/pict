@@ -3,8 +3,10 @@ package com.pict.metatool.ui.preset
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.pict.metatool.core.result.PictResult
 import com.pict.metatool.data.preset.MergedPresetCatalog
 import com.pict.metatool.domain.model.FieldCatalog
 import com.pict.metatool.domain.model.TagKey
@@ -14,9 +16,14 @@ import com.pict.metatool.domain.preset.PresetConstraint
 import com.pict.metatool.domain.preset.PresetKind
 import com.pict.metatool.domain.preset.PresetOrigin
 import com.pict.metatool.domain.preset.PresetValue
+import com.pict.metatool.domain.preset.UserFieldInput
+import com.pict.metatool.domain.preset.UserPresetInput
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** 字段清单里的一行：中文名 + TagKey + 规则摘要。 */
 data class PresetFieldRow(val key: TagKey, val label: String, val rule: String)
@@ -36,12 +43,18 @@ data class PresetDetail(
 /** 按类别分好的一组预设：自建在前、内置在后（跟预设弹层的显示口径一致）。 */
 data class PresetKindGroup(val kind: PresetKind, val presets: List<Preset>)
 
-/** 删完之后给界面看的一次性回执。文案由界面出，ViewModel 不碰 Android 资源。 */
+/** 删完 / 存完给界面看的一次性回执。文案由界面出，ViewModel 不碰 Android 资源。 */
 sealed interface PresetManageEvent {
 
     data class Deleted(val name: String) : PresetManageEvent
 
     data class DeleteFailed(val name: String) : PresetManageEvent
+
+    /**
+     * 存下来了。管理页这边**不用像编辑页那样顺手选中**——加到哪一类，这一页上
+     * 那一类就排在自建那一段的开头，回执里报个名字够用了。
+     */
+    data class Saved(val name: String, val isNew: Boolean) : PresetManageEvent
 }
 
 data class PresetManageState(
@@ -52,15 +65,20 @@ data class PresetManageState(
     val userIssues: List<String> = emptyList(),
     val expanded: PresetDetail? = null,
     val pendingDelete: Preset? = null,
+    /** 正在编的表单（加一份新的、或改一份自建的）；null = 弹层没开。 */
+    val editor: UserPresetInput? = null,
+    /** 存不下来的原因，摆在弹层里——关掉弹层等于把用户刚填的丢了。 */
+    val editorMessage: String? = null,
     val event: PresetManageEvent? = null,
 )
 
 /**
  * 预设管理页（设置 → 预设管理）。
  *
- * 读与删都走 [MergedPresetCatalog]：它本身就是「内置 + 自建」的合成目录，也兼当 `PresetEditor`。
- * **删只对自建开放**——内置那几份钉在安装包里（`BuiltinPresetCoverageTest` 保证它们都在），
- * 删不掉也不该删；`MergedPresetCatalog.delete` 本来就只认自建，这里只是不让按钮白点一下。
+ * 一页看全内置 + 自建的预设：点一行展开字段清单，**加一份自己的 / 改自建 / 删自建**都在这页上。
+ * 写（[PresetManageViewModel.saveEditor]、[PresetManageViewModel.askDelete]）只对自建开放——内置那几份钉在
+ * 安装包里（`BuiltinPresetCoverageTest` 保证它们都在），改也只会改出本地一份，说不清算谁的。
+ * 表单本身是编辑页、批量页那份「自建预设」弹层（`UserPresetEditorSheet`），三个入口同一张表。
  *
  * 读取是同步的：跟编辑页、批量页打开预设弹层走的是同一份数据、同一条路径，
  * 一份目录 + 几十个小 JSON，没有另开线程的必要。
@@ -130,6 +148,79 @@ class PresetManageViewModel(private val catalog: MergedPresetCatalog) : ViewMode
     /** 回执只该弹一次。 */
     fun consumeEvent() {
         _state.value = _state.value.copy(event = null)
+    }
+
+    /**
+     * 「加一份自己的」：开一张空表，默认归「设备」那一类——内置里最多的就是机型。
+     * 类别在弹层里能改，这里不用先问一遍。
+     */
+    fun addPreset(kind: PresetKind = PresetKind.DEVICE) {
+        _state.value = _state.value.copy(
+            editor = UserPresetInput(kind = kind, rows = listOf(UserFieldInput(null, ""))),
+            editorMessage = null,
+        )
+    }
+
+    /**
+     * 改一份自建的：把盘上那份填回表单。`UserPresetInput.from` 会把表单认不出来的规则
+     * 原样收进 `preserved`，改完存回去不会把原来那几十个字段弄丢。
+     *
+     * 内置的不给改，跟 [askDelete] 同一个口径：安装包里那几份改完也只是本地多一份，
+     * 说不清算谁的。
+     */
+    fun editPreset(preset: Preset) {
+        if (preset.origin != PresetOrigin.USER) return
+        _state.value = _state.value.copy(
+            editor = UserPresetInput.from(preset),
+            editorMessage = null,
+        )
+    }
+
+    fun dismissEditor() {
+        _state.value = _state.value.copy(editor = null, editorMessage = null)
+    }
+
+    /**
+     * 存一份自建预设：走 [MergedPresetCatalog.save]（它落盘前会用 `PresetParser` 读回一遍）。
+     *
+     * 存不下来就**留在弹层里**把原因摆在上面，不关弹层——关掉等于把用户刚填的那些丢了；
+     * 存下来了才重读目录、关弹层、给回执。
+     */
+    fun saveEditor(input: UserPresetInput) {
+        viewModelScope.launch {
+            val saved = withContext(Dispatchers.IO) { catalog.save(input) }
+            applySaveResult(saved, input.isNew)
+        }
+    }
+
+    /**
+     * 把存盘结果落到状态上。单独抽出来是给测试留一条缝：真跑 [viewModelScope] 那条路要先有
+     * `Dispatchers.Main`（只有设备上才有），单位测试里够不着；这里测的是同一段逻辑。
+     */
+    internal fun applySaveResult(saved: PictResult<Preset>, wasNew: Boolean) {
+        when (saved) {
+            is PictResult.Failure -> _state.value = _state.value.copy(
+                editorMessage = "存不下来：${saved.failure.detail ?: saved.code}",
+            )
+
+            is PictResult.Success -> {
+                reload()
+                _state.value = _state.value.copy(
+                    editor = null,
+                    editorMessage = null,
+                    event = PresetManageEvent.Saved(saved.value.name, wasNew),
+                )
+            }
+        }
+    }
+
+    /** 弹层里那条「删掉这份」：先收弹层，再走这一页统一的确认框，免得两条删除路径。 */
+    fun askDeleteById(presetId: String) {
+        val target = _state.value.groups.asSequence()
+            .flatMap { it.presets.asSequence() }
+            .firstOrNull { it.id == presetId }
+        _state.value = _state.value.copy(editor = null, editorMessage = null)
+        if (target != null) askDelete(target)
     }
 
     private fun group(presets: List<Preset>): List<PresetKindGroup> =

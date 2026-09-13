@@ -18,7 +18,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val LightColors = lightColorScheme(
+// M3 给的那套角色里，容器那几档是中性灰。取色出来之后再由 `tintedContainers` 朝取色来源
+// 偏一档（见 § 文件头）。`internal` 是给测试看的：配色测试要按真配色算对比度，抄一份常量
+// 就等着两边漂。
+internal val LightColors = lightColorScheme(
     primary = BluePrimary,
     onPrimary = BlueOnPrimary,
     primaryContainer = BluePrimaryContainer,
@@ -90,10 +93,14 @@ internal val DarkColors = darkColorScheme(
  * 版本判断走 [supportsDynamicColor]：那边一处定规则，设置页里那一行的可用状态共用同一个判断，
  * 不会出现「开关亮着但颜色没变」。
  *
- * @param backdrop 自选页面底色（FR-38 续，ARGB），`null` = 用主题自带的那一个。只换
- *   `background` 这一个角色：卡片表面、强调色、状态色都还是各自那一套，挑个底色不会顺带把
- *   「导出成功/失败」的颜色改掉。动态取色开着时底色跟着壁纸走，调用方传 `null`——
- *   判断留在 `MainActivity`，主题这一层不偷看设置。
+ * @param backdrop 自选页面底色（FR-38 续，ARGB），`null` = 用主题自带的那一个。它不只是
+ *   背景色，而是**整套配色的取色来源**：底色一选定，背景换成它，强调那一族角色（图标、
+ *   开关、按钮、选中胶囊、chip）整体转到它的色相上，容器再朝新的强调色偏一档
+ *   （[backdropThemedScheme]）。这条是用户一句话催出来的——「更换主题色的时候，
+ *   界面所有都要变色」：早先只换 `background` 一个角色，实测挑个薄荷底色，
+ *   卡片、区块底、底栏玻璃、选中胶囊全是原样，看上去就是「只有背景变色」。
+ *   状态色（error）与文字色（`onSurface*`）仍然不碰。动态取色开着时底色跟着壁纸走，
+ *   调用方传 `null`——判断留在 `MainActivity`，主题这一层不偷看设置。
  *
  * 取色来源铺到哪些地方（FR-38 续）：**容器也得跟着走**。以前换来源只换了背景与强调色，
  * 而容器（区块底、卡片、弹层、底栏玻璃的承载色）落在中性的容器角色、写死的白与黑上，
@@ -118,10 +125,13 @@ fun PictTheme(
         else -> LightColors
     }
 
-    // 先按自选底色换掉 background，再把容器角色朝取色来源偏一档（见文件头那段）
-    val colorScheme = tintedContainers(
-        if (backdrop == null) baseColors else baseColors.copy(background = Color(backdrop))
-    )
+    // 自选底色把整套配色一起换掉（背景 + 强调那一族 + 容器），没挑底色时就是「朝取色来源
+    // 偏一档」的老做法（见文件头那段）
+    val colorScheme = if (backdrop == null) {
+        tintedContainers(baseColors)
+    } else {
+        backdropThemedScheme(baseColors, Color(backdrop))
+    }
     val palette = remember(colorScheme, darkTheme) { pictPalette(colorScheme, darkTheme) }
 
     val view = LocalView.current

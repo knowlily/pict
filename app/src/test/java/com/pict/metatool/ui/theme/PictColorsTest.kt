@@ -1,10 +1,13 @@
 package com.pict.metatool.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import com.pict.metatool.domain.settings.Backdrop
+import com.pict.metatool.domain.settings.backdropArgbFor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -192,5 +195,129 @@ class PictColorsTest {
         val palette = pictPalette(DarkColors, dark = true)
         assertTrue(palette.barTint != DarkColors.primary)
         assertTrue(palette.navPill.alpha < 1f)
+    }
+
+    // —— 自选底色当主题色（FR-38 续）：守的是另一句用户话「更换主题色的时候，界面所有都要变色」——
+    // 早先底色只换 `background` 一个角色，实测挑个薄荷底色，除了页面底那一片，
+    // 卡片、区块底、底栏玻璃、选中胶囊全没动，看上去就是「只有背景变色」。
+    // 现在底色是取色来源本身：背景用它，强调那一族转到它的色相上，容器再偏一档。
+
+    /** 那几个色号；测试跟量产用同一份枚举，抄一份常量就等着两边漂。 */
+    private val backdrops = Backdrop.entries.filter { it != Backdrop.AUTO }
+
+    private fun backdropColor(bd: Backdrop, dark: Boolean): Color =
+        Color(requireNotNull(backdropArgbFor(bd.argb, dark)) { "${bd.name} 在 dark=$dark 下没有色号" })
+
+    private fun themedWith(bd: Backdrop, dark: Boolean): ColorScheme =
+        backdropThemedScheme(if (dark) DarkColors else LightColors, backdropColor(bd, dark))
+
+    @Test
+    fun `挑了底色，强调那一族一起转到它的色相上`() {
+        listOf(false, true).forEach { dark ->
+            backdrops.forEach { bd ->
+                val tinted = themedWith(bd, dark)
+                val want = hueOf(backdropColor(bd, dark)).toDouble()
+                listOf(
+                    "primary" to hueOf(tinted.primary),
+                    "primaryContainer" to hueOf(tinted.primaryContainer),
+                ).forEach { (name, got) ->
+                    // 12° 以内：人眼分不出更细的色相差；差 30° 以上就是「另一个色系」了
+                    assertTrue(
+                        "${bd.name} 的 $name 色相 $got 没跟到底色 $want（dark=$dark）",
+                        abs(got.toDouble() - want) <= 12.0,
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `换了底色，容器和底栏也跟着换——不是只换背景那一片`() {
+        listOf(false, true).forEach { dark ->
+            val base = if (dark) DarkColors else LightColors
+            val brand = tintedContainers(base)
+            // 冷底暖底各挑一个：只跟品牌蓝比，很容易碰巧接近而看不出问题
+            listOf(Backdrop.SAND, Backdrop.MINT).forEach { bd ->
+                val tinted = themedWith(bd, dark)
+                assertEquals(
+                    "${bd.name} 的背景不是那个底色",
+                    backdropColor(bd, dark).toArgb(),
+                    tinted.background.toArgb(),
+                )
+                listOf(
+                    Triple("区块底", brand.surfaceVariant, tinted.surfaceVariant),
+                    Triple("卡片底", brand.surfaceContainerLow, tinted.surfaceContainerLow),
+                    Triple("浮层底", brand.surfaceContainerHighest, tinted.surfaceContainerHighest),
+                    Triple("选中胶囊", brand.secondaryContainer, tinted.secondaryContainer),
+                ).forEach { (name, before, after) ->
+                    val d = spread(before, after)
+                    // 8 级 = 「在屏幕上看得出来」的下限，跟 `换来源就换容器` 用同一把尺子
+                    assertTrue("${bd.name} 的$name 只差 $d 级（dark=$dark）：等于还是原来那个色", d >= 8)
+                }
+                val fromBrand = pictPalette(brand, dark)
+                val fromBackdrop = pictPalette(tinted, dark)
+                assertTrue("底栏承载色没跟着底色", spread(fromBrand.barTint, fromBackdrop.barTint) >= 8)
+                assertTrue("底栏高光没跟着底色", spread(fromBrand.barSheen, fromBackdrop.barSheen) >= 4)
+            }
+        }
+    }
+
+    @Test
+    fun `换底色不掉对比度：强调色上的字一格没动`() {
+        listOf(false, true).forEach { dark ->
+            val base = if (dark) DarkColors else LightColors
+            backdrops.forEach { bd ->
+                val tinted = themedWith(bd, dark)
+                // 强调色和它的容器都是「按相对亮度对齐」转的色相，字色一个没动，
+                // 所以这两对的对比度跟换底色之前数学上就该一样——这就是不做裸色相旋转的理由：
+                // 同样明度 0.5 的纯黄比纯蓝亮好几倍，裸转会把沙底、苔底那两档直接拽穿。
+                // 实测差在 0.4% 以内（二分 + HSL 往返的浮点残差，亮度只差 3e-4）。
+                // 比的是**相对差**：这两对是十几倍的对比度，分母只有 0.07，绝对差会被放大。
+                listOf(
+                    Triple("强调色上的字", base.onPrimary to base.primary, tinted.onPrimary to tinted.primary),
+                    Triple(
+                        "强调容器上的字",
+                        base.onPrimaryContainer to base.primaryContainer,
+                        tinted.onPrimaryContainer to tinted.primaryContainer,
+                    ),
+                ).forEach { (name, beforePair, afterPair) ->
+                    val before = contrast(beforePair.first, beforePair.second)
+                    val after = contrast(afterPair.first, afterPair.second)
+                    assertTrue(
+                        "${bd.name} 把「$name」从 $before 拽到 $after（dark=$dark）",
+                        abs(before - after) / before <= 0.02,
+                    )
+                }
+                // 容器那几对会被「偏一档」带着动一点，但 4.5 这条线不能穿
+                listOf(
+                    Triple("区块底上的次要文字", tinted.onSurfaceVariant, tinted.surfaceVariant),
+                    Triple("卡片上的正文", tinted.onSurface, tinted.surfaceContainerLow),
+                    Triple("选中胶囊上的字", tinted.onSecondaryContainer, tinted.secondaryContainer),
+                ).forEach { (name, fg, bg) ->
+                    val c = contrast(fg, bg)
+                    assertTrue("${bd.name} 的${name}对比度 $c 低于 4.5（dark=$dark）", c >= 4.5)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `换底色不动状态色和文字色`() {
+        listOf(false, true).forEach { dark ->
+            val base = if (dark) DarkColors else LightColors
+            backdrops.forEach { bd ->
+                val tinted = themedWith(bd, dark)
+                // 「导出失败」的红跟挑了哪个底色没关系；跟着换只会掉对比度
+                listOf(
+                    Triple("error", base.error, tinted.error),
+                    Triple("errorContainer", base.errorContainer, tinted.errorContainer),
+                    Triple("正文色", base.onSurface, tinted.onSurface),
+                    Triple("次要文字色", base.onSurfaceVariant, tinted.onSurfaceVariant),
+                    Triple("背景上的字色", base.onBackground, tinted.onBackground),
+                ).forEach { (name, before, after) ->
+                    assertEquals("${bd.name} 动了$name（dark=$dark）", before, after)
+                }
+            }
+        }
     }
 }

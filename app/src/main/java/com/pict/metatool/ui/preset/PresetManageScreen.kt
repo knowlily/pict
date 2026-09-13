@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +74,12 @@ fun PresetManageScreen(
             is PresetManageEvent.Deleted -> stringResource(R.string.preset_manage_deleted, event.name)
             is PresetManageEvent.DeleteFailed ->
                 stringResource(R.string.preset_manage_delete_failed, event.name)
+
+            is PresetManageEvent.Saved -> if (event.isNew) {
+                stringResource(R.string.preset_manage_saved_new, event.name)
+            } else {
+                stringResource(R.string.preset_manage_saved_edit, event.name)
+            }
         }
     }
     LaunchedEffect(eventText) {
@@ -97,6 +105,15 @@ fun PresetManageScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        // 「自己加一份」摆在这一页上：管理页本来就是要加/删/改的地方，入口散在编辑页那边，
+        // 用户得先挑张图进编辑页才能建预设——那句话就是为这个提的。
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { viewModel.addPreset() },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.preset_manage_add)) },
+            )
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -149,6 +166,7 @@ fun PresetManageScreen(
                         preset = preset,
                         detail = state.expanded?.takeIf { it.id == preset.id },
                         onToggle = { viewModel.toggle(preset) },
+                        onEdit = { viewModel.editPreset(preset) },
                         onDelete = { viewModel.askDelete(preset) },
                     )
                 }
@@ -176,6 +194,18 @@ fun PresetManageScreen(
                     Text(stringResource(R.string.preset_manage_cancel))
                 }
             },
+        )
+    }
+
+    // 表单是编辑页、批量页那份（同一个 `UserPresetEditorSheet`）：三个入口一张表，
+    // 建出来的东西形态一致，校验规则也只有一套。
+    state.editor?.let { draft ->
+        UserPresetEditorSheet(
+            initial = draft,
+            message = state.editorMessage,
+            onSave = viewModel::saveEditor,
+            onDelete = viewModel::askDeleteById,
+            onDismiss = viewModel::dismissEditor,
         )
     }
 }
@@ -249,6 +279,7 @@ private fun PresetManageRow(
     preset: Preset,
     detail: PresetDetail?,
     onToggle: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
@@ -318,13 +349,18 @@ private fun PresetManageRow(
                 }
 
                 if (preset.origin == PresetOrigin.USER) {
-                    TextButton(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
-                    ) {
-                        Text(stringResource(R.string.preset_manage_delete))
+                    Row(horizontalArrangement = Arrangement.spacedBy(PictSpacing.xs)) {
+                        TextButton(onClick = onEdit) {
+                            Text(stringResource(R.string.preset_manage_edit))
+                        }
+                        TextButton(
+                            onClick = onDelete,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.preset_manage_delete))
+                        }
                     }
                 }
             }
