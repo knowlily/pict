@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "id": "device.iphone-17-pro",
+  "kind": "device",
+  "name": "iPhone 17 Pro",
+  "description": "Apple iPhone 17 Pro / 17 Pro Max 拍摄档案（2025，iOS 26 线）。真机 EXIF 串：主摄 6.765mm f/1.78（24mm 等效）、超广角 2.22mm f/2.2（13mm 等效）、长焦 16.891mm f/2.8（4x，100mm 等效）、前置 2.715mm f/1.9（18MP Center Stage，真机等效 30mm）。机型池与镜头池独立抽取。",
+  "tags": ["手机", "Apple", "iOS"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Apple" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 17 Pro", "weight": 3, "note": "主力机型" },
+        { "value": "iPhone 17 Pro Max", "weight": 1 }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        { "value": "26.0", "weight": 3, "note": "出厂系统" },
+        { "value": "26.0.1", "weight": 2 },
+        { "value": "26.1", "weight": 2 },
+        { "value": "26.2", "weight": 2 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Apple" },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 17 Pro back triple camera 6.765mm f/1.78", "weight": 6, "note": "主摄 48MP Fusion，24mm 等效" },
+        { "value": "iPhone 17 Pro back triple camera 2.22mm f/2.2", "weight": 2, "note": "超广角 48MP，13mm 等效" },
+        { "value": "iPhone 17 Pro back triple camera 16.891mm f/2.8", "weight": 2, "note": "长焦 48MP，4x / 100mm 等效" },
+        { "value": "iPhone 17 Pro front camera 2.715mm f/1.9", "weight": 1, "note": "前置 18MP Center Stage" }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.78, "weight": 6, "note": "主摄" },
+        { "value": 2.2, "weight": 2, "note": "超广角" },
+        { "value": 2.8, "weight": 2, "note": "长焦" },
+        { "value": 1.9, "weight": 1, "note": "前置" }
+      ]
+    },
+    "EXIF:FocalLength": {
+      "mode": "pool",
+      "pool": [
+        { "value": 6.765, "weight": 6, "note": "主摄物理焦距" },
+        { "value": 2.22, "weight": 2 },
+        { "value": 16.891, "weight": 2, "note": "长焦物理焦距" },
+        { "value": 2.715, "weight": 1 }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 24, "weight": 6, "note": "主摄等效" },
+        { "value": 13, "weight": 2, "note": "超广角等效" },
+        { "value": 100, "weight": 2, "note": "长焦等效（4x）" },
+        { "value": 30, "weight": 1, "note": "前置等效，与 iPhone 17 同代前置实测一致" }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/120", "weight": 3 },
+        { "value": "1/250", "weight": 3 },
+        { "value": "1/500", "weight": 2 },
+        { "value": "1/1000", "weight": 1 },
+        { "value": "1/60", "weight": 2 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 32, "weight": 4, "note": "真机常见基准 ISO" },
+        { "value": 50, "weight": 3 },
+        { "value": 64, "weight": 3 },
+        { "value": 100, "weight": 2 },
+        { "value": 125, "weight": 1 },
+        { "value": 200, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        { "value": "0/1", "weight": 6 },
+        { "value": "-1/3", "weight": 2 },
+        { "value": "1/3", "weight": 2 }
+      ]
+    },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "XMP:xmp:CreatorTool": {
+      "mode": "pool",
+      "pool": [
+        { "value": "26.0", "weight": 3, "note": "沿用 iOS 版本串写法" },
+        { "value": "26.1", "weight": 2 },
+        { "value": "26.2", "weight": 2 }
+      ]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Apple" },
+    "XMP:tiff:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 17 Pro", "weight": 3 },
+        { "value": "iPhone 17 Pro Max", "weight": 1 }
+      ]
+    }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

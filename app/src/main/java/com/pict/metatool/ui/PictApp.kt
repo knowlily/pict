@@ -49,10 +49,12 @@ import com.pict.metatool.ui.navigation.FloatingNavBar
 import com.pict.metatool.ui.navigation.FloatingNavBarReservedHeight
 import com.pict.metatool.ui.navigation.LocalBottomBarInset
 import com.pict.metatool.ui.navigation.PictDestination
+import com.pict.metatool.ui.navigation.PresetRoute
 import com.pict.metatool.ui.navigation.ReportRoute
 import com.pict.metatool.ui.navigation.glassEffectPlan
 import com.pict.metatool.ui.navigation.glassNeedsBackdrop
 import com.pict.metatool.ui.navigation.navBarSwipe
+import com.pict.metatool.ui.preset.PresetManageScreen
 import com.pict.metatool.ui.report.ReportScreen
 import com.pict.metatool.ui.settings.SettingsScreen
 import com.pict.metatool.ui.theme.pictPalette
@@ -83,13 +85,14 @@ fun PictApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // 详情页、编辑页、批量页、任务进度页、报告页都是二级页面，进来就收起底部导航
+    // 详情页、编辑页、批量页、任务进度页、报告页、预设管理页都是二级页面，进来就收起底部导航
     // （docs/06 §3.2 / §3.3 / §3.8）。
     val topLevel = currentRoute != DetailRoute.PATTERN &&
         currentRoute != EditRoute.PATTERN &&
         currentRoute != BatchRoute.PATTERN &&
         currentRoute != JobRoute.PATTERN &&
-        currentRoute != ReportRoute.PATTERN
+        currentRoute != ReportRoute.PATTERN &&
+        currentRoute != PresetRoute.PATTERN
     val destinations = remember(settings.navItems) { PictDestination.visibleItems(settings.navItems) }
     val floatingBar = topLevel && settings.navBarStyle == NavBarStyle.FLOATING
     // 玻璃关掉（设置里那个开关）就连背板都不录：离屏绘制一次不便宜，用不上的层不画。
@@ -201,7 +204,14 @@ fun PictApp(
                             enterTransition = { EnterTransition.None },
                             exitTransition = { ExitTransition.None },
                         ) {
-                            SettingsScreen(settings = settings, onUpdate = onUpdateSettings)
+                            SettingsScreen(
+                                settings = settings,
+                                onUpdate = onUpdateSettings,
+                                onOpenPresets = { navController.navigate(PresetRoute.PATTERN) },
+                            )
+                        }
+                        composable(PresetRoute.PATTERN) {
+                            PresetManageScreen(onBack = { navController.popBackStack() })
                         }
                         composable(DetailRoute.PATTERN) { entry ->
                             DetailScreen(

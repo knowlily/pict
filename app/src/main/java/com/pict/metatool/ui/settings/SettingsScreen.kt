@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     settings: AppSettings = AppSettings(),
     onUpdate: ((AppSettings) -> AppSettings) -> Unit = {},
+    onOpenPresets: () -> Unit = {},
     versionName: String = BuildConfig.VERSION_NAME,
     versionCode: Int = BuildConfig.VERSION_CODE,
     modifier: Modifier = Modifier,
@@ -139,6 +140,13 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_section_preset),
                 anchor = seedAnchor,
             ) {
+                SettingsValueRow(
+                    title = stringResource(R.string.settings_preset_manage),
+                    value = stringResource(R.string.settings_preset_manage_value),
+                    subtitle = stringResource(R.string.settings_preset_manage_hint),
+                    onClick = onOpenPresets,
+                )
+
                 SettingsSwitchRow(
                     title = stringResource(R.string.settings_preset_overwrite),
                     subtitle = stringResource(R.string.settings_preset_overwrite_hint),

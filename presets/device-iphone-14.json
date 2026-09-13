@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "id": "device.iphone-14",
+  "kind": "device",
+  "name": "iPhone 14",
+  "description": "Apple iPhone 14 / 14 Plus，双摄。镜头串取自真机 EXIF：5.7mm f/1.5 广角（26mm 等效）、1.54mm f/2.4 超广角（13mm 等效）、前置 2.69mm f/1.9（23mm 等效）。14 Plus 广角已查证为「iPhone 14 Plus back dual wide camera 5.7mm f/1.5」；Plus 的超广角与前置独立串未查到实拍 EXIF，故共用 iPhone 14 串。系统版本池 16.0 首发至 26.7（Wikipedia iOS 版本历史）。",
+  "tags": ["手机", "Apple", "iOS"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Apple" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 14", "weight": 3 },
+        { "value": "iPhone 14 Plus", "weight": 1 }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        { "value": "16.0", "weight": 1, "note": "首发系统" },
+        { "value": "16.7.2", "weight": 1, "note": "iOS 16 线末期" },
+        { "value": "17.7.2", "weight": 1, "note": "iOS 17 线末期" },
+        { "value": "18.7.10", "weight": 3, "note": "iOS 18 线末期" },
+        { "value": "26.7", "weight": 2 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Apple" },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 14 back dual wide camera 5.7mm f/1.5", "weight": 6, "note": "广角，26mm 等效" },
+        { "value": "iPhone 14 back dual wide camera 1.54mm f/2.4", "weight": 3, "note": "超广角，13mm 等效" },
+        { "value": "iPhone 14 Plus back dual wide camera 5.7mm f/1.5", "weight": 2, "note": "14 Plus 广角（Plus 前缀串）" },
+        { "value": "iPhone 14 front camera 2.69mm f/1.9", "weight": 2, "note": "前置 TrueDepth，自动对焦" }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.5, "weight": 8, "note": "广角" },
+        { "value": 2.4, "weight": 3, "note": "超广角" },
+        { "value": 1.9, "weight": 2, "note": "前置" }
+      ]
+    },
+    "EXIF:FocalLength": {
+      "mode": "pool",
+      "pool": [
+        { "value": 5.7, "weight": 8, "note": "广角" },
+        { "value": 1.54, "weight": 3, "note": "超广角" },
+        { "value": 2.69, "weight": 2, "note": "前置" }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 26, "weight": 8, "note": "广角" },
+        { "value": 13, "weight": 3, "note": "超广角" },
+        { "value": 23, "weight": 2, "note": "前置" }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/60", "weight": 2 },
+        { "value": "1/120", "weight": 3 },
+        { "value": "1/250", "weight": 3 },
+        { "value": "1/500", "weight": 2 },
+        { "value": "1/1000", "weight": 1 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 32, "weight": 3 },
+        { "value": 50, "weight": 3 },
+        { "value": 64, "weight": 3 },
+        { "value": 125, "weight": 2 },
+        { "value": 200, "weight": 1 },
+        { "value": 640, "weight": 1 },
+        { "value": 1250, "weight": 1, "note": "夜间超广角真机值" }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        { "value": "0/1", "weight": 4 },
+        { "value": "-1/3", "weight": 2 },
+        { "value": "1/3", "weight": 2 }
+      ]
+    },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "EXIF:SubSecTimeOriginal": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    },
+    "EXIF:SubSecTimeDigitized": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    },
+    "XMP:xmp:CreatorTool": {
+      "mode": "pool",
+      "pool": [
+        { "value": "17.7.2", "weight": 1 },
+        { "value": "18.7.10", "weight": 3 },
+        { "value": "26.7", "weight": 2 }
+      ]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Apple" },
+    "XMP:tiff:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 14", "weight": 3 },
+        { "value": "iPhone 14 Plus", "weight": 1 }
+      ]
+    }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

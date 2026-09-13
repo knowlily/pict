@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "id": "device.iphone-12",
+  "kind": "device",
+  "name": "iPhone 12",
+  "description": "Apple iPhone 12 系列（12 / 12 mini / 12 Pro / 12 Pro Max）。镜头串取自真机 EXIF：4.2mm f/1.6 广角（26mm 等效）、1.55mm f/2.4 超广角（13mm 等效）、12 Pro 的 6mm f/2 长焦（52mm）、12 Pro Max 的 5.1mm f/1.6 与 7.5mm f/2.2（65mm）。12 mini 的广角串与 12 / 12 mini 的前置串未查到独立实拍 EXIF，宁缺勿造故不写。系统版本池取首发 14.1 至 26.7（Wikipedia iOS 版本历史）。",
+  "tags": ["手机", "Apple", "iOS", "旧机型"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Apple" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 12", "weight": 4 },
+        { "value": "iPhone 12 mini", "weight": 2 },
+        { "value": "iPhone 12 Pro", "weight": 2 },
+        { "value": "iPhone 12 Pro Max", "weight": 2 }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        { "value": "14.1", "weight": 1, "note": "首发系统" },
+        { "value": "15.7.1", "weight": 1 },
+        { "value": "16.7.2", "weight": 1, "note": "iOS 16 线末期" },
+        { "value": "17.7.2", "weight": 2, "note": "iOS 17 线末期" },
+        { "value": "18.7.10", "weight": 3, "note": "iOS 18 线末期" },
+        { "value": "26.7", "weight": 2 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Apple" },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 12 back dual wide camera 4.2mm f/1.6", "weight": 6, "note": "广角，26mm 等效" },
+        { "value": "iPhone 12 back dual wide camera 1.55mm f/2.4", "weight": 2, "note": "超广角，13mm 等效" },
+        { "value": "iPhone 12 mini back dual wide camera 4.2mm f/1.6", "weight": 2, "note": "12 mini 广角，串与 12 同型" },
+        { "value": "iPhone 12 mini back dual wide camera 1.55mm f/2.4", "weight": 1, "note": "12 mini 超广角" },
+        { "value": "iPhone 12 Pro back triple camera 4.2mm f/1.6", "weight": 3, "note": "12 Pro 广角" },
+        { "value": "iPhone 12 Pro back triple camera 1.54mm f/2.4", "weight": 1, "note": "12 Pro 超广角，1.54mm" },
+        { "value": "iPhone 12 Pro back triple camera 6mm f/2", "weight": 2, "note": "12 Pro 长焦，52mm 等效" },
+        { "value": "iPhone 12 Pro Max back triple camera 5.1mm f/1.6", "weight": 2, "note": "12 Pro Max 广角，1.7µm 像素" },
+        { "value": "iPhone 12 Pro Max back triple camera 1.54mm f/2.4", "weight": 1, "note": "12 Pro Max 超广角" },
+        { "value": "iPhone 12 Pro Max back triple camera 7.5mm f/2.2", "weight": 1, "note": "12 Pro Max 长焦，65mm 等效" },
+        { "value": "iPhone 12 Pro front camera 2.71mm f/2.2", "weight": 1, "note": "前置 TrueDepth" },
+        { "value": "iPhone 12 Pro Max front camera 2.71mm f/2.2", "weight": 1, "note": "前置 TrueDepth" }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.6, "weight": 11, "note": "广角（12 / mini / Pro / Pro Max）" },
+        { "value": 2.4, "weight": 5, "note": "超广角" },
+        { "value": 2.0, "weight": 2, "note": "12 Pro 长焦" },
+        { "value": 2.2, "weight": 3, "note": "12 Pro Max 长焦 / 前置" }
+      ]
+    },
+    "EXIF:FocalLength": {
+      "mode": "pool",
+      "pool": [
+        { "value": 4.2, "weight": 11, "note": "12 / mini / Pro 广角" },
+        { "value": 5.1, "weight": 2, "note": "12 Pro Max 广角" },
+        { "value": 1.55, "weight": 3, "note": "12 / mini 超广角" },
+        { "value": 1.54, "weight": 2, "note": "Pro / Pro Max 超广角" },
+        { "value": 6, "weight": 2, "note": "12 Pro 长焦" },
+        { "value": 7.5, "weight": 1, "note": "12 Pro Max 长焦" },
+        { "value": 2.71, "weight": 1, "note": "前置" }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 26, "weight": 13, "note": "广角" },
+        { "value": 13, "weight": 5, "note": "超广角（真机亦报 14）" },
+        { "value": 52, "weight": 2, "note": "12 Pro 长焦" },
+        { "value": 65, "weight": 1, "note": "12 Pro Max 长焦" },
+        { "value": 23, "weight": 2, "note": "前置" }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/60", "weight": 2 },
+        { "value": "1/120", "weight": 3 },
+        { "value": "1/250", "weight": 3 },
+        { "value": "1/500", "weight": 2 },
+        { "value": "1/1000", "weight": 1 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 25, "weight": 1, "note": "真机最低感光" },
+        { "value": 32, "weight": 4 },
+        { "value": 64, "weight": 3 },
+        { "value": 100, "weight": 2 },
+        { "value": 200, "weight": 1 },
+        { "value": 400, "weight": 2 },
+        { "value": 640, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        { "value": "0/1", "weight": 4 },
+        { "value": "-1/3", "weight": 2 },
+        { "value": "1/3", "weight": 2 }
+      ]
+    },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "EXIF:SubSecTimeOriginal": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    },
+    "EXIF:SubSecTimeDigitized": {
+      "mode": "pool",
+      "pool": [
+        { "value": "123", "weight": 2 },
+        { "value": "456", "weight": 2 },
+        { "value": "789", "weight": 1 }
+      ]
+    },
+    "XMP:xmp:CreatorTool": {
+      "mode": "pool",
+      "pool": [
+        { "value": "17.7.2", "weight": 1 },
+        { "value": "18.7.10", "weight": 3 },
+        { "value": "26.7", "weight": 2 }
+      ]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Apple" },
+    "XMP:tiff:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 12", "weight": 4 },
+        { "value": "iPhone 12 mini", "weight": 2 },
+        { "value": "iPhone 12 Pro", "weight": 2 },
+        { "value": "iPhone 12 Pro Max", "weight": 2 }
+      ]
+    }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

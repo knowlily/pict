@@ -10,17 +10,25 @@ import org.junit.Test
  * docs/03 §7「内置预设清单」的覆盖度锁定（T3.2）。
  *
  * 「解析得过」由 [PresetParserTest] 保证；这里管的是另一件事：
- * 清单上写了的 36 个预设是不是真的都在、机型够不够杂、每个机型预设有没有自觉写 Make/Model。
+ * 清单上写了的 43 个预设是不是真的都在、机型够不够杂、每个机型预设有没有自觉写 Make/Model。
  * 少一个文件、改错 id、把机型预设写成只有 GPS，都会在这里红掉。
  */
 class BuiltinPresetCoverageTest {
 
     /** docs/03 §7 的清单，逐个钉住。 */
     private val expectedIds = listOf(
-        // 设备：手机 9 + 相机 8 + 运动相机 1 + 无人机 1
+        // 设备：手机 16 + 相机 8 + 运动相机 1 + 无人机 1
+        // 苹果这条线按世代从新到旧排：iPhone 12 到 17 Pro 都在。
+        "device.iphone-17-pro",
+        "device.iphone-17",
         "device.iphone-16-pro",
+        "device.iphone-16",
         "device.iphone-15-pro",
+        "device.iphone-15",
+        "device.iphone-14-pro",
+        "device.iphone-14",
         "device.iphone-13",
+        "device.iphone-12",
         "device.pixel-9-pro",
         "device.pixel-8-pro",
         "device.galaxy-s24-ultra",
@@ -79,7 +87,7 @@ class BuiltinPresetCoverageTest {
     @Test
     fun `四类预设都在，机型最杂`() {
         val byKind = PresetTestSupport.builtinPresets().groupingBy { it.kind.id }.eachCount()
-        assertEquals(19, byKind["device"])
+        assertEquals(26, byKind["device"])
         assertEquals(10, byKind["location"])
         assertEquals(6, byKind["time"])
         assertEquals(1, byKind["mixed"])

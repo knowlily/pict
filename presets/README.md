@@ -11,14 +11,21 @@ user-<自定义 id>.json        用户导出预设（不提交到仓库）
 
 ## 内置预设一览
 
-共 **36 个**（`docs/03-元数据模型与预设规范.md` 第 7 节的清单，T3.2 已全部落地）。字段数是该预设声明的 TagKey 条数，
+共 **43 个**（`docs/03-元数据模型与预设规范.md` 第 7 节的清单，T3.2 已全部落地）。字段数是该预设声明的 TagKey 条数，
 不是单次抽样会写入的条数——`pool` 类字段每次只取池中一个值。
 
 | id | 名称 | 字段 | 文件 |
 | --- | --- | --- | --- |
+| `device.iphone-17-pro` | iPhone 17 Pro | 21 | `device-iphone-17-pro.json` |
+| `device.iphone-17` | iPhone 17 | 21 | `device-iphone-17.json` |
 | `device.iphone-16-pro` | iPhone 16 Pro | 20 | `device-iphone-16-pro.json` |
+| `device.iphone-16` | iPhone 16 | 21 | `device-iphone-16.json` |
 | `device.iphone-15-pro` | iPhone 15 Pro | 21 | `device-iphone-15-pro.json` |
+| `device.iphone-15` | iPhone 15 | 21 | `device-iphone-15.json` |
+| `device.iphone-14-pro` | iPhone 14 Pro | 23 | `device-iphone-14-pro.json` |
+| `device.iphone-14` | iPhone 14 | 23 | `device-iphone-14.json` |
 | `device.iphone-13` | iPhone 13 | 23 | `device-iphone-13.json` |
+| `device.iphone-12` | iPhone 12 | 23 | `device-iphone-12.json` |
 | `device.pixel-9-pro` | Google Pixel 9 Pro | 17 | `device-pixel-9-pro.json` |
 | `device.pixel-8-pro` | Pixel 8 Pro | 17 | `device-pixel-8-pro.json` |
 | `device.galaxy-s24-ultra` | Galaxy S24 Ultra | 16 | `device-galaxy-s24-ultra.json` |
@@ -60,7 +67,7 @@ user-<自定义 id>.json        用户导出预设（不提交到仓库）
 ## 用户自建预设
 
 应用里「预设 → 自己加一个」写出来的文件落在 **应用私有目录**（`files/presets/user-*.json`），
-不进仓库、不覆盖内置的那 36 个：
+不进仓库、不覆盖内置的那 43 个：
 
 - 内置目录（`assets/presets/`）与用户目录在启动时**合并成一份**给界面用，**内置优先**：同 id 时以内置为准；列表里自建排在各栏最前、内置在后。
 - 用户在界面上只需填「名称 + 归到哪一栏 + 字段值」，`id` 由名称推（`我的机型` → `user.preset`；撞了就补序号）；

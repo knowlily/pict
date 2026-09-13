@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "id": "device.iphone-16",
+  "kind": "device",
+  "name": "iPhone 16",
+  "description": "Apple iPhone 16 / 16 Plus 拍摄档案（2024，iOS 18 线）。真机 EXIF 串：主摄 5.96mm f/1.6（26mm 等效）、超广角 2.22mm f/2.2（13mm 等效）、前置 2.69mm f/1.9（23mm 等效）。机型池与镜头池独立抽取，不保证一一对应；无长焦；不写序列号类字段。",
+  "tags": ["手机", "Apple", "iOS"],
+  "source": "builtin",
+  "author": "pict",
+  "license": "CC0-1.0",
+  "fields": {
+    "EXIF:Make": { "mode": "fixed", "value": "Apple" },
+    "EXIF:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 16", "weight": 3, "note": "主力机型" },
+        { "value": "iPhone 16 Plus", "weight": 1 }
+      ]
+    },
+    "EXIF:Software": {
+      "mode": "pool",
+      "pool": [
+        { "value": "18.0", "weight": 3, "note": "出厂系统" },
+        { "value": "18.0.1", "weight": 2 },
+        { "value": "18.1", "weight": 2 },
+        { "value": "18.1.1", "weight": 1 },
+        { "value": "18.2", "weight": 2 }
+      ]
+    },
+    "EXIF:LensMake": { "mode": "fixed", "value": "Apple" },
+    "EXIF:LensModel": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 16 back dual wide camera 5.96mm f/1.6", "weight": 6, "note": "主摄 48MP Fusion，26mm 等效" },
+        { "value": "iPhone 16 back dual wide camera 2.22mm f/2.2", "weight": 2, "note": "超广角 12MP，13mm 等效" },
+        { "value": "iPhone 16 front camera 2.69mm f/1.9", "weight": 1, "note": "前置 12MP，23mm 等效" }
+      ]
+    },
+    "EXIF:ExposureProgram": { "mode": "fixed", "value": 2 },
+    "EXIF:MeteringMode": { "mode": "fixed", "value": 5 },
+    "EXIF:WhiteBalance": { "mode": "fixed", "value": 0 },
+    "EXIF:ExposureMode": { "mode": "fixed", "value": 0 },
+    "EXIF:SceneCaptureType": { "mode": "fixed", "value": 0 },
+    "EXIF:ColorSpace": { "mode": "fixed", "value": 1 },
+    "EXIF:FNumber": {
+      "mode": "pool",
+      "pool": [
+        { "value": 1.6, "weight": 6, "note": "主摄" },
+        { "value": 2.2, "weight": 2, "note": "超广角" },
+        { "value": 1.9, "weight": 1, "note": "前置" }
+      ]
+    },
+    "EXIF:FocalLength": {
+      "mode": "pool",
+      "pool": [
+        { "value": 5.96, "weight": 6, "note": "主摄物理焦距" },
+        { "value": 2.22, "weight": 2 },
+        { "value": 2.69, "weight": 1 }
+      ]
+    },
+    "EXIF:FocalLengthIn35mmFilm": {
+      "mode": "pool",
+      "pool": [
+        { "value": 26, "weight": 6, "note": "主摄等效" },
+        { "value": 13, "weight": 2, "note": "超广角等效" },
+        { "value": 23, "weight": 1, "note": "前置等效" }
+      ]
+    },
+    "EXIF:ExposureTime": {
+      "mode": "pool",
+      "pool": [
+        { "value": "1/120", "weight": 3 },
+        { "value": "1/250", "weight": 3 },
+        { "value": "1/500", "weight": 2 },
+        { "value": "1/1000", "weight": 1 },
+        { "value": "1/60", "weight": 2 }
+      ]
+    },
+    "EXIF:ISOSpeedRatings": {
+      "mode": "pool",
+      "pool": [
+        { "value": 32, "weight": 4, "note": "真机常见基准 ISO" },
+        { "value": 50, "weight": 3 },
+        { "value": 64, "weight": 3 },
+        { "value": 100, "weight": 2 },
+        { "value": 200, "weight": 1 }
+      ]
+    },
+    "EXIF:ExposureBiasValue": {
+      "mode": "pool",
+      "pool": [
+        { "value": "0/1", "weight": 6 },
+        { "value": "-1/3", "weight": 2 },
+        { "value": "1/3", "weight": 2 }
+      ]
+    },
+    "EXIF:Flash": { "mode": "fixed", "value": 16 },
+    "XMP:xmp:CreatorTool": {
+      "mode": "pool",
+      "pool": [
+        { "value": "18.0", "weight": 3, "note": "沿用 iOS 版本串写法" },
+        { "value": "18.1", "weight": 2 },
+        { "value": "18.2", "weight": 2 }
+      ]
+    },
+    "XMP:tiff:Make": { "mode": "fixed", "value": "Apple" },
+    "XMP:tiff:Model": {
+      "mode": "pool",
+      "pool": [
+        { "value": "iPhone 16", "weight": 3 },
+        { "value": "iPhone 16 Plus", "weight": 1 }
+      ]
+    }
+  },
+  "constraints": [
+    { "type": "requires", "fields": ["EXIF:Make", "EXIF:Model"] },
+    { "type": "clamp", "fields": ["EXIF:FNumber", "EXIF:FocalLength", "EXIF:ISOSpeedRatings"] }
+  ]
+}

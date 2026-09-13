@@ -407,4 +407,27 @@
     <string name="job_notify_dry_run">只算不写</string>
     <string name="batch_no_targets">没有选中任何图片</string>
     <string name="library_action_batch">批量编辑</string>
+    <!-- 设置 → 预设管理（docs/03 §7） -->
+    <string name="settings_preset_manage">预设管理</string>
+    <string name="settings_preset_manage_value">管理</string>
+    <string name="settings_preset_manage_hint">看内置和自己加的预设，自建的可以删</string>
+    <string name="preset_manage_title">预设管理</string>
+    <string name="preset_manage_back">返回</string>
+    <string name="preset_manage_counts">内置 %1$d · 自建 %2$d</string>
+    <string name="preset_manage_kind_count">%1$d 个</string>
+    <string name="preset_manage_fields">%1$d 个字段</string>
+    <string name="preset_manage_constraint">约束：%1$s</string>
+    <string name="preset_manage_tags">标签：%1$s</string>
+    <string name="preset_manage_author">作者：%1$s</string>
+    <string name="preset_manage_license">许可：%1$s</string>
+    <string name="preset_manage_note">内置的在安装包里，改不了也删不掉；自建的存在应用数据里，卸载或清数据会一起没。</string>
+    <string name="preset_manage_builtin_issue">安装包里的预设有问题：%1$s</string>
+    <string name="preset_manage_user_issue">自建预设有问题：%1$s</string>
+    <string name="preset_manage_empty">一份预设都没读出来，内置预设应该跟着安装包一起进来——重装一次试试。</string>
+    <string name="preset_manage_delete">删除</string>
+    <string name="preset_manage_delete_title">删掉这份自建预设？</string>
+    <string name="preset_manage_delete_body">「%1$s」会被删掉，内置预设不受影响。</string>
+    <string name="preset_manage_cancel">取消</string>
+    <string name="preset_manage_deleted">已删掉「%1$s」</string>
+    <string name="preset_manage_delete_failed">没能删掉「%1$s」，它可能已经不在列表里</string>
 </resources>
